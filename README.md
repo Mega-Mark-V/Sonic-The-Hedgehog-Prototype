@@ -12,6 +12,7 @@ This uses a completely different stylization from the disassemblies Sonic Retro 
 - At this time, I have not gone through the sound driver's code yet. It should be compiled separately, alongside the sound driver Z80 ROM which is uncompressed in this build of the game
 - The special stage should also be compiled separately, as it has its own RAM layout, which is why RAM is currently split into two files ("Variables.i" and "RAM.i")
 - Assembly files (.68K and .Z80) should be read with a tab width of 8.
+- ../src/_TEMP.ASM contains the raw disassembler output, and should provide context for current progress
 
 ## Notice
 
