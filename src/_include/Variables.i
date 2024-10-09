@@ -149,7 +149,7 @@ switchActive:   	rs.b 2
 unkMarbleVar:   	rs.b 1    
 scrollBlockSize:	rs.b 2    
                 	rs.b $E
-vdpSprites:     	rs.b $280 
+sprites:     		rs.b $280 
 paletteWater:   	rs.b $80
 palette:        	rs.b $80  
 palFadeBuffer:  	rs.b $80  

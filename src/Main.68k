@@ -3,21 +3,21 @@
 ; KatKurin 2024
 ; ---------------------------------------------------------------------------
 
-	include		"_include/Constants.i"
-	include		"_include/Mega Drive.i"
-	include		"_include/RAM.i"
-	include		"_include/Sound.i"
-	include		"_include/Variables.i"
+        include         "_include/Constants.i"
+        include         "_include/Mega Drive.i"
+        include         "_include/RAM.i"
+        include         "_include/Sound.i"
+        include         "_include/Variables.i"
 
-; ---------------------------------------------------------------------------	
+; ---------------------------------------------------------------------------   
 ; Header and initial program
 ; ---------------------------------------------------------------------------
 
 HEADER:
-        dc.l $FFFE00		; Initial SP
-        dc.l SECURITY		; Initial PC
-        	
-        dc.l ERROR_BUS		; Error vectors
+        dc.l $FFFE00            ; Initial SP
+        dc.l SECURITY           ; Initial PC
+                
+        dc.l ERROR_BUS          ; Error vectors
         dc.l ERROR_ADDRESS
         dc.l ERROR_ILLEGAL
         dc.l ERROR_ZERODIV
@@ -32,7 +32,7 @@ HEADER:
         dc.l ERROR,ERROR,ERROR,ERROR
         dc.l ERROR,ERROR,ERROR,ERROR
         
-        dc.l ERROR		; Spurious Interrupt
+        dc.l ERROR              ; Spurious Interrupt
         dc.l UINT               ; IRQ1
         dc.l UINT               ; IRQ2 (EXT)
         dc.l UINT               ; IRQ3
@@ -41,12 +41,12 @@ HEADER:
         dc.l VBLANK             ; IRQ6 (Vertical blanking interrupt)
         dc.l UINT
 
-        dc.l UINT,UINT,UINT,UINT	; TRAP Exceptions
-        dc.l UINT,UINT,UINT,UINT	; (Unused)
+        dc.l UINT,UINT,UINT,UINT        ; TRAP Exceptions
+        dc.l UINT,UINT,UINT,UINT        ; (Unused)
         dc.l UINT,UINT,UINT,UINT
         dc.l UINT,UINT,UINT,UINT
         
-        dc.l UINT,UINT,UINT,UINT	; Reserved (Unused)
+        dc.l UINT,UINT,UINT,UINT        ; Reserved (Unused)
         dc.l UINT,UINT,UINT,UINT
         dc.l UINT,UINT,UINT,UINT
         dc.l UINT,UINT,UINT,UINT
@@ -56,23 +56,23 @@ HEADER:
 ; ---------------------------------------------------------------------------
 
 GAME_ID:
-		dc.b 'SEGA MEGA DRIVE '
-        	dc.b '(C)SEGA 1989.JAN'
-        	dc.b '                        '
-        	dc.b '                        '
-        	dc.b 'GM 00000000-00'
+                dc.b 'SEGA MEGA DRIVE '
+                dc.b '(C)SEGA 1989.JAN'
+                dc.b '                        '
+                dc.b '                        '
+                dc.b 'GM 00000000-00'
 CHECKSUM:       dc.w     0              
 PERIPHERALS:    dc.b 'J               '
 GAMESTART:      dc.l CARTRIDGE
 GAMEEND:        dc.l CARTRIDGEE-1
 RAMSTART:       dc.l WORKRAM
 RAMEND:         dc.l WORKRAME-1
-        	dc.b '    '
-        	dc.b '    '
-        	dc.b '    '
-        	dc.b '            '
-        	dc.b '                        '
-        	dc.b 'JU              '
+                dc.b '    '
+                dc.b '    '
+                dc.b '    '
+                dc.b '            '
+                dc.b '                        '
+                dc.b 'JU              '
 HEADEREND:
 
 ; ---------------------------------------------------------------------------
@@ -91,10 +91,10 @@ UINT:
 ; ---------------------------------------------------------------------------
 
 SECURITY:
-        tst.l   IOCTRL1_	; Test controller 1 and 2 bits
+        tst.l   IOCTRL1_        ; Test controller 1 and 2 bits
 
 .WaitBoot:          
-	bne.w   Start	
+        bne.w   Start   
         tst.w   IOCTRL3_
         bne.s   .WaitBoot
         lea     SECURITYDATA(pc),a5
@@ -102,13 +102,13 @@ SECURITY:
         
         move.w  VERSION_-Z80BUS(a1),d0
         andi.w  #(%1111<<8),d0
-	beq.s   .NoTMSS
+        beq.s   .NoTMSS
         move.l  #'SEGA',Z80BUS-TMSSSEGA(a1)
 
 .NoTMSS:              
-        move.w  (a4),d0		; VDP dummy read
+        move.w  (a4),d0         ; VDP dummy read
         moveq   #0,d0
-        movea.l d0,a6		; Clear a6 and usp
+        movea.l d0,a6           ; Clear a6 and usp
         move.l  a6,usp
         
         moveq   #24-1,d1
@@ -116,7 +116,7 @@ SECURITY:
         move.b  (a5)+,d5
         move.w  d5,(a4)
         add.w   d7,d5
-        dbf     d1,.SetVDPRegs	; Loop until 0
+        dbf     d1,.SetVDPRegs  ; Loop until 0
         
         move.l  #VRAMDMA,(a4)
         move.w  d0,(a3)
@@ -172,15 +172,15 @@ SECURITY:
 ; ---------------------------------------------------------------------------
 
 SECURITYDATA:
-	dc.l $8000		; d5, VDP register offset constant
-        dc.l (WORKRAME/4)-1	; d6, Size of WORKRAM in longwords
-        dc.l $100		; d7, VDP register increment value
+        dc.l $8000              ; d5, VDP register offset constant
+        dc.l (WORKRAME/4)-1     ; d6, Size of WORKRAM in longwords
+        dc.l $100               ; d7, VDP register increment value
         
-        dc.l Z80RAM		; a0
-        dc.l Z80BUS		; a1
-        dc.l Z80RES		; a2
-        dc.l VDPDATA		; a3
-        dc.l VDPCTRL		; a4
+        dc.l Z80RAM             ; a0
+        dc.l Z80BUS             ; a1
+        dc.l Z80RES             ; a2
+        dc.l VDPDATA            ; a3
+        dc.l VDPCTRL            ; a4
         
 ; ---------------------------------------------------------------------------
 ; These are not relevant to the actual game program and are only used
@@ -188,44 +188,44 @@ SECURITYDATA:
 ; ---------------------------------------------------------------------------
 
 SECURITY_VDP:
-	dc.b %0000100   ; 00 (MODE REG1) Normal color mode           
-        dc.b %0010100	; 01 (MODE REG2) Mode 5 display on, DMA on
+        dc.b %0000100   ; 00 (MODE REG1) Normal color mode           
+        dc.b %0010100   ; 01 (MODE REG2) Mode 5 display on, DMA on
         
-        dc.b $C000>>10	; 02 Plane A Nametable Address 
-        dc.b $F000>>10	; 03 Window Nametable Address
-        dc.b $E000>>13	; 04 Plane B Nametable Address
+        dc.b $C000>>10  ; 02 Plane A Nametable Address 
+        dc.b $F000>>10  ; 03 Window Nametable Address
+        dc.b $E000>>13  ; 04 Plane B Nametable Address
         
-        dc.b $D800>>9	; 05 Sprite Table Address
-        dc.b 0	        ; 06 *Unused on MD*
-        dc.b (0<<4)+0	; 07 Background color
-        dc.b 0		; 08 *Unused on MD*
-        dc.b 0		; 09 *Unused on MD*
-        dc.b 256-1	; 0A H-BLANK Scanline Interval
+        dc.b $D800>>9   ; 05 Sprite Table Address
+        dc.b 0          ; 06 *Unused on MD*
+        dc.b (0<<4)+0   ; 07 Background color
+        dc.b 0          ; 08 *Unused on MD*
+        dc.b 0          ; 09 *Unused on MD*
+        dc.b 256-1      ; 0A H-BLANK Scanline Interval
         
-        dc.b 0		; 0B (MODE REG3) Scroll fullscreen
-        dc.b %10000001	; 0C (MODE REG4) H40 Cell mode
+        dc.b 0          ; 0B (MODE REG3) Scroll fullscreen
+        dc.b %10000001  ; 0C (MODE REG4) H40 Cell mode
         
-        dc.b $DC00>>10	; 0D H-Scroll Tablle Address
-        dc.b 0		; 0E *Unused on MD*
-        dc.b 1		; 0F VDP Address Autoincrement value
-        dc.b 1		; 10 Plane size (256x512)
+        dc.b $DC00>>10  ; 0D H-Scroll Tablle Address
+        dc.b 0          ; 0E *Unused on MD*
+        dc.b 1          ; 0F VDP Address Autoincrement value
+        dc.b 1          ; 10 Plane size (256x512)
         
-        dc.b 0		; 11 Window Plane Xpos
-        dc.b 0		; 12 Window Plane Ypos
+        dc.b 0          ; 11 Window Plane Xpos
+        dc.b 0          ; 12 Window Plane Ypos
         
-        dc.b $FF	; 13 DMA Length (Low)
-        dc.b $FF	; 14 DMA Length (Hi)
+        dc.b $FF        ; 13 DMA Length (Low)
+        dc.b $FF        ; 14 DMA Length (Hi)
         
-        dc.b 0		; 15 DMA Source (Low)
-        dc.b 0		; 16 DMA Source (Mid)
-        dc.b $80	; 17 DMA Source (Hi)
+        dc.b 0          ; 15 DMA Source (Low)
+        dc.b 0          ; 16 DMA Source (Mid)
+        dc.b $80        ; 17 DMA Source (Hi)
 
 ; ---------------------------------------------------------------------------
 ; Z80 dummy program
 ; ---------------------------------------------------------------------------
 
 SECURITY_Z80:
-	dc.b $AF,  1,$D7,$1F
+        dc.b $AF,  1,$D7,$1F
         dc.b $11,$29,  0,$21
         dc.b $28,  0,$F9,$77
         dc.b $ED,$B0,$DD,$E1
@@ -264,12 +264,12 @@ Start:
         movea.l #CHECKSUM,a1     ; Compare against the catalogued checksum value
         cmp.w   (a1),d1
 
-        nop	; <- bne.w ChecksumFailed
+        nop     ; <- bne.w ChecksumFailed
         nop
 
         lea     stack.w,a6
         moveq   #0,d7
-        move.w  #($200/4)-1,d6	; Clear previous game information
+        move.w  #($200/4)-1,d6  ; Clear previous game information
 .ClearGameVars:        
         move.l  d7,(a6)+
         dbf     d6,.ClearGameVars
@@ -295,22 +295,30 @@ Start:
 
 Main:           
         move.b  gamemode.w,d0
-        andi.w  #6*4,d0				; Cap to 7 modes (2 unimplemented)
+        andi.w  #6*4,d0                         ; Cap to 7 modes (2 unimplemented)
         jsr     .Index(pc,d0.w)
         bra.s   Main
         
 ; ---------------------------------------------------------------------------
 
 .Index:        
-        bra.w   GM_LOGO			; SEGA Logo program (Standard)
-        bra.w   GM_TITLE		; Title Screen
-        bra.w   GM_LEVEL		; Demo
-        bra.w   GM_LEVEL		; Level
-        bra.w   GM_SPECIAL		; Special Stage
-					; Ending sequence (unimplemented)
-					; Continue screen (unimplemented)
+        bra.w   GM_LOGO                 ; SEGA Logo program (Standard)
+        bra.w   GM_TITLE                ; Title Screen
+        bra.w   GM_LEVEL                ; Demo
+        bra.w   GM_LEVEL                ; Level
+        bra.w   GM_SPECIAL              ; Special Stage
+                                        ; Ending sequence (unimplemented)
+                                        ; Continue screen (unimplemented)
         rts
-        
+
+; --------------------------------------------------------------------------- 
+
+gmID_LOGO               EQU         0*4 ; *4 for jumptable entry
+gmID_TITLE              EQU         1*4 ; !!! Do something better for this.
+gmID_DEMO               EQU         2*4
+gmID_LEVEL              EQU         3*4
+gmID_SPECIAL            EQU         4*4
+
 ; ---------------------------------------------------------------------------
 ; Checksum Failure routine (unused)
 ; ---------------------------------------------------------------------------
@@ -329,7 +337,7 @@ Main:
         
 ; ---------------------------------------------------------------------------
 
-	include  "Error Handler.68k"
+        include  "Error Handler.68k"
 
 ; ---------------------------------------------------------------------------
 
@@ -337,55 +345,69 @@ Main:
         
 ; ---------------------------------------------------------------------------
 
-ArtUnc_Text:	incbin  "ArtUnc/Generic Text.unc"
+ArtUnc_Text:    incbin  "ArtUnc/Generic Text.unc"
 ArtUnc_TextE:
-ArtUnc_TextSZ	EQU	ArtUnc_TextE-ArtUnc_Text
+ArtUnc_TextSZ   EQU     ArtUnc_TextE-ArtUnc_Text
+
+; ---------------------------------------------------------------------------
+
+vbID_NULL           EQU         0*2  ; !!! Do something better here.
+vbID_LOGO           EQU         1*2
+vbID_TITLE          EQU         2*2
+vbID_UNK            EQU         3*2
+vbID_LEVEL          EQU         4*2
+vbID_SPECIAL        EQU         5*2
+vbID_LVLSTART       EQU         6*2
+vbID_DMA            EQU         7*2
+vdID_PAUSE          EQU         8*2
+vbID_PALFUNC        EQU         9*2
 
 ; ---------------------------------------------------------------------------
 
 VBLANK:                                 
                 movem.l d0-d7/a0-a6,-(sp)
-                tst.b   vblankCmd.w 		; If no command given, exit
+                tst.b   vblankCmd.w           ; If no command given, exit
                 beq.s   .End
                 move.w  VDPCTRL,d0
                 move.l  #VSRAMWRITE,VDPCTRL
                 move.l  vdpPlaneAPosY.w,VDPDATA
 
-                btst    #6,hardwareVersion.w 	; Get hardware region
-                beq.s   .NTSC			; Skip if NTSC
-                move.w  #$700,d0                ; Wait for PAL timing               
-                dbf     d0,*			
+                btst    #6,hardwareVersion.w  ; Get hardware region
+                beq.s   .NTSC                 ; Skip if NTSC
+                move.w  #$700,d0              ; Wait for PAL timing               
+                dbf     d0,*                    
 .NTSC:                                 
-                move.b  vblankCmd.w,d0
-                move.b  #0,vblankCmd.w
-                move.w  #1,hblankFlag.w
+                move.b  vblankCmd.w,d0        ; Get user command
+                move.b  #0,vblankCmd.w        ; Clear command variable
+                move.w  #1,hblankFlag.w       ; Reset the HBLANK exec. flag
                 andi.w  #%111110,d0
-                move.w  .Index(pc,d0.w),d0
+                move.w  .Index(pc,d0.w),d0    ; Jump to execution
                 jsr     .Index(pc,d0.w)
 
 .End:                                  
-                addq.l  #1,(vblankCounter).w
-                jsr     (UpdateMusic).l
+                addq.l  #1,vblankCounter.w
+                jsr     UpdateMusic
                 movem.l (sp)+,d0-d7/a0-a6
                 rte
 
 ; ---------------------------------------------------------------------------
 
-vblNULL:                                
+.NULL                                
                 rts
 
 ; ---------------------------------------------------------------------------
+
 .Index:                                
-                dc.w VBLANK_NULL-.Index           	; 0
-                dc.w VBLANK_LOGO-.Index    		; 2
-                dc.w VBLANK_TITLE-.Index   		; 4
-                dc.w VBLANK_UNK-.Index   		; 6
-                dc.w VBLANK_LEVEL-.Index 		; 8
-                dc.w VBLANK_SPECIAL-.Index 		; A
-                dc.w VBLANK_LVLSTART-.Index 		; C
-                dc.w VBLANK_DMA-.Index     		; E
-                dc.w VBLANK_PAUSE-.Index   		; 10
-                dc.w VBLANK_PALFUNC-.Index 		; 12
+                dc.w .NULL-.Index                       ; 0
+                dc.w VBLANK_LOGO-.Index                 ; 2
+                dc.w VBLANK_TITLE-.Index                ; 4
+                dc.w VBLANK_UNK-.Index                  ; 6
+                dc.w VBLANK_LEVEL-.Index                ; 8
+                dc.w VBLANK_SPECIAL-.Index              ; A
+                dc.w VBLANK_LVLSTART-.Index             ; C
+                dc.w VBLANK_DMA-.Index                  ; E
+                dc.w VBLANK_PAUSE-.Index                ; 10
+                dc.w VBLANK_PALFUNC-.Index              ; 12
 
 ; ---------------------------------------------------------------------------
 ; LOGO / SEGA Screen routine
@@ -442,55 +464,39 @@ VBLANK_LEVEL:
 .WaitZ80:                              
                 btst    #0,Z80BUS
                 bne.s   .WaitZ80
-                lea     VDPCTRL,a5
-                move.l  #$94009340,(a5)
-                move.l  #$96FD9580,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$C000,(a5)
-                move.w  #$80,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
-                lea     VDPCTRL,a5
-                move.l  #$940193C0,(a5)
-                move.l  #$96E69500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7C00,(a5)
-                move.w  #$83,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
-                move.w  #$8407,(a5)
-                move.w  vdpHBLANKLine.w,(a5)
+
+                VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+                VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
+
+                move.w  #$8407,a5
+                move.w  vdpHBLANKLine.w,a5
                 move.w  vdpPlaneZPosY.w,vdpPlaneZPosY2.w
-                lea     VDPCTRL,a5
-                move.l  #$94019340,(a5)
-                move.l  #$96FC9500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7800,(a5)
-                move.w  #$83,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
+
+                VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+
                 tst.b   sonicRedrawFlag.w
                 beq.s   .NoSonicRedraw
-                lea     VDPCTRL.l,a5
-                move.l  #$94019370,(a5)
-                move.l  #$96E49500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7000,(a5)
-                move.w  #$83,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
+
+                VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+
                 move.b  #0,sonicRedrawFlag.w
 
 .NoSonicRedraw:                                
                 move.w  #0,Z80BUS
+
                 bsr.w   ProcessScrollingTiles
                 jsr     AnimatedLevelGFX
                 jsr     UpdateHUD
                 bsr.w   DecompArtList_Slow
+
                 moveq   #0,d0
                 move.b  vblankUnk1.w,d0
                 move.b  vblankUnk2.w,d1
                 cmp.b   d0,d1
-                bcc.s   loc_CA8
+                bcc.s   .Skip
                 move.b  d0,vblankUnk2.w
 
-loc_CA8:                                
+.Skip:                                
                 move.b  #0,vblankUnk1.w
                 tst.w   genericTimer.w
                 beq.w   .Exit
@@ -501,58 +507,37 @@ loc_CA8:
 
 
 ; ---------------------------------------------------------------------------
-;
+; SPECIAL stage routine
 ; ---------------------------------------------------------------------------
 
 VBLANK_SPECIAL:                             
                 bsr.w   ReadJoypads
-                move.w  #$100,(Z80BUS).l
+                move.w  #$100,Z80BUS
 
-loc_CC8:                                
-                btst    #0,(Z80BUS).l
-                bne.s   loc_CC8
-                lea     (VDPCTRL).l,a5
-                move.l  #$94009340,(a5)
-                move.l  #$96FD9580,(a5)
+.WaitZ80:                                
+                btst    #0,Z80BUS
+                bne.s   .WaitZ80
 
-loc_CE4:
-                move.w  #$977F,(a5)
-                move.w  #$C000,(a5)
-                move.w  #$80,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                lea     (VDPCTRL).l,a5
-                move.l  #$94019340,(a5)
-                move.l  #$96FC9500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7800,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                lea     (VDPCTRL).l,a5
-                move.l  #$940193C0,(a5)
-                move.l  #$96E69500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7C00,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                move.w  #0,(Z80BUS).l
+                VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+                VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+                VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
+
+                move.w  #0,Z80BUS
                 bsr.w   _specialstgPalCyc
-                tst.b   (sonicRedrawFlag).w
-                beq.s   loc_D7A
-                lea     (VDPCTRL).l,a5
-                move.l  #$94019370,(a5)
-                move.l  #$96E49500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7000,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                move.b  #0,(sonicRedrawFlag).w
 
-loc_D7A:                                
-                tst.w   (genericTimer).w
-                beq.w   locret_D86
-                subq.w  #1,(genericTimer).w
+                tst.b   sonicRedrawFlag.w
+                beq.s   .NoSonicRedraw
 
-locret_D86:                             
+                VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+
+                move.b  #0,sonicRedrawFlag.w
+
+.NoSonicRedraw:                                
+                tst.w   genericTimer.w
+                beq.w   .TimerDone
+                subq.w  #1,genericTimer.w
+
+.TimerDone:                             
                 rts
 
 
@@ -640,15 +625,7 @@ RefreshVDPBuffers:
                 bne.s   .WaitZ80
 
 
-                lea     VDPCTRL,a5
-                move.l  #$94009340,(a5) ; SET_LOWER_BYTE_OF_DMA_LEN_TO_$40
-                                        ; SET_HIGHER_BYTE_OF_DMA_LEN_TO_$00
-                move.l  #$96FD9580,(a5) ; SET_LOWER_BYTE_OF_DMA_SRC_TO_$80
-                                        ; SET_MIDDLE_BYTE_OF_DMA_SRC_TO_$FD
-                move.w  #$977F,(a5)
-                move.w  #$C000,(a5)
-                move.w  #$80,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
+                VDPDMA  palette,$0000,$80,CRAM,a5
 
 
                 lea     VDPCTRL,a5
@@ -714,7 +691,7 @@ UNUSED_HBLANK2:
                 move.l  #$78000003,VDPCTRL
                 lea     vdpSprites.w,a0
                 lea     VDPDATA,a5
-                move.w  #$9F,d0
+                move.w  #$A0-1,d0
 
 .WriteSprites:                         
                 move.l  (a0)+,(a5)

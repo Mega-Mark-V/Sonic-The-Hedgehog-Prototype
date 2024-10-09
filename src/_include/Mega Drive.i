@@ -78,7 +78,7 @@ VRAMCOPY	EQU	$000000C0		; VRAM DMA copy
 ; ---------------------------------------------------------------------------
 
 PAL:             	EQU 0
-DMA:             	EQU 1 
+DMA:                EQU 1 
 HBLANKING:       	EQU 2
 VBLANKING:       	EQU 3
 ODDFRAME:        	EQU 4
@@ -116,17 +116,13 @@ cmd	= (\type\\rwd\)|(((\addr)&$3FFF)<<16)|((\addr)/$4000)
 ;	port - Address register for the VDP port
 ; ---------------------------------------------------------------------------
 
-DMA68K  macro src, dest, len, type, port
+VDPDMA  macro src, dest, len, type, port
 	; DMA data
-	move.l	#$93009400|(((\len)/2)&$FF00)>>8|(((\len)/2)&$FF)<<16,\port
-	move.l	#$95009600|(((\src)/2)&$FF00)>>8|(((\src)/2)&$FF)<<16,\port
-	move.w	#$9700|((\src)>>17)&$7F,\port
-	VDPCMD	move.w,\dest,\type,DMA,>>16,\port
-	VDPCMD	move.w,\dest,\type,DMA,&$FFFF,-(sp)
-	move.w	(sp)+,\port
-
-	; Manually write first word
-	VDPCMD	move.l,\dest,\type,WRITE,\port
-	move.w	\src,VDPDATA
+	lea	VDPCTRL,\port
+	move.l	#$94009300|((((\len)/2)&$FF00)<<8)|(((\len)/2)&$FF),(\port)
+	move.l	#$96009500|((((\src)/2)&$FF00)<<8)|(((\src)/2)&$FF),(\port)
+	move.w	#$9700|(((\src)>>17)&$7F),(\port)
+	VDPCMD	move.w,\dest,\type,DMA,>>16,(\port)
+	VDPCMD	move.w,\dest,\type,DMA,&$FFFF,vdpIntBuffer.w
+	move.w	vdpIntBuffer.w,(\port)
 	endm
-

@@ -11,7 +11,7 @@ spriteDrawQueue:	rs.b 	$400
 levelBlocks:    	rs.b 	$1800
 sonicDMABuffer: 	rs.b 	$300 
 sonicPosBuffer: 	rs.b 	$100 
-hscrollTable:   	rs.b 	$400 
+hscroll:   			rs.b 	$400 
 objectSlot00:   	rs.b 	$40  
 objectSlot01:   	rs.b 	$40  
 objectSlot02:   	rs.b 	$40  
