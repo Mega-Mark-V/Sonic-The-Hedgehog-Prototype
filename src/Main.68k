@@ -1,0 +1,344 @@
+; ---------------------------------------------------------------------------
+; Sonic the Hedgehog (Prototype) Disassembly
+; KatKurin 2024
+; ---------------------------------------------------------------------------
+
+	include		"_include/Constants.i"
+	include		"_include/Mega Drive.i"
+	include		"_include/RAM.i"
+	include		"_include/Sound.i"
+	include		"_include/Variables.i"
+
+; ---------------------------------------------------------------------------	
+; Header and initial program
+; ---------------------------------------------------------------------------
+
+HEADER:
+        dc.l $FFFE00		; Initial SP
+        dc.l SECURITY		; Initial PC
+        	
+        dc.l ERROR_BUS		; Error vectors
+        dc.l ERROR_ADDRESS
+        dc.l ERROR_ILLEGAL
+        dc.l ERROR_ZERODIV
+        dc.l ERROR_CHKINST
+        dc.l ERROR_TRAPV
+        dc.l ERROR_PRIVILEGE
+        dc.l ERROR_TRACE
+        dc.l ERROR_LINEA
+        dc.l ERROR_LINEF
+ 
+        dc.l ERROR,ERROR,ERROR,ERROR    ; Reserved (Unused)   
+        dc.l ERROR,ERROR,ERROR,ERROR
+        dc.l ERROR,ERROR,ERROR,ERROR
+        
+        dc.l ERROR		; Spurious Interrupt
+        dc.l UINT               ; IRQ1
+        dc.l UINT               ; IRQ2 (EXT)
+        dc.l UINT               ; IRQ3
+        dc.l HBLANK             ; IRQ4 (Horizontal blanking interrupt)
+        dc.l UINT               ; IRQ5
+        dc.l VBLANK             ; IRQ6 (Vertical blanking interrupt)
+        dc.l UINT
+
+        dc.l UINT,UINT,UINT,UINT	; TRAP Exceptions
+        dc.l UINT,UINT,UINT,UINT	; (Unused)
+        dc.l UINT,UINT,UINT,UINT
+        dc.l UINT,UINT,UINT,UINT
+        
+        dc.l UINT,UINT,UINT,UINT	; Reserved (Unused)
+        dc.l UINT,UINT,UINT,UINT
+        dc.l UINT,UINT,UINT,UINT
+        dc.l UINT,UINT,UINT,UINT
+        
+; ---------------------------------------------------------------------------
+; Game Information (Stock SDK)
+; ---------------------------------------------------------------------------
+
+GAME_ID:
+		dc.b 'SEGA MEGA DRIVE '
+        	dc.b '(C)SEGA 1989.JAN'
+        	dc.b '                        '
+        	dc.b '                        '
+        	dc.b 'GM 00000000-00'
+CHECKSUM:       dc.w     0              
+PERIPHERALS:    dc.b 'J               '
+GAMESTART:      dc.l CARTRIDGE
+GAMEEND:        dc.l CARTRIDGEE-1
+RAMSTART:       dc.l WORKRAM
+RAMEND:         dc.l WORKRAME-1
+        	dc.b '    '
+        	dc.b '    '
+        	dc.b '    '
+        	dc.b '            '
+        	dc.b '                        '
+        	dc.b 'JU              '
+HEADEREND:
+
+; ---------------------------------------------------------------------------
+; Undefined interrupt handler (Stop 68k)
+; ---------------------------------------------------------------------------
+
+UINT:
+        nop
+        nop
+        bra.s   UINT
+
+; ---------------------------------------------------------------------------
+; ICD_BLK SECURITY Block
+; This version is earlier than what is used in the final game
+; The final game uses ICD_BLK4.PRG, which is dated June 6th, 1990
+; ---------------------------------------------------------------------------
+
+SECURITY:
+        tst.l   IOCTRL1_	; Test controller 1 and 2 bits
+
+.WaitBoot:          
+	bne.w   Start	
+        tst.w   IOCTRL3_
+        bne.s   .WaitBoot
+        lea     SECURITYDATA(pc),a5
+        movem.l (a5)+,d5-d7/a0-a4
+        
+        move.w  VERSION_-Z80BUS(a1),d0
+        andi.w  #(%1111<<8),d0
+	beq.s   .NoTMSS
+        move.l  #'SEGA',Z80BUS-TMSSSEGA(a1)
+
+.NoTMSS:              
+        move.w  (a4),d0		; VDP dummy read
+        moveq   #0,d0
+        movea.l d0,a6		; Clear a6 and usp
+        move.l  a6,usp
+        
+        moveq   #24-1,d1
+.SetVDPRegs:           
+        move.b  (a5)+,d5
+        move.w  d5,(a4)
+        add.w   d7,d5
+        dbf     d1,.SetVDPRegs	; Loop until 0
+        
+        move.l  #VRAMDMA,(a4)
+        move.w  d0,(a3)
+        move.w  d7,(a1)
+        move.w  d7,(a2)
+
+.WaitForZ80:           
+        btst    d0,(a1)
+        bne.s   .WaitForZ80
+        moveq   #(SECURITY_Z80E-SECURITY_Z80)-1,d2
+
+.LoadZ80Init:          
+        move.b  (a5)+,(a0)+
+        dbf     d2,.LoadZ80Init
+        
+        move.w  d0,(a2)
+        move.w  d0,(a1)
+        move.w  d7,(a2)
+
+.ClrRAM:               
+        move.l  d0,-(a6)
+        dbf     d6,.ClrRAM
+        move.l  #$81048F02,(a4)
+        
+        ; ^ VREG $81 - %00000100 (M5 Display bit set)
+        ;   VREG $8F - $02 (VDP Autoincrement value)
+        
+        move.l  #CRAMWRITE,(a4) ; Send CRAM write command
+        moveq   #32-1,d3
+
+.ClrCRAM:              
+        move.l  d0,(a3)
+        dbf     d3,.ClrCRAM
+        
+        move.l  #VSRAMWRITE,(a4)
+        moveq   #20-1,d4
+
+.ClrVSRAM:             
+        move.l  d0,(a3)
+        dbf     d4,.ClrVSRAM
+        moveq   #4-1,d5
+
+.PSGInitLoop:          
+        move.b  (a5)+,PSGCTRL-VDPDATA(a3)
+        dbf     d5,.PSGInitLoop
+        move.w  d0,(a2)
+        movem.l (a6),d0-d7/a0-a6
+        move    #$2700,sr
+        bra.s   Start
+
+; ---------------------------------------------------------------------------
+; SECURITY Data table
+; ---------------------------------------------------------------------------
+
+SECURITYDATA:
+	dc.l $8000		; d5, VDP register offset constant
+        dc.l (WORKRAME/4)-1	; d6, Size of WORKRAM in longwords
+        dc.l $100		; d7, VDP register increment value
+        
+        dc.l Z80RAM		; a0
+        dc.l Z80BUS		; a1
+        dc.l Z80RES		; a2
+        dc.l VDPDATA		; a3
+        dc.l VDPCTRL		; a4
+        
+; ---------------------------------------------------------------------------
+; These are not relevant to the actual game program and are only used
+; within the security sector
+; ---------------------------------------------------------------------------
+
+SECURITY_VDP:
+	dc.b %0000100   ; 00 (MODE REG1) Normal color mode           
+        dc.b %0010100	; 01 (MODE REG2) Mode 5 display on, DMA on
+        
+        dc.b $C000>>10	; 02 Plane A Nametable Address 
+        dc.b $F000>>10	; 03 Window Nametable Address
+        dc.b $E000>>13	; 04 Plane B Nametable Address
+        
+        dc.b $D800>>9	; 05 Sprite Table Address
+        dc.b 0	        ; 06 *Unused on MD*
+        dc.b (0<<4)+0	; 07 Background color
+        dc.b 0		; 08 *Unused on MD*
+        dc.b 0		; 09 *Unused on MD*
+        dc.b 256-1	; 0A H-BLANK Scanline Interval
+        
+        dc.b 0		; 0B (MODE REG3) Scroll fullscreen
+        dc.b %10000001	; 0C (MODE REG4) H40 Cell mode
+        
+        dc.b $DC00>>10	; 0D H-Scroll Tablle Address
+        dc.b 0		; 0E *Unused on MD*
+        dc.b 1		; 0F VDP Address Autoincrement value
+        dc.b 1		; 10 Plane size (256x512)
+        
+        dc.b 0		; 11 Window Plane Xpos
+        dc.b 0		; 12 Window Plane Ypos
+        
+        dc.b $FF	; 13 DMA Length (Low)
+        dc.b $FF	; 14 DMA Length (Hi)
+        
+        dc.b 0		; 15 DMA Source (Low)
+        dc.b 0		; 16 DMA Source (Mid)
+        dc.b $80	; 17 DMA Source (Hi)
+
+; ---------------------------------------------------------------------------
+; Z80 dummy program
+; ---------------------------------------------------------------------------
+
+SECURITY_Z80:
+	dc.b $AF,  1,$D7,$1F
+        dc.b $11,$29,  0,$21
+        dc.b $28,  0,$F9,$77
+        dc.b $ED,$B0,$DD,$E1
+        dc.b $FD,$E1,$ED,$47
+        dc.b $ED,$4F,  8,$D9
+        dc.b $F1,$C1,$D1,$E1
+        dc.b   8,$D9,$F1,$D1
+        dc.b $E1,$F9,$F3,$ED
+        dc.b $56,$36,$E9,$E9
+SECURITY_Z80E:
+
+; ---------------------------------------------------------------------------
+
+SECURITY_PSG:   dc.b $9F,$BF,$DF,$FF
+
+; ---------------------------------------------------------------------------
+; Game program start
+; ---------------------------------------------------------------------------
+
+Start:          
+        btst    #%110,IOCTRL3
+        beq.s   .ForceColdBoot
+        cmpi.l  #'init',bootFlag.w
+        beq.w   .WarmBoot
+
+.ForceColdBoot:        
+        movea.l #HeaderEnd,a0   ; Get header end location
+        movea.l #GAMEEND,a1     ; Get the catalogued ROM end location
+        move.l  (a1),d0
+        moveq   #0,d1
+
+.CalculateChkSum:              
+        add.w   (a0)+,d1         ; Add up all words into d1
+        cmp.l   a0,d0            ;  
+        bcc.s   .CalculateChkSum ; If not, continue the loop
+        movea.l #CHECKSUM,a1     ; Compare against the catalogued checksum value
+        cmp.w   (a1),d1
+
+        nop	; <- bne.w ChecksumFailed
+        nop
+
+        lea     stack.w,a6
+        moveq   #0,d7
+        move.w  #($200/4)-1,d6	; Clear previous game information
+.ClearGameVars:        
+        move.l  d7,(a6)+
+        dbf     d6,.ClearGameVars
+
+        move.b  VERSION,d0
+        andi.b  #%11000000,d0
+        move.b  d0,hardwareVersion.w
+        move.w  #1,levelselectFlag.w
+        move.l  #'init',bootFlag.w
+
+.WarmBoot:             
+        lea     WORKRAM,a6
+        moveq   #0,d7
+        move.w  #($FE00/4)-1,d6 ; Clear most of RAM up to 0xFE00
+.ClearRAM:             
+        move.l  d7,(a6)+
+        dbf     d6,.ClearRAM
+
+        bsr.w   InitVDP
+        bsr.w   InitSound
+        bsr.w   InitJoypads
+        move.b  #0,gamemode.w
+
+Main:           
+        move.b  gamemode.w,d0
+        andi.w  #6*4,d0				; Cap to 7 modes (2 unimplemented)
+        jsr     .Index(pc,d0.w)
+        bra.s   Main
+        
+; ---------------------------------------------------------------------------
+
+.Index:        
+        bra.w   GM_LOGO			; SEGA Logo program (Standard)
+        bra.w   GM_TITLE		; Title Screen
+        bra.w   GM_LEVEL		; Demo
+        bra.w   GM_LEVEL		; Level
+        bra.w   GM_SPECIAL		; Special Stage
+					; Ending sequence (unimplemented)
+					; Continue screen (unimplemented)
+        rts
+        
+; ---------------------------------------------------------------------------
+; Checksum Failure routine (unused)
+; ---------------------------------------------------------------------------
+   
+; ??CheckSumFailed:
+        bsr.w   InitVDP
+        move.l  #CRAMWRITE,VDPCTRL
+        moveq   #64-1,d7
+
+.FillCRAM:                     
+        move.w  #$00E,VDPDATA
+        dbf     d7,.FillCRAM
+
+.Stop68K:                      
+        bra.s   .Stop68K
+        
+; ---------------------------------------------------------------------------
+
+	include  "Error Handler.68k"
+
+; ---------------------------------------------------------------------------
+
+
+        
+; ---------------------------------------------------------------------------
+
+ArtUnc_Text:	incbin  "ArtUnc/Generic Text.unc"
+ArtUnc_TextE:
+ArtUnc_TextSZ	EQU	ArtUnc_TextE-ArtUnc_Text
+
+; ---------------------------------------------------------------------------
