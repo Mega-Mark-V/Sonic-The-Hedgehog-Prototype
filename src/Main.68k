@@ -358,42 +358,42 @@ vbID_UNK            EQU         3*2
 vbID_LEVEL          EQU         4*2
 vbID_SPECIAL        EQU         5*2
 vbID_LVLSTART       EQU         6*2
-vbID_DMA            EQU         7*2
+vbID_TIMER          EQU         7*2
 vdID_PAUSE          EQU         8*2
 vbID_PALFUNC        EQU         9*2
 
 ; ---------------------------------------------------------------------------
 
 VBLANK:                                 
-                movem.l d0-d7/a0-a6,-(sp)
-                tst.b   vblankCmd.w           ; If no command given, exit
-                beq.s   .End
-                move.w  VDPCTRL,d0
-                move.l  #VSRAMWRITE,VDPCTRL
-                move.l  vdpPlaneAPosY.w,VDPDATA
+        movem.l d0-d7/a0-a6,-(sp)
+        tst.b   vblankCmd.w           ; If no command given, exit
+        beq.s   .End
+        move.w  VDPCTRL,d0
+        move.l  #VSRAMWRITE,VDPCTRL
+        move.l  vdpPlaneAPosY.w,VDPDATA
 
-                btst    #6,hardwareVersion.w  ; Get hardware region
-                beq.s   .NTSC                 ; Skip if NTSC
-                move.w  #$700,d0              ; Wait for PAL timing               
-                dbf     d0,*                    
+        btst    #6,hardwareVersion.w  ; Get hardware region
+        beq.s   .NTSC                 ; Skip if NTSC
+        move.w  #$700,d0              ; Wait for PAL timing               
+        dbf     d0,*                    
 .NTSC:                                 
-                move.b  vblankCmd.w,d0        ; Get user command
-                move.b  #0,vblankCmd.w        ; Clear command variable
-                move.w  #1,hblankFlag.w       ; Reset the HBLANK exec. flag
-                andi.w  #%111110,d0
-                move.w  .Index(pc,d0.w),d0    ; Jump to execution
-                jsr     .Index(pc,d0.w)
+        move.b  vblankCmd.w,d0        ; Get user command
+        move.b  #0,vblankCmd.w        ; Clear command variable
+        move.w  #1,hblankFlag.w       ; Reset the HBLANK exec. flag
+        andi.w  #%111110,d0
+        move.w  .Index(pc,d0.w),d0    ; Jump to execution
+        jsr     .Index(pc,d0.w)
 
 .End:                                  
-                addq.l  #1,vblankCounter.w
-                jsr     UpdateMusic
-                movem.l (sp)+,d0-d7/a0-a6
-                rte
+        addq.l  #1,vblankCounter.w
+        jsr     UpdateMusic
+        movem.l (sp)+,d0-d7/a0-a6
+        rte
 
 ; ---------------------------------------------------------------------------
 
 .NULL                                
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 
@@ -405,7 +405,7 @@ VBLANK:
                 dc.w VBLANK_LEVEL-.Index                ; 8
                 dc.w VBLANK_SPECIAL-.Index              ; A
                 dc.w VBLANK_LVLSTART-.Index             ; C
-                dc.w VBLANK_DMA-.Index                  ; E
+                dc.w VBLANK_TIMER-.Index                ; E
                 dc.w VBLANK_PAUSE-.Index                ; 10
                 dc.w VBLANK_PALFUNC-.Index              ; 12
 
@@ -414,96 +414,96 @@ VBLANK:
 ; ---------------------------------------------------------------------------
 
 VBLANK_LOGO:                                
-                bsr.w   RefreshVDPBuffers
-                tst.w   genericTimer.w
-                beq.w   .Exit
-                subq.w  #1,genericTimer.w
+        bsr.w   RefreshVDPBuffers
+        tst.w   genericTimer.w
+        beq.w   .Exit
+        subq.w  #1,genericTimer.w
 
 .Exit:                             
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; TITLE Screen routine
 ; ---------------------------------------------------------------------------
 
 VBLANK_TITLE:                               
-                bsr.w   RefreshVDPBuffers
-                bsr.w   ProcessBGScrollingTiles
-                bsr.w   DecompArtList_Fast
-                tst.w   genericTimer.w
-                beq.w   .Exit
-                subq.w  #1,genericTimer.w
+        bsr.w   RefreshVDPBuffers
+        bsr.w   ProcessBGScrollingTiles
+        bsr.w   DecompArtList_Fast
+        tst.w   genericTimer.w
+        beq.w   .Exit
+        subq.w  #1,genericTimer.w
 
 .Exit:                             
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Unknown basic routine
 ; ---------------------------------------------------------------------------
 
 VBLANK_UNK:                               
-                bsr.w   RefreshVDPBuffers
-                rts
+        bsr.w   RefreshVDPBuffers
+        rts
 
 ; ---------------------------------------------------------------------------
 ; PAUSE routine
 ; ---------------------------------------------------------------------------
 
 VBLANK_PAUSE:                               
-                cmpi.b  #gmID_SPECIAL,gamemode.w
-                beq.w   VBLANK_SPECIAL
+        cmpi.b  #gmID_SPECIAL,gamemode.w
+        beq.w   VBLANK_SPECIAL
 
 ; ---------------------------------------------------------------------------
 ; LEVEL main routine (Post-load, when in level gameplay)
 ; ---------------------------------------------------------------------------
 
 VBLANK_LEVEL:                           
-                bsr.w   ReadJoypads
-                move.w  #$100,Z80BUS
+        bsr.w   ReadJoypads
+        move.w  #$100,Z80BUS
 
 .WaitZ80:                              
-                btst    #0,Z80BUS
-                bne.s   .WaitZ80
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
 
-                VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
-                VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
+        VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+        VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
-                move.w  #$8407,a5
-                move.w  vdpHBLANKLine.w,a5
-                move.w  vdpPlaneZPosY.w,vdpPlaneZPosY2.w
+        move.w  #$8407,a5
+        move.w  vdpHBLANKLine.w,a5
+        move.w  vdpPlaneZPosY.w,vdpPlaneZPosY2.w
 
-                VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
 
-                tst.b   sonicRedrawFlag.w
-                beq.s   .NoSonicRedraw
+        tst.b   sonicRedrawFlag.w
+        beq.s   .NoSonicRedraw
 
-                VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
-                move.b  #0,sonicRedrawFlag.w
+        move.b  #0,sonicRedrawFlag.w
 
 .NoSonicRedraw:                                
-                move.w  #0,Z80BUS
+        move.w  #0,Z80BUS
 
-                bsr.w   ProcessScrollingTiles
-                jsr     AnimatedLevelGFX
-                jsr     UpdateHUD
-                bsr.w   DecompArtList_Slow
+        bsr.w   ProcessScrollingTiles
+        jsr     AnimatedLevelGFX
+        jsr     UpdateHUD
+        bsr.w   DecompArtList_Slow
 
-                moveq   #0,d0
-                move.b  vblankUnk1.w,d0
-                move.b  vblankUnk2.w,d1
-                cmp.b   d0,d1
-                bcc.s   .Skip
-                move.b  d0,vblankUnk2.w
+        moveq   #0,d0
+        move.b  vblankUnk1.w,d0
+        move.b  vblankUnk2.w,d1
+        cmp.b   d0,d1
+        bcc.s   .Skip
+        move.b  d0,vblankUnk2.w
 
 .Skip:                                
-                move.b  #0,vblankUnk1.w
-                tst.w   genericTimer.w
-                beq.w   .Exit
-                subq.w  #1,genericTimer.w
+        move.b  #0,vblankUnk1.w
+        tst.w   genericTimer.w
+        beq.w   .Exit
+        subq.w  #1,genericTimer.w
 
 .Exit:                             
-                rts
+        rts
 
 
 ; ---------------------------------------------------------------------------
@@ -511,169 +511,121 @@ VBLANK_LEVEL:
 ; ---------------------------------------------------------------------------
 
 VBLANK_SPECIAL:                             
-                bsr.w   ReadJoypads
-                move.w  #$100,Z80BUS
+        bsr.w   ReadJoypads
+        move.w  #$100,Z80BUS
 
 .WaitZ80:                                
-                btst    #0,Z80BUS
-                bne.s   .WaitZ80
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
 
-                VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
-                VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
-                VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
+        VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
-                move.w  #0,Z80BUS
-                bsr.w   _specialstgPalCyc
+        move.w  #0,Z80BUS
+        bsr.w   _specialstgPalCyc
 
-                tst.b   sonicRedrawFlag.w
-                beq.s   .NoSonicRedraw
+        tst.b   sonicRedrawFlag.w
+        beq.s   .NoSonicRedraw
 
-                VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
-                move.b  #0,sonicRedrawFlag.w
+        move.b  #0,sonicRedrawFlag.w
 
 .NoSonicRedraw:                                
-                tst.w   genericTimer.w
-                beq.w   .TimerDone
-                subq.w  #1,genericTimer.w
+        tst.w   genericTimer.w
+        beq.w   .TimerDone
+        subq.w  #1,genericTimer.w
 
 .TimerDone:                             
-                rts
+        rts
 
 
 ; ---------------------------------------------------------------------------
-;
+; LEVEL starting routine
 ; ---------------------------------------------------------------------------
 
 VBLANK_LVLSTART:                          
-                bsr.w   ReadJoypads
-                move.w  #$100,(Z80BUS).l
+        bsr.w   ReadJoypads
+        move.w  #$100,Z80BUS
 
 .WaitZ80:                              
-                btst    #0,(Z80BUS).l
-                bne.s   .WaitZ80
-                lea     (VDPCTRL).l,a5
-                move.l  #$94009340,(a5)
-                move.l  #$96FD9580,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$C000,(a5)
-                move.w  #$80,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                lea     (VDPCTRL).l,a5
-                move.l  #$94019340,(a5)
-                move.l  #$96FC9500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7800,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                lea     (VDPCTRL).l,a5
-                move.l  #$940193C0,(a5)
-                move.l  #$96E69500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7C00,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                tst.b   (sonicRedrawFlag).w
-                beq.s   .NoSonicRedraw
-                lea     (VDPCTRL).l,a5
-                move.l  #$94019370,(a5)
-                move.l  #$96E49500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7000,(a5)
-                move.w  #$83,(vdpIntBuffer).w
-                move.w  (vdpIntBuffer).w,(a5)
-                move.b  #0,(sonicRedrawFlag).w
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
+        VDPDMA  palette,$0000,$80,CRAM,a5               ; Palette DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5              ; Sprite DMA
+        VDPDMA  hscroll,$FC00,$380,VRAM,a5              ; Hscroll DMA
+        tst.b   sonicRedrawFlag.w
+        beq.s   .NoSonicRedraw
+        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5       ; Sonic art DMA
+        move.b  #0,sonicRedrawFlag.w
 
 .NoSonicRedraw:                        
-                move.w  #0,(Z80BUS).l
-                bsr.w   ProcessScrollingTiles
-                jsr     (AnimatedLevelGFX).l
-                jsr     (UpdateHUD).l
-                bsr.w   DecompArtList_Fast
-                rts
+        move.w  #0,Z80BUS
+        bsr.w   ProcessScrollingTiles
+        jsr     AnimatedLevelGFX
+        jsr     UpdateHUD
+        bsr.w   DecompArtList_Fast
+        rts
 
 ; ---------------------------------------------------------------------------
-;
+; Unused routine that increments a timer. 
+; Pieces of it remain above in VBLANK_LEVEL. Usage unknown.
 ; ---------------------------------------------------------------------------
 
-VBLANK_DMA:                                 
-                bsr.w   RefreshVDPBuffers
-                bsr.w   RunObjects
-                bsr.w   DrawObjects
-                addq.b  #1,(vblankUnk1).w
-                move.b  #vbID_DMA,(vblankCmd).w
-                rts
+VBLANK_TIMER:                                 
+        bsr.w   RefreshVDPBuffers
+        bsr.w   RunObjects
+        bsr.w   DrawObjects
+        addq.b  #1,(vblankUnk1).w
+        move.b  #vbID_TIMER,(vblankCmd).w
+        rts
 
 ; ---------------------------------------------------------------------------
-;
+; Idle routine for palette functions, like fading in and out
 ; ---------------------------------------------------------------------------
 
 VBLANK_PALFUNC:                             
-                bsr.w   RefreshVDPBuffers
-                bra.w   DecompArtList_Fast
+        bsr.w   RefreshVDPBuffers
+        bra.w   DecompArtList_Fast
 
 ; ---------------------------------------------------------------------------
 ; Refresh VDP tile/sprite data with most recent buffer data in memory
 ; ---------------------------------------------------------------------------
 
 RefreshVDPBuffers:                      
-                bsr.w   ReadJoypads
-                move.w  #$100,Z80BUS
+        bsr.w   ReadJoypads
+        move.w  #$100,Z80BUS
 
 .WaitZ80:                              
-                btst    #0,Z80BUS
-                bne.s   .WaitZ80
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
 
+        VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
-                VDPDMA  palette,$0000,$80,CRAM,a5
-
-
-                lea     VDPCTRL,a5
-                move.l  #$94019340,(a5)
-                move.l  #$96FC9500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7800,(a5)
-                move.w  #$83,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
-
-
-                lea     VDPCTRL,a5
-                move.l  #$940193C0,(a5)
-                move.l  #$96E69500,(a5)
-                move.w  #$977F,(a5)
-                move.w  #$7C00,(a5)
-                move.w  #$83,vdpIntBuffer
-                move.w  vdpIntBuffer.w,(a5)
-                move.w  #0,Z80BUS
-                rts
+        move.w  #0,Z80BUS
+        rts
 
 ; ---------------------------------------------------------------------------
 ; HBLANK 
 ; Early implementation of the water mid-screen palette swap, which uses DMA
 ; The final game uses manual writes to VDPDATA which is quicker
-; and requires less setup
+; due to requiring less setup
 ; ---------------------------------------------------------------------------
 
 
 HBLANK:                                 
-                tst.w   hblankFlag.w
-                beq.s   .Exit
-                move.l  a5,-(sp)
-                lea     VDPCTRL,a5
-                move.l  #$94009340,(a5) ; SET_LOWER_BYTE_OF_DMA_LEN_TO_$40
-                                        ; SET_HIGHER_BYTE_OF_DMA_LEN_TO_$00
-                move.l  #$96FD95C0,(a5) ; SET_LOWER_BYTE_OF_DMA_SRC_TO_$C0
-                                        ; SET_MIDDLE_BYTE_OF_DMA_SRC_TO_$FD
-                move.w  #$977F,(a5)     ; SET_HIGH_BYTE_OF_DMA_SRC_TO_$3F
-                                        ; SET_COPY_M68K_TO_VRAM_DMA_MODE
-                move.w  #$C000,(a5)
-                move.w  #$80,vdpIntBuffer.w
-                move.w  vdpIntBuffer.w,(a5)
-                movem.l (sp)+,a5
-                move.w  #0,hblankFlag.w
+        tst.w   hblankFlag.w
+        beq.s   .Exit
+        move.l  a5,-(sp)
+        VDPDMA  palFadeBuffer,$0000,$80,CRAM,a5  ; Palette DMA
+        movem.l (sp)+,a5
+        move.w  #0,hblankFlag.w                  ; Set as executed
 
 .Exit:                                 
-                rte
+        rte
 
 ; ---------------------------------------------------------------------------
 ; Unused earlier HBLANK routine
@@ -682,20 +634,229 @@ HBLANK:
 ; ---------------------------------------------------------------------------
 
 UNUSED_HBLANK2:
-                tst.w   hblankFlag.w
-                beq.s   .Exit
-                movem.l d0/a0/a5,-(sp)
-                move.w  #0,hblankFlag.w
-                move.w  #$8405,VDPCTRL
-                move.w  #$857C,VDPCTRL
-                move.l  #$78000003,VDPCTRL
-                lea     vdpSprites.w,a0
-                lea     VDPDATA,a5
-                move.w  #$A0-1,d0
+        tst.w   hblankFlag.w
+        beq.s   .Exit
+        movem.l d0/a0/a5,-(sp)
+        move.w  #0,hblankFlag.w
+        move.w  #$8405,VDPCTRL
+        move.w  #$857C,VDPCTRL
+        move.l  #$78000003,VDPCTRL
+        lea     vdpSprites.w,a0
+        lea     VDPDATA,a5
+        move.w  #$A0-1,d0
 
 .WriteSprites:                         
-                move.l  (a0)+,(a5)
-                dbf     d0,.WriteSprites
-                movem.l (sp)+,d0/a0/a5
+        move.l  (a0)+,(a5)
+        dbf     d0,.WriteSprites
+        movem.l (sp)+,d0/a0/a5
 .Exit:                                 
-                rte
+        rte
+
+; ---------------------------------------------------------------------------
+; Prepare to read joypad IO ports
+; ---------------------------------------------------------------------------
+
+InitJoypads:                            
+        move.w  #$100,Z80BUS
+
+.WaitZ80:                              
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
+        moveq   #$40,d0
+        move.b  d0,IOCTRL1
+        move.b  d0,IOCTRL2
+        move.b  d0,IOCTRL3
+        move.w  #0,Z80BUS
+        rts
+
+; ---------------------------------------------------------------------------
+; Read joypad IO ports
+; Common SACBRLDU scheme (1 bit per button for 8 bits)
+; ---------------------------------------------------------------------------
+
+ReadJoypads:                            
+        move.w  #$100,Z80BUS
+
+.WaitZ80:                              
+        btst    #0,Z80BUS
+        bne.s   .WaitZ80
+
+        lea     joypad.w,a0     ; Set output location
+        lea     IODATA1,a1
+        bsr.s   .ReadPad
+        addq.w  #2,a1           ; (IODATA1)+2 = IODATA2
+        bsr.s   .ReadPad
+
+        move.w  #0,Z80BUS
+        rts
+
+.ReadPad:                              
+        move.b  #0,(a1)         ; Get first frame bits (Start+A)    
+        nop                     ; Wait a bit for the I/O control chip
+        nop
+        move.b  (a1),d0         ; Read bits
+        lsl.b   #2,d0           ; Move them to bits 6 and 7
+        andi.b  #%11000000,d0   ; Clear bits 0-5
+
+        move.b  #$40,(a1)       ; Get second frame bits (everything else)
+        nop
+        nop
+        move.b  (a1),d1
+        andi.b  #%00111111,d1   ; Clear top 2 bits
+        or.b    d1,d0           ; Combine them into d0
+        not.b   d0              ; Invert bit scheme (0 = not pressed)
+
+        move.b  (a0),d1         ; Get previous controller read
+        eor.b   d0,d1
+        move.b  d0,(a0)+        ; Calculate "pressed" from "held"
+        and.b   d0,d1
+        move.b  d1,(a0)+        
+        rts
+
+; ---------------------------------------------------------------------------
+; Basic VDP initialization/setup routine
+; ---------------------------------------------------------------------------
+
+InitVDP:                                
+        lea     VDPCTRL,a0
+        lea     VDPDATA,a1
+        lea     VDPInitValues,a2
+        moveq   #$13-1,d7
+
+.WriteRegs:                            
+        move.w  (a2)+,(a0)
+        dbf     d7,.WriteRegs
+        move.w  VDPInitValues+2,d0
+        move.w  d0,vdpBuffer.w
+        moveq   #0,d0
+        move.l  #CRAMWRITE,VDPCTRL
+        move.w  #64-1,d7
+
+.ClearCRAM:                            
+        move.w  d0,(a1)
+        dbf     d7,.ClearCRAM
+        clr.l   vdpPlaneAPosY.w
+        clr.l   vdpPlaneAPosX.w
+        move.l  d1,-(sp)
+        VDPFILL $0000,$1FFFE,$00,1,a6
+        move.w  #$8F02,(a5)
+        move.l  (sp)+,d1
+        rts
+
+; ---------------------------------------------------------------------------
+
+VDPInitValues:  
+        dc.w $8004              
+        dc.w $8134
+        dc.w $8230
+        dc.w $8328
+        dc.w $8407
+        dc.w $857C
+        dc.w $8600
+        dc.w $8700
+        dc.w $8800
+        dc.w $8900
+        dc.w $8A00
+        dc.w $8B00
+        dc.w $8C81
+        dc.w $8D3F
+        dc.w $8E00
+        dc.w $8F02
+        dc.w $9001
+        dc.w $9100
+        dc.w $9200
+
+; ---------------------------------------------------------------------------
+
+
+InitScreen:
+        VDPFILL $C000,$1FFE,$00,1,a5    ; Clear plane A nametable
+        move.w  #$8F02,(a5)
+        VDPFILL $E000,$1FFE,$00,1,a5    ; Clear plane B nametable
+        move.w  #$8F02,(a5)
+        move.l  #0,vdpPlaneAPosY.w
+        move.l  #0,vdpPlaneAPosX.w
+
+        lea     vdpSprites.w,a1
+        moveq   #0,d0
+        move.w  #$A0-1,d1               ; ???
+
+.ClearSprites:
+        move.l  d0,(a1)+
+        dbf     d1,.ClearSprites
+        lea     hscrollTable.w,a1
+        moveq   #0,d0
+        move.w  #$100,d1
+
+.ClearHScroll:
+        move.l  d0,(a1)+
+        dbf     d1,.ClearHScroll
+        rts
+
+; ---------------------------------------------------------------------------
+
+InitSound:
+        nop
+        move.w  #$100,Z80BUS
+        move.w  #$100,Z80RES
+        lea     Z80_SOUND_ROM        ; !!! Needs new name?
+        lea     Z80RAM,a1
+        move.w  #$1C5B,d0            ; !!! Get size later
+
+.WriteToZ80RAM:
+        move.b  (a0)+,(a1)+
+        dbf     d0,.WriteToZ80RAM
+        moveq   #0,d0
+        lea     $A01FF8,a1           ; !!! obvious
+        move.b  d0,(a1)+
+        move.b  #$80,(a1)+
+        move.b  #7,(a1)+
+        move.b  #$80,(a1)+
+        move.b  d0,(a1)+
+        move.b  d0,(a1)+
+        move.b  d0,(a1)+
+        move.b  d0,(a1)+
+        move.w  #0,Z80RES
+        nop
+        nop
+        nop
+        nop
+        move.w  #$100,Z80RES
+        move.w  #0,Z80BUS
+        rts
+
+; ---------------------------------------------------------------------------
+; Driver Init. data leftover from an earlier implementation
+; ---------------------------------------------------------------------------
+                dc.b   3
+                dc.b   0
+                dc.b   0
+                dc.b $14
+                dc.b   0
+                dc.b   0
+                dc.b   0
+                dc.b   0
+
+; ---------------------------------------------------------------------------
+; Routines that simply poke sound queues
+; Queue A is used for music most of the time, B for sounds. C is unused.
+; ---------------------------------------------------------------------------
+
+QueueSoundA:
+        move.b  d0,soundqueueA.w
+        rts
+
+; ---------------------------------------------------------------------------
+
+
+QueueSoundB:
+        move.b  d0,soundqueueB.w
+        rts
+
+; ---------------------------------------------------------------------------
+
+QueueSoundC:
+        move.b  d0,soundqueueC.w
+        rts
+
+; ---------------------------------------------------------------------------

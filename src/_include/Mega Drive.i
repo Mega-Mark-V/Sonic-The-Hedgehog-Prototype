@@ -106,6 +106,21 @@ cmd	= (\type\\rwd\)|(((\addr)&$3FFF)<<16)|((\addr)/$4000)
 	endm
 
 ; ---------------------------------------------------------------------------
+; Wait for DMA
+; ---------------------------------------------------------------------------
+
+DMAWAIT macro ctrl
+.Wait\@:
+	if narg>0
+		btst	#1,1(\ctrl)		; Is DMA active?
+	else
+		move.w	VDPCTRL,d0		; Is DMA active?
+		btst	#1,d0
+	endif
+	bne.s	.Wait\@				; If so, wait
+	endm
+
+; ---------------------------------------------------------------------------
 ; VDP DMA from 68000 memory to VDP memory
 ; ---------------------------------------------------------------------------
 ; PARAMETERS:
@@ -126,3 +141,26 @@ VDPDMA  macro src, dest, len, type, port
 	VDPCMD	move.w,\dest,\type,DMA,&$FFFF,vdpIntBuffer.w
 	move.w	vdpIntBuffer.w,(\port)
 	endm
+
+; -------------------------------------------------------------------------
+; VDP DMA fill VRAM with byte
+; -------------------------------------------------------------------------
+; PARAMETERS:
+;	addr - Address in VRAM
+;	len  - Length of fill in bytes
+;	byte - Byte to fill VRAM with
+;	inc  - VDP autoincrement value
+;	port - Control port address register
+; -------------------------------------------------------------------------
+
+VDPFILL macro addr, len, byte, inc, port
+	; DMA fill
+	lea	VDPCTRL,\port
+	move.w	#$8F00+\inc,(\port)
+	move.l	#$93009400|((((\len)-1)&$FF00)>>8)|((((\len)-1)&$FF)<<16),(\port)
+	move.w	#$9780,(\port)
+	VDPCMD	move.l,\addr,VRAM,DMA,(\port)
+	move.w	#(\byte)<<8,VDPDATA
+	DMAWAIT	\port
+
+	VDPFILL $C000,$1FFE,$00,1,a6
