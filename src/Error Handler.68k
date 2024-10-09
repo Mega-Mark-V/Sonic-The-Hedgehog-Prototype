@@ -81,11 +81,11 @@ ErrorDetailed:
 ; ---------------------------------------------------------------------------
 
 ErrorMain:                    
-        move    #$2700,sr
-        movem.l d0-d7/a0-a7,objectStates.w
-        bsr.w   DrawErrorMsg
-        move.l  2(sp),d0
-        bsr.w   DrawErrorValue
+        move    #$2700,sr                       ; Disable interrupts
+        movem.l d0-d7/a0-a7,objectStates.w      ; Dump all registers
+        bsr.w   DrawErrorMsg                    ; Draw Error message
+        move.l  2(sp),d0                        
+        bsr.w   DrawErrorValue                  ; Draw its information
 
 .Exit:                 
         bsr.w   WaitPlayerInput
