@@ -577,8 +577,8 @@ VBLANK_TIMER:
         bsr.w   RefreshVDPBuffers
         bsr.w   RunObjects
         bsr.w   DrawObjects
-        addq.b  #1,(vblankUnk1).w
-        move.b  #vbID_TIMER,(vblankCmd).w
+        addq.b  #1,vblankUnk1.w
+        move.b  #vbID_TIMER,vblankCmd.w
         rts
 
 ; ---------------------------------------------------------------------------
@@ -767,7 +767,8 @@ InitVDP:
         dc.w $9200
 
 ; ---------------------------------------------------------------------------
-
+; Initialize the "screen" data by clearing all associated data
+; ---------------------------------------------------------------------------
 
 InitScreen:
         VDPFILL $C000,$1FFE,$00,1,a5    ; Clear plane A nametable
@@ -793,6 +794,8 @@ InitScreen:
         dbf     d1,.ClearHScroll
         rts
 
+; ---------------------------------------------------------------------------
+; Initialize the sound driver and load the Z80 ROM
 ; ---------------------------------------------------------------------------
 
 InitSound:
@@ -860,6 +863,9 @@ QueueSoundC:
         rts
 
 ; ---------------------------------------------------------------------------
+; Game pause routine 
+; Will check and set the appropriate VBLANK command for it, mode agnostic
+; ---------------------------------------------------------------------------
 
 PauseGame:
         nop
@@ -867,39 +873,36 @@ PauseGame:
         beq.s   .Dead
         tst.w   paused.w
         bne.s   .Paused
-        btst    #7,joypadPress.w
+        btst    #7,joypadPress.w                ; Start     
         beq.s   .Exit
 
 .Paused:
-        move.w  #-1,(paused).w
+        move.w  #-1,paused.w
 
-loc_11D2:                               
-        move.b  #vbID_PAUSE,(vblankCmd).w
+.Loop:                               
+        move.b  #vbID_PAUSE,vblankCmd.w
         bsr.w   VSync
-        btst    #%110,(joypadPress).w
+        btst    #6,joypadPress.w                ; A button
         beq.s   .ABtnNotPressed
-        move.b  #gmID_TITLE,(gamemode).w
+        move.b  #gmID_TITLE,gamemode.w
         nop
         bra.s   .Dead
 
-; ---------------------------------------------------------------------------
-
 .ABtnNotPressed:                       
-        btst    #%100,joypad.w
-        bne.s   loc_120E
-        btst    #%101,joypadPress.w
-        bne.s   loc_120E
-        btst    #%111,joypadPress.w
-        beq.s   loc_11D2
+        btst    #4,joypad.w                     ; B button
+        bne.s   .FrameAdvance
+        btst    #5,joypadPress.w                ; C button
+        bne.s   .FrameAdvance
+        btst    #7,joypadPress.w                ; Start   
+        beq.s   .Loop
 
 .Dead:                                 
         move.w  #0,paused.w
 
 .Exit:                                 
         rts
-; ---------------------------------------------------------------------------
 
-loc_120E:                               
+.FrameAdvance:                               
         move.w  #1,paused.w
         rts
 
