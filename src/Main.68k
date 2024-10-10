@@ -720,13 +720,13 @@ ReadJoypads:
 InitVDP:                                
         lea     VDPCTRL,a0
         lea     VDPDATA,a1
-        lea     VDPInitValues,a2
+        lea     @VDPInitValues,a2
         moveq   #$13-1,d7
 
 .WriteRegs:                            
         move.w  (a2)+,(a0)
         dbf     d7,.WriteRegs
-        move.w  VDPInitValues+2,d0
+        move.w  @VDPInitValues+2,d0
         move.w  d0,vdpBuffer.w
         moveq   #0,d0
         move.l  #CRAMWRITE,VDPCTRL
@@ -745,7 +745,7 @@ InitVDP:
 
 ; ---------------------------------------------------------------------------
 
-VDPInitValues:  
+@VDPInitValues:  
         dc.w $8004              
         dc.w $8134
         dc.w $8230
@@ -860,3 +860,486 @@ QueueSoundC:
         rts
 
 ; ---------------------------------------------------------------------------
+
+PauseGame:
+        nop
+        tst.b   lives.w
+        beq.s   .Dead
+        tst.w   paused.w
+        bne.s   .Paused
+        btst    #7,joypadPress.w
+        beq.s   .Exit
+
+.Paused:
+        move.w  #-1,(paused).w
+
+loc_11D2:                               
+        move.b  #vbID_PAUSE,(vblankCmd).w
+        bsr.w   VSync
+        btst    #%110,(joypadPress).w
+        beq.s   .ABtnNotPressed
+        move.b  #gmID_TITLE,(gamemode).w
+        nop
+        bra.s   .Dead
+
+; ---------------------------------------------------------------------------
+
+.ABtnNotPressed:                       
+        btst    #%100,joypad.w
+        bne.s   loc_120E
+        btst    #%101,joypadPress.w
+        bne.s   loc_120E
+        btst    #%111,joypadPress.w
+        beq.s   loc_11D2
+
+.Dead:                                 
+        move.w  #0,paused.w
+
+.Exit:                                 
+        rts
+; ---------------------------------------------------------------------------
+
+loc_120E:                               
+        move.w  #1,paused.w
+        rts
+
+; ---------------------------------------------------------------------------
+; Function to draw a basic tilemap
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       a1 - Tilemap data address
+;       d0 - VDP command
+;       d1 - (Width)-1
+;       d2 - (Height)-1
+; ---------------------------------------------------------------------------
+
+DrawTileMap:                            
+        lea     VDPDATA,a6
+        move.l  #$800000,d4
+
+.LoopRow:                              
+        move.l  d0,VDPCTRL-VDPDATA(a6)
+        move.w  d1,d3
+
+.LoopColumn:                           
+        move.w  (a1)+,(a6)
+        dbf     d3,.LoopColumn
+        add.l   d4,d0
+        dbf     d2,.LoopRow
+        rts
+
+; -------------------------------------------------------------------------
+; Decompress Nemesis data into RAM 
+; (Documentation taken from Sonic CD Disassembly)
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       a0 - Nemesis data pointer
+;       a4 - Destination if decompressing to RAM
+; ---------------------------------------------------------------------------
+
+NemDec:
+        movem.l d0-a1/a3-a5,-(sp)
+        lea     NemPCD_WriteRowToVDP,a3         ; Write all data to the same location
+        lea     VDPDATA,a4                      ; VDP data port
+        bra.s   NemDecMain
+
+.ToRAM:
+        movem.l d0-a1/a3-a5,-(sp)
+        lea     NemPCD_WriteRowToRAM,a3         ; Advance to the next location after each write
+
+; ---------------------------------------------------------------------------
+
+NemDecMain:
+        lea     globalBuffer.w,a1               ; Prepare decompression buffer
+        move.w  (a0)+,d2                        ; Get number of patterns
+        lsl.w   #1,d2
+        bcc.s   .NormalMode                     ; Branch if not in XOR mode
+        adda.w  #NemPCD_WriteRowToVDP_XOR-NemPCD_WriteRowToVDP,a3
+
+.NormalMode:
+        lsl.w   #2,d2                           ; Get number of 8-pixel rows in the uncompressed data
+        movea.w d2,a5                           ; and store it in a5
+        moveq   #8,d3                           ; 8 pixels in a pattern row
+        moveq   #0,d2
+        moveq   #0,d4
+        bsr.w   NemDec_BuildCodeTable
+        move.b  (a0)+,d5                        ; Get first word of compressed data
+        asl.w   #8,d5
+        move.b  (a0)+,d5
+        move.w  #16,d6                          ; Set initial shift value
+        bsr.s   NemDec_ProcessCompressedData
+        movem.l (sp)+,d0-a1/a3-a5
+        rts
+
+; ---------------------------------------------------------------------------
+
+NemDec_ProcessCompressedData:
+        move.w  d6,d7
+        subq.w  #8,d7                           ; Get shift value
+        move.w  d5,d1
+        lsr.w   d7,d1                           ; Shift so that the high bit of the code is in bit 7
+        cmpi.b  #%11111100,d1                   ; Are the high 6 bits set?
+        bcc.s   NemPCD_InlineData               ; If they are, it signifies inline data
+        andi.w  #$FF,d1
+        add.w   d1,d1
+        move.b  (a1,d1.w),d0                    ; Get the length of the code in bits
+        ext.w   d0
+        sub.w   d0,d6                           ; Subtract from shift value so that the next code is read next time around
+        cmpi.w  #9,d6                           ; Does a new byte need to be read?
+        bcc.s   .GotEnoughBits                  ; If not, branch
+        addq.w  #8,d6
+        asl.w   #8,d5
+        move.b  (a0)+,d5                        ; Read next byte
+
+.GotEnoughBits:
+        move.b  1(a1,d1.w),d1
+        move.w  d1,d0
+        andi.w  #$F,d1                          ; Get palette index for pixel
+        andi.w  #$F0,d0
+
+NemDec_GetRunLength:
+        lsr.w   #4,d0                           ; Get repeat count
+
+NemDec_RunLoop:
+        lsl.l   #4,d4                           ; Shift up by a nibble
+        or.b    d1,d4                           ; Write pixel
+        subq.w  #1,d3                           ; Has an entire 8-pixel row been written?
+        bne.s   NemPCD_WritePixel_Loop          ; If not, loop
+        jmp     (a3)                            ; Otherwise, write the row to its destination
+
+; ---------------------------------------------------------------------------
+
+NemPCD_NewRow:
+        moveq   #0,d4           ; Reset row
+        moveq   #8,d3           ; Reset nibble counter
+
+NemPCD_WritePixel_Loop:
+        dbf     d0,NemDec_RunLoop
+        bra.s   NemDec_ProcessCompressedData
+
+; ---------------------------------------------------------------------------
+
+NemPCD_InlineData:
+        subq.w  #6,d6           ; 6 bits needed to signal inline data
+        cmpi.w  #9,d6
+        bcc.s   .GotEnoughBits
+        addq.w  #8,d6
+        asl.w   #8,d5
+        move.b  (a0)+,d5
+
+.GotEnoughBits:
+        subq.w  #7,d6           ; And 7 bits needed for the inline data itself
+        move.w  d5,d1
+        lsr.w   d6,d1           ; Shift so that the low bit of the code is in bit 0
+        move.w  d1,d0
+        andi.w  #$F,d1          ; Get palette index for pixel
+        andi.w  #$70,d0         ; High nibble is repeat count for pixel
+        cmpi.w  #9,d6
+        bcc.s   NemDec_GetRunLength
+        addq.w  #8,d6
+        asl.w   #8,d5
+        move.b  (a0)+,d5
+        bra.s   NemDec_GetRunLength
+
+; ---------------------------------------------------------------------------
+
+NemPCD_WriteRowToVDP:
+        move.l  d4,(a4)         ; Write 8-pixel row
+        subq.w  #1,a5
+        move.w  a5,d4           ; Have all the 8-pixel rows been written?
+        bne.s   NemPCD_NewRow   ; If not, branch
+        rts
+
+; ---------------------------------------------------------------------------
+
+NemPCD_WriteRowToVDP_XOR:
+        eor.l   d4,d2           ; XOR the previous row with the current row
+        move.l  d2,(a4)                         ; and store it
+        subq.w  #1,a5
+        move.w  a5,d4           ; Have all the 8-pixel rows been written?
+        bne.s   NemPCD_NewRow   ; If not, branch
+        rts
+
+; ---------------------------------------------------------------------------
+
+NemPCD_WriteRowToRAM:
+        move.l  d4,(a4)+        ; Write 8-pixel row
+        subq.w  #1,a5
+        move.w  a5,d4           ; Have all the 8-pixel rows been written?
+        bne.s   NemPCD_NewRow   ; If not, branch
+        rts
+
+; ---------------------------------------------------------------------------
+
+NemPCD_WriteRowToRAM_XOR:
+        eor.l   d4,d2           ; XOR the previous row with the current row
+        move.l  d2,(a4)+        ; and store it
+        subq.w  #1,a5
+        move.w  a5,d4           ; Have all the 8-pixel rows been written?
+        bne.s   NemPCD_NewRow   ; If not, branch
+        rts
+
+; ---------------------------------------------------------------------------
+
+NemDec_BuildCodeTable:
+        move.b  (a0)+,d0                        ; Read first byte
+
+NemBCT_ChkEnd:
+        cmpi.b  #$FF,d0                         ; Has the end of the code table description been reached?
+        bne.s   NemBCT_NewPalIndex              ; If not, branch
+        rts
+
+NemBCT_NewPalIndex:
+        move.w  d0,d7
+
+NemBCT_Loop:
+        move.b  (a0)+,d0                        ; Read next byte
+        cmpi.b  #$80,d0                         ; Sign bit signifies a new palette index
+        bcc.s   NemBCT_ChkEnd
+
+        move.b  d0,d1
+        andi.w  #$F,d7                          ; Get palette index
+        andi.w  #$70,d1                         ; Get repeat count for palette index
+        or.w    d1,d7                           ; Combine the 2
+        andi.w  #$F,d0                          ; Get the length of the code in bits
+        move.b  d0,d1
+        lsl.w   #8,d1
+        or.w    d1,d7                           ; Combine with palette index and repeat count to form code table entry
+        moveq   #8,d1
+        sub.w   d0,d1                           ; Is the code 8 bits long?
+        bne.s   NemBCT_ShortCode                ; If not, a bit of extra processing is needed
+        move.b  (a0)+,d0                        ; Get code
+        add.w   d0,d0                           ; Each code gets a word sized entry in the table
+        move.w  d7,(a1,d0.w)                    ; Store the entry for the code
+
+        bra.s   NemBCT_Loop                     ; Loop
+
+NemBCT_ShortCode:
+        move.b  (a0)+,d0                        ; Get code
+        lsl.w   d1,d0                           ; Get index into code table
+        add.w   d0,d0                           ; Shift so that the high bit is in bit 7
+        moveq   #1,d5
+        lsl.w   d1,d5
+        subq.w  #1,d5                           ; d5 = 2^d1 - 1
+
+NemBCT_ShortCode_Loop:
+        move.w  d7,(a1,d0.w)                    ; Store entry
+        addq.w  #2,d0                           ; Increment index
+        dbf     d5,NemBCT_ShortCode_Loop        ; Repeat for required number of entries
+
+        bra.s   NemBCT_Loop                     ; Loop
+
+; ---------------------------------------------------------------------------
+; Load an art list (known as "PLCs" elsewhere)
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       d0.w - Artlist ID
+; ---------------------------------------------------------------------------
+
+LoadArtList:                         
+        movem.l a1-a2,-(sp)
+
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        lea     decompQueue.w,a2
+
+.Loop:                                 
+        tst.l   (a2)
+        beq.s   .FoundFree
+        addq.w  #6,a2
+        bra.s   .Loop
+
+.FoundFree:                            
+        move.w  (a1)+,d0
+        bmi.s   .End
+
+.Load:                                 
+        move.l  (a1)+,(a2)+
+        move.w  (a1)+,(a2)+
+        dbf     d0,.Load
+
+.End:                                  
+        movem.l (sp)+,a1-a2
+
+        rts
+
+
+; ---------------------------------------------------------------------------
+; Clear any existing queue entries and initialize with a new art list
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       d0.w - Artlist ID
+; ---------------------------------------------------------------------------
+
+InitArtList:                           
+        movem.l a1-a2,-(sp)
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        bsr.s   ClearArtListQueue
+        lea     decompQueue.w,a2
+        move.w  (a1)+,d0
+        bmi.s   .End
+
+.Load:                               
+        move.l  (a1)+,(a2)+
+        move.w  (a1)+,(a2)+
+        dbf     d0,.Load
+
+.End:                               
+        movem.l (sp)+,a1-a2
+        rts
+
+
+; ---------------------------------------------------------------------------
+; Clear the art list queue
+; ---------------------------------------------------------------------------
+
+ClearArtListQueue:                      
+        lea     decompQueue.w,a2
+        moveq   #32-1,d0
+
+.Loop:                                 
+        clr.l   (a2)+
+        dbf     d0,.Loop
+        rts
+
+; ---------------------------------------------------------------------------
+; Process any entries in the art list decompression queue
+; ---------------------------------------------------------------------------
+
+ProcessArtLoading:                      
+        tst.l   decompQueue.w
+        beq.s   .End
+
+        tst.w   decompTileCount.w
+        bne.s   .End
+
+        movea.l decompQueue.w,a0
+        lea     NemPCD_WriteRowToVDP,a3
+        lea     globalBuffer.w,a1
+        move.w  (a0)+,d2
+        bpl.s   .NotXOR
+        adda.w  #NemPCD_WriteRowToVDP_XOR-NemPCD_WriteRowToVDP,a3
+
+.NotXOR:                               
+        andi.w  #$7FFF,d2
+        move.w  d2,decompTileCount.w
+
+        bsr.w   NemDec_BuildCodeTable
+
+        move.b  (a0)+,d5
+        asl.w   #8,d5
+        move.b  (a0)+,d5
+        moveq   #16,d6
+
+        moveq   #0,d0
+        move.l  a0,decompQueue.w
+        move.l  a3,decompNemWrite.w
+        move.l  d0,decompRepeat.w
+        move.l  d0,decompPixel.w
+        move.l  d0,decompRow.w
+        move.l  d5,decompRead.w
+        move.l  d6,decompShift.w
+
+.End:                                  
+        rts
+
+; ---------------------------------------------------------------------------
+; Decompress an art list
+; The user defines whether it's fast or slow on their end
+; ---------------------------------------------------------------------------
+
+DecompArtList:
+
+.Fast                     
+        tst.w   decompTileCount.w
+        beq.w   .Done
+
+        move.w  #9,decompProcTileCnt.w
+        moveq   #0,d0
+        move.w  decompQueue+4.w,d0
+        addi.w  #9*32,decompQueue+4.w
+        bra.s   .Main
+
+; ---------------------------------------------------------------------------
+
+.Slow:                     
+        tst.w   decompTileCount.w
+        beq.s   .Done
+        move.w  #3,decompProcTileCnt.w
+        moveq   #0,d0
+        move.w  decompQueue+4.w,d0
+        addi.w  #$60,decompQueue+4.w
+.Main:                               
+        lea     VDPCTRL,a4
+        lsl.l   #2,d0
+        lsr.w   #2,d0
+        ori.w   #$4000,d0
+        swap    d0
+        move.l  d0,(a4)
+        subq.w  #4,a4
+        movea.l decompQueue.w,a0
+        movea.l decompNemWrite.w,a3
+        move.l  decompRepeat.w,d0
+        move.l  decompPixel.w,d1
+        move.l  decompRow.w,d2
+        move.l  decompRead.w,d5
+        move.l  decompShift.w,d6
+        lea     globalBuffer.w,a1
+
+.Decomp:                               
+        movea.w #8,a5
+        bsr.w   NemPCD_NewRow
+        subq.w  #1,decompTileCount.w
+        beq.s   .Pop
+        subq.w  #1,decompProcTileCnt.w
+        bne.s   .Decomp
+        move.l  a0,decompQueue.w
+        move.l  a3,decompNemWrite.w
+        move.l  d0,decompRepeat.w
+        move.l  d1,decompPixel.w
+        move.l  d2,decompRow.w
+        move.l  d5,decompRead.w
+        move.l  d6,decompShift.w
+
+.Done:                            
+        rts
+
+; ---------------------------------------------------------------------------
+
+.Pop:                               
+        lea     decompQueue.w,a0
+        moveq   #$15,d0
+
+.Loop:                                  
+        move.l  6(a0),(a0)+
+        dbf     d0,.Loop
+        rts
+
+; ---------------------------------------------------------------------------
+; Decompress an art list immediately 
+; ---------------------------------------------------------------------------
+
+LoadArtListImm:                         
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        move.w  (a1)+,d1
+
+.Load:                                 
+        movea.l (a1)+,a0
+        moveq   #0,d0
+        move.w  (a1)+,d0
+        lsl.l   #2,d0
+        lsr.w   #2,d0
+        ori.w   #$4000,d0
+        swap    d0
+        move.l  d0,VDPCTRL
+        bsr.w   NemDec
+        dbf     d1,.Load
+        rts
