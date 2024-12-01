@@ -323,7 +323,7 @@ gmID_SPECIAL            EQU         4*4
 ; Checksum Failure routine (unused)
 ; ---------------------------------------------------------------------------
    
-; ??CheckSumFailed:
+CheckSumFailed:
         bsr.w   InitVDP
         move.l  #CRAMWRITE,VDPCTRL
         moveq   #64-1,d7
@@ -337,7 +337,7 @@ gmID_SPECIAL            EQU         4*4
         
 ; ---------------------------------------------------------------------------
 
-        include  "Error Handler.68k"
+        include  "ERRORS.68k"
 
 ; ---------------------------------------------------------------------------
 
@@ -345,7 +345,7 @@ gmID_SPECIAL            EQU         4*4
         
 ; ---------------------------------------------------------------------------
 
-ArtUnc_Text:    incbin  "ArtUnc/Generic Text.unc"
+ArtUnc_Text:    incbin  "Art/Unc/Generic Text.unc"
 ArtUnc_TextE:
 ArtUnc_TextSZ   EQU     ArtUnc_TextE-ArtUnc_Text
 
@@ -429,7 +429,7 @@ VBLANK_LOGO:
 VBLANK_TITLE:                               
         bsr.w   RefreshVDPBuffers
         bsr.w   ProcessBGScrollingTiles
-        bsr.w   DecompArtList_Fast
+        bsr.w   DecompArtList.Fast
         tst.w   genericTimer.w
         beq.w   .Exit
         subq.w  #1,genericTimer.w
@@ -487,7 +487,7 @@ VBLANK_LEVEL:
         bsr.w   ProcessScrollingTiles
         jsr     AnimatedLevelGFX
         jsr     UpdateHUD
-        bsr.w   DecompArtList_Slow
+        bsr.w   DecompArtList.Slow
 
         moveq   #0,d0
         move.b  vblankUnk1.w,d0
@@ -565,7 +565,7 @@ VBLANK_LVLSTART:
         bsr.w   ProcessScrollingTiles
         jsr     AnimatedLevelGFX
         jsr     UpdateHUD
-        bsr.w   DecompArtList_Fast
+        bsr.w   DecompArtList.Fast
         rts
 
 ; ---------------------------------------------------------------------------
@@ -587,7 +587,7 @@ VBLANK_TIMER:
 
 VBLANK_PALFUNC:                             
         bsr.w   RefreshVDPBuffers
-        bra.w   DecompArtList_Fast
+        bra.w   DecompArtList.Fast
 
 ; ---------------------------------------------------------------------------
 ; Refresh VDP tile/sprite data with most recent buffer data in memory
@@ -657,16 +657,12 @@ UNUSED_HBLANK2:
 ; ---------------------------------------------------------------------------
 
 InitJoypads:                            
-        move.w  #$100,Z80BUS
-
-.WaitZ80:                              
-        btst    #0,Z80BUS
-        bne.s   .WaitZ80
+        Z80STOP
         moveq   #$40,d0
         move.b  d0,IOCTRL1
         move.b  d0,IOCTRL2
         move.b  d0,IOCTRL3
-        move.w  #0,Z80BUS
+        Z80START
         rts
 
 ; ---------------------------------------------------------------------------
@@ -674,25 +670,24 @@ InitJoypads:
 ; Common SACBRLDU scheme (1 bit per button for 8 bits)
 ; ---------------------------------------------------------------------------
 
-ReadJoypads:                            
-        move.w  #$100,Z80BUS
+ReadJoypads:        
 
-.WaitZ80:                              
-        btst    #0,Z80BUS
-        bne.s   .WaitZ80
+        Z80STOP
 
-        lea     joypad.w,a0     ; Set output location
-        lea     IODATA1,a1
-        bsr.s   .ReadPad
-        addq.w  #2,a1           ; (IODATA1)+2 = IODATA2
+        lea     joypad.w,a0             ; Set output location
+        lea     IODATA1,a1              ; Read pad 1
         bsr.s   .ReadPad
 
-        move.w  #0,Z80BUS
+        addq.w  #IODATA2-IODATA1,a1     ; Quick increment to pad 2
+        bsr.s   .ReadPad                ; and read it
+
+        Z80START
+
         rts
 
 .ReadPad:                              
         move.b  #0,(a1)         ; Get first frame bits (Start+A)    
-        nop                     ; Wait a bit for the I/O control chip
+        nop                     ; Wait a bit for the I/O controller
         nop
         move.b  (a1),d0         ; Read bits
         lsl.b   #2,d0           ; Move them to bits 6 and 7
@@ -800,17 +795,18 @@ InitScreen:
 
 InitSound:
         nop
-        move.w  #$100,Z80BUS
+        move.w  #$100,Z80BUS         ; Stop and reset the Z80
         move.w  #$100,Z80RES
         lea     Z80_SOUND_ROM        ; !!! Needs new name?
         lea     Z80RAM,a1
         move.w  #$1C5B,d0            ; !!! Get size later
 
 .WriteToZ80RAM:
-        move.b  (a0)+,(a1)+
+        move.b  (a0)+,(a1)+          ; Load PCM driver ROM to Z80 RAM
         dbf     d0,.WriteToZ80RAM
+
         moveq   #0,d0
-        lea     $A01FF8,a1           ; !!! obvious
+        lea     Z80RAM+$1FF8,a1      ; !!! obvious
         move.b  d0,(a1)+
         move.b  #$80,(a1)+
         move.b  #7,(a1)+
@@ -851,7 +847,6 @@ QueueSoundA:
 
 ; ---------------------------------------------------------------------------
 
-
 QueueSoundB:
         move.b  d0,soundqueueB.w
         rts
@@ -863,47 +858,53 @@ QueueSoundC:
         rts
 
 ; ---------------------------------------------------------------------------
-; Game pause routine 
-; Will check and set the appropriate VBLANK command for it, mode agnostic
+; Gameplay Pause function 
+; Simply checks the controller inputs required to pause the game
+;
+; This version of the function is partially stubbed for debugging purposes
 ; ---------------------------------------------------------------------------
 
 PauseGame:
         nop
-        tst.b   lives.w
-        beq.s   .Dead
-        tst.w   paused.w
+        tst.b   lives.w                 ; No pausing if no lives
+        beq.s   .Unpause                   
+
+        tst.w   paused.w                ; If already paused, skip ahead
         bne.s   .Paused
-        btst    #7,joypadPress.w                ; Start     
+
+        btst    #7,joypadPress.w        ; If start isn't pressed, don't pause   
         beq.s   .Exit
 
 .Paused:
-        move.w  #-1,paused.w
+        move.w  #-1,paused.w            ; Assert that the game is paused
 
 .Loop:                               
-        move.b  #vbID_PAUSE,vblankCmd.w
+        move.b  #vbID_PAUSE,vblankCmd.w         ; Set VBLANK to PAUSE cmd
         bsr.w   VSync
-        btst    #6,joypadPress.w                ; A button
-        beq.s   .ABtnNotPressed
-        move.b  #gmID_TITLE,gamemode.w
+
+        btst    #6,joypadPress.w        ; If A button pressed while paused...
+        beq.s   .ABtnNotPressed         
+        move.b  #gmID_TITLE,gamemode.w  ; ...go to title screen
         nop
-        bra.s   .Dead
+        bra.s   .Unpause
 
 .ABtnNotPressed:                       
-        btst    #4,joypad.w                     ; B button
+        btst    #4,joypad.w             ; B button
         bne.s   .FrameAdvance
-        btst    #5,joypadPress.w                ; C button
+        btst    #5,joypadPress.w        ; C button
         bne.s   .FrameAdvance
-        btst    #7,joypadPress.w                ; Start   
+        btst    #7,joypadPress.w        ; Start   
         beq.s   .Loop
 
-.Dead:                                 
-        move.w  #0,paused.w
+.Unpause:                                 
+        move.w  #0,paused.w             ; Assert unpaused
 
 .Exit:                                 
-        rts
+        rts                             
 
 .FrameAdvance:                               
-        move.w  #1,paused.w
+        move.w  #1,paused.w     ; Set to pause next frame
+                                ; And exit back to execution until next frame
         rts
 
 ; ---------------------------------------------------------------------------
@@ -1277,22 +1278,27 @@ DecompArtList:
         moveq   #0,d0
         move.w  decompQueue+4.w,d0
         addi.w  #$60,decompQueue+4.w
+
+; -------------------------------------------------------------------------
+
 .Main:                               
-        lea     VDPCTRL,a4
+        lea     VDPCTRL,a4              ; Set a4 = VDPCTRL
         lsl.l   #2,d0
         lsr.w   #2,d0
         ori.w   #$4000,d0
         swap    d0
         move.l  d0,(a4)
         subq.w  #4,a4
-        movea.l decompQueue.w,a0
+
+        movea.l decompQueue.w,a0        ; Set decompression registers
         movea.l decompNemWrite.w,a3
         move.l  decompRepeat.w,d0
         move.l  decompPixel.w,d1
         move.l  decompRow.w,d2
         move.l  decompRead.w,d5
         move.l  decompShift.w,d6
-        lea     globalBuffer.w,a1
+
+        lea     globalBuffer.w,a1       ; Get bufferspace
 
 .Decomp:                               
         movea.w #8,a5
