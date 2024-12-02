@@ -11,12 +11,12 @@
  ; ---------------------------------------------------------------------------
 
 CyclePalettes:                          
-                moveq   #0,d2
-                moveq   #0,d0
-                move.b  zone.w,d0
-                add.w   d0,d0
-                move.w  .Index(pc,d0.w),d0
-                jmp     .Index(pc,d0.w)
+        moveq   #0,d2
+        moveq   #0,d0
+        move.b  zone.w,d0
+        add.w   d0,d0
+        move.w  .Index(pc,d0.w),d0
+        jmp     .Index(pc,d0.w)
 
 ; ---------------------------------------------------------------------------
 .Index:                                
@@ -44,33 +44,33 @@ CyclePalettes:
 ; ---------------------------------------------------------------------------
 
 _titleDoPalCyc:                         
-                lea     PalCycData_Title,a0
-                bra.s   CycPal_GreenHill.DoCycle
+        lea     PalCycData_Title,a0
+        bra.s   CycPal_GreenHill.DoCycle
 
 ; ---------------------------------------------------------------------------
 ; Green Hill cycle
 ; ---------------------------------------------------------------------------
 
 CycPal_GreenHill:                       
-                lea     PalCycData_GreenHill,a0
+        lea     PalCycData_GreenHill,a0
 
 .DoCycle:                           
-                subq.w  #1,palCycTimer.w 	; Decrement timer until depleted
-                bpl.s   .Wait			
+        subq.w  #1,palCycTimer.w 	; Decrement timer until depleted
+        bpl.s   .Wait			
 
-                move.w  #5,palCycTimer.w
-                move.w  palCycStep.w,d0
-                addq.w  #1,palCycStep.w
-                andi.w  #3,d0
-                lsl.w   #3,d0
-                lea     palette+$50.w,a1
-                move.l  (a0,d0.w),(a1)+
-                move.l  4(a0,d0.w),(a1)
+        move.w  #5,palCycTimer.w
+        move.w  palCycStep.w,d0
+        addq.w  #1,palCycStep.w
+        andi.w  #3,d0
+        lsl.w   #3,d0
+        lea     palette+$50.w,a1
+        move.l  (a0,d0.w),(a1)+
+        move.l  4(a0,d0.w),(a1)
 
 .Wait:                            
-                rts
+        rts
 ; ---------------------------------------------------------------------------
-; Labyrinth Cycle
+; Labyrinth cycle
 ; 
 ; This appears to be work-in-progress, and seems bugged, but not entirely
 ; It looks to be targetting the wrong palette line. 
@@ -85,27 +85,27 @@ CycPal_GreenHill:
 ; --------------------------------------------------------------------------- 
 
 CycPal_Labyrinth:                       
-                rts 	; Dummied out
+        rts 	; Dummied out
 
-                subq.w  #1,palCycTimer.w
-                bpl.s   .Wait
+        subq.w  #1,palCycTimer.w
+        bpl.s   .Wait
 
-                move.w  #5,palCycTimer.w
+        move.w  #5,palCycTimer.w
 
-                move.w  palCycStep.w,d0
-                addq.w  #1,palCycStep.w
-                andi.w  #3,d0
-                lsl.w   #3,d0
-                lea     PalCycData_Labyrinth,a0
-                adda.w  d0,a0
-                lea     palette+($37*2).w,a1
-                move.w  (a0)+,(a1)+
-                addq.w  #4*2,a1
-                move.w  (a0)+,(a1)+
-                move.l  (a0)+,(a1)+
+        move.w  palCycStep.w,d0
+        addq.w  #1,palCycStep.w
+        andi.w  #3,d0
+        lsl.w   #3,d0
+        lea     PalCycData_Labyrinth,a0
+        adda.w  d0,a0
+        lea     palette+($37*2).w,a1 	; Set target write addr.
+        move.w  (a0)+,(a1)+ 		; write the first color
+        addq.w  #4*2,a1 		; ...skip 4 color entries
+        move.w  (a0)+,(a1)+ 		; write the next 3 colors
+        move.l  (a0)+,(a1)+
 
 .Wait:                                 
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Marble cycle 
@@ -124,75 +124,75 @@ CycPal_Marble:
 ; ---------------------------------------------------------------------------
 
 CycPal_Starlight:                       
-                subq.w  #1,palCycTimer.w
-                bpl.s   .Wait
+        subq.w  #1,palCycTimer.w
+        bpl.s   .Wait
 
-                move.w  #16,palCycTimer.w
+        move.w  #16,palCycTimer.w
 
-                move.w  palCycStep.w,d0
-                addq.w  #1,d0
-                cmpi.w  #6,d0    		; Set step count maximum
-                bcs.s   .NotMax
-                moveq   #0,d0
+        move.w  palCycStep.w,d0
+        addq.w  #1,d0
+        cmpi.w  #6,d0    		; Set step count maximum
+        bcs.s   .NotMax
+        moveq   #0,d0
 
 .NotMax:                               
-                move.w  d0,palCycStep.w
-                move.w  d0,d1
-                add.w   d1,d1
-                add.w   d1,d0
-                add.w   d0,d0
-                lea     PalCycData_StarLight,a0
-                lea     palette+($2B*2).w,a1
-                move.w  (a0,d0.w),(a1)
-                move.l  2(a0,d0.w),4(a1)
+        move.w  d0,palCycStep.w
+        move.w  d0,d1
+        add.w   d1,d1
+        add.w   d1,d0
+        add.w   d0,d0
+        lea     PalCycData_StarLight,a0
+        lea     palette+($2B*2).w,a1
+        move.w  (a0,d0.w),(a1)
+        move.l  2(a0,d0.w),4(a1)
 
 .Wait:                            
-                rts
+        rts
 ; ---------------------------------------------------------------------------
 ; Sparkling cycle 
 ; ---------------------------------------------------------------------------
 
 CycPal_Sparkling:                       
-                subq.w  #1,palCycTimer.w
-                bpl.s   .Wait
+        subq.w  #1,palCycTimer.w
+        bpl.s   .Wait
 
-                move.w  #5,palCycTimer.w
+        move.w  #5,palCycTimer.w
 
-                move.w  palCycStep.w,d0
-                move.w  d0,d1 				; Store step in d1
-                addq.w  #1,palCycStep.w
-                andi.w  #3,d0
-                lsl.w   #3,d0
-                lea     PalCycData_Sparkling1,a0
-                lea     palette+($37*2).w,a1
-                move.l  (a0,d0.w),(a1)+
-                move.l  4(a0,d0.w),(a1)
+        move.w  palCycStep.w,d0
+        move.w  d0,d1 				; Store step in d1
+        addq.w  #1,palCycStep.w
+        andi.w  #3,d0
+        lsl.w   #3,d0
+        lea     PalCycData_Sparkling1,a0
+        lea     palette+($37*2).w,a1
+        move.l  (a0,d0.w),(a1)+
+        move.l  4(a0,d0.w),(a1)
 
-                andi.w  #3,d1 				; Use stored step
-                move.w  d1,d0
-                add.w   d1,d1
-                add.w   d0,d1
-                add.w   d1,d1
-                lea     PalCycData_Sparkling2,a0
-                lea     palette+($3B*2).w,a1
-                move.l  (a0,d1.w),(a1)
-                move.w  4(a0,d1.w),6(a1)
+        andi.w  #3,d1 				; Use stored step
+        move.w  d1,d0
+        add.w   d1,d1
+        add.w   d0,d1
+        add.w   d1,d1
+        lea     PalCycData_Sparkling2,a0
+        lea     palette+($3B*2).w,a1
+        move.l  (a0,d1.w),(a1)
+        move.w  4(a0,d1.w),6(a1)
 
 .Wait:                            
-                rts
+        rts
 ; ---------------------------------------------------------------------------
 ; ClockWork cycle dummy
 ; ---------------------------------------------------------------------------
 
 CycPal_ClockWork:                       
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; A cycle routine dummy for what would likely be the ending sequence
 ; ---------------------------------------------------------------------------
 
 CycPal_Unknown:                         
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; !!! split these later 
@@ -229,7 +229,8 @@ PalCycData_StarLight:
                 dc.w $66,$220, $A,$AA
                 dc.w $660,  6,$EE,$AA0
                 dc.w   2,$AA
-PalCycData_Sparkling1:dc.w $EE,$AA,$66,$22 
+PalCycData_Sparkling1:
+		dc.w $EE,$AA,$66,$22 
                 dc.w $AA,$66,$22,$EE
                 dc.w $66,$22,$EE,$AA
                 dc.w $22,$EE,$AA,$66
