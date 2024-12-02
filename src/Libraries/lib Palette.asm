@@ -8,6 +8,8 @@
  ; It's easier to read the offset for each starting entry as ($XY*2)
  ; X = Line (starting from 0)
  ; Y = Entry
+ ;
+ ; For the cycling palette on the SEGA screen, see "_logoCycPal"
  ; ---------------------------------------------------------------------------
 
 CyclePalettes:                          
@@ -69,6 +71,7 @@ CycPal_GreenHill:
 
 .Wait:                            
         rts
+
 ; ---------------------------------------------------------------------------
 ; Labyrinth cycle
 ; 
@@ -198,46 +201,46 @@ CycPal_Unknown:
 ; !!! split these later 
 
 PalCycData_TitleScreen:
-		dc.w $C42,$E86,$ECA,$EEC 
-                dc.w $EEC,$C42,$E86,$ECA
-                dc.w $ECA,$EEC,$C42,$E86
-                dc.w $E86,$ECA,$EEC,$C42
+	dc.w $C42,$E86,$ECA,$EEC 
+        dc.w $EEC,$C42,$E86,$ECA
+        dc.w $ECA,$EEC,$C42,$E86
+        dc.w $E86,$ECA,$EEC,$C42
 
 PalCycData_GreenHill:
-		dc.w $A86,$E86,$EA8,$ECA 
-                dc.w $ECA,$A86,$E86,$EA8
-                dc.w $EA8,$ECA,$A86,$E86
-                dc.w $E86,$EA8,$ECA,$A86
+	dc.w $A86,$E86,$EA8,$ECA 
+        dc.w $ECA,$A86,$E86,$EA8
+        dc.w $EA8,$ECA,$A86,$E86
+        dc.w $E86,$EA8,$ECA,$A86
 
 PalCycData_Labyrinth:
-		dc.w $CE6,$680,$8A2,$AC4 
-                dc.w $AC4,$CE6,$680,$8A2
-                dc.w $8A2,$AC4,$CE6,$680
-                dc.w $680,$8A2,$AC4,$CE6
+	dc.w $CE6,$680,$8A2,$AC4 
+        dc.w $AC4,$CE6,$680,$8A2
+        dc.w $8A2,$AC4,$CE6,$680
+        dc.w $680,$8A2,$AC4,$CE6
 
 PalCycData_Marble:
-		dc.w $EEE,   8,  $E, $4E, $8E, $EE
-                dc.w  $EE,$EEE,   8,  $E, $4E, $8E
-                dc.w  $8E, $EE,$EEE,   8,  $E, $4E
-                dc.w  $4E, $8E, $EE,$EEE,   8,  $E
-                dc.w   $E, $4E, $8E, $EE,$EEE,   8
-                dc.w    8,  $E, $4E, $8E, $EE,$EEE
+	dc.w $EEE,   8,  $E, $4E, $8E, $EE
+        dc.w  $EE,$EEE,   8,  $E, $4E, $8E
+        dc.w  $8E, $EE,$EEE,   8,  $E, $4E
+        dc.w  $4E, $8E, $EE,$EEE,   8,  $E
+        dc.w   $E, $4E, $8E, $EE,$EEE,   8
+        dc.w    8,  $E, $4E, $8E, $EE,$EEE
 
 PalCycData_StarLight:
-		dc.w $EE0,  6,$66,$AA0 
-                dc.w  $A,$22,$660, $E
-                dc.w $66,$220, $A,$AA
-                dc.w $660,  6,$EE,$AA0
-                dc.w   2,$AA
+	dc.w $EE0,  6,$66,$AA0 
+        dc.w  $A,$22,$660, $E
+        dc.w $66,$220, $A,$AA
+        dc.w $660,  6,$EE,$AA0
+        dc.w   2,$AA
 PalCycData_Sparkling1:
-		dc.w $EE,$AA,$66,$22 
-                dc.w $AA,$66,$22,$EE
-                dc.w $66,$22,$EE,$AA
-                dc.w $22,$EE,$AA,$66
+	dc.w $EE,$AA,$66,$22 
+        dc.w $AA,$66,$22,$EE
+        dc.w $66,$22,$EE,$AA
+        dc.w $22,$EE,$AA,$66
 PalCycData_Sparkling2:
-		dc.w  $E,$EEE,$E88,$66E 
-                dc.w $E88,$E22,$EEE,$C00
-                dc.w $C00,$66E,$E88,$E22
+	dc.w  $E,$EEE,$E88,$66E 
+        dc.w $E88,$E22,$EEE,$C00
+        dc.w $C00,$66E,$E88,$E22
 
 ; ---------------------------------------------------------------------------
 ; Function to fade the palette in from black 
@@ -245,227 +248,229 @@ PalCycData_Sparkling2:
 ; !!! palFadeArgs represents word location of 2 arguments; document
 
 PalFadeIn:                              
-                move.w  #64-1,palFadeArgs.w 	; Set full size fade
+        move.w  #64-1,palFadeArgs.w 	; Set full size fade
 
 .UserArgs:                     
-                moveq   #0,d0 			; Get arguments
-                lea     palette.w,a0
-                move.b  palFadeArgs.w,d0        ; Offset
-                adda.w  d0,a0
-                moveq   #0,d1
-                move.b  palFadeSize.w,d0        ; Size
+        moveq   #0,d0 			; Get arguments
+        lea     palette.w,a0
+        move.b  palFadeArgs.w,d0        ; Offset
+        adda.w  d0,a0
+        moveq   #0,d1
+        move.b  palFadeSize.w,d0        ; Size
 
 .FillBlack:                            
-                move.w  d1,(a0)+
-                dbf     d0,.FillBlack
-                move.w  #21-1,d4 	        ; Time in frames	
+        move.w  d1,(a0)+
+        dbf     d0,.FillBlack
+        move.w  #21-1,d4 	        ; Time in frames	
 
 .Loop:                                 
-                move.b  #vbID_PALFUNC,vblankCmd.w
-                bsr.w   VSync
+        move.b  #vbID_PALFUNC,vblankCmd.w
+        bsr.w   VSync
 
-                bsr.s   .DoFadeCalc
-                bsr.w   ProcessArtLoading
-                dbf     d4,.Loop
-                rts
+        bsr.s   .DoFadeCalc
+        bsr.w   ProcessArtLoading
+        dbf     d4,.Loop
+        rts
 
 .DoFadeCalc:                           
-                moveq   #0,d0
-                lea     palette.w,a0
-                lea     palFadeBuffer.w,a1
-                move.b  palFadeArgs.w,d0
-                adda.w  d0,a0
-                adda.w  d0,a1
-                move.b  palFadeSize.w,d0
+        moveq   #0,d0
+        lea     palette.w,a0
+        lea     palFadeBuffer.w,a1
+        move.b  palFadeArgs.w,d0
+        adda.w  d0,a0
+        adda.w  d0,a1
+        move.b  palFadeSize.w,d0
 
 .DoRequestedSize:                      
-                bsr.s   .CalcColor 		
-                dbf     d0,.DoRequestedSize    ; Loop for the size provided
-                rts
+        bsr.s   .CalcColor 		
+        dbf     d0,.DoRequestedSize    ; Loop for the size provided
+        rts
 
 ; ---------------------------------------------------------------------------
 
 .CalcColor:                            
-                move.w  (a1)+,d2
-                move.w  (a0),d3
-                cmp.w   d2,d3
-                beq.s   .NextColor
+        move.w  (a1)+,d2
+        move.w  (a0),d3
+        cmp.w   d2,d3
+        beq.s   .NextColor
 .AddBlue:
-                move.w  d3,d1
-                addi.w  #$200,d1
-                cmp.w   d2,d1
-                bhi.s   .AddGreen
-                move.w  d1,(a0)+
-                rts
+        move.w  d3,d1
+        addi.w  #$200,d1
+        cmp.w   d2,d1
+        bhi.s   .AddGreen
+        move.w  d1,(a0)+
+        rts
 
 .AddGreen:                             
-                move.w  d3,d1
-                addi.w  #$20,d1
-                cmp.w   d2,d1
-                bhi.s   .AddRed
-                move.w  d1,(a0)+
-                rts
+        move.w  d3,d1
+        addi.w  #$20,d1
+        cmp.w   d2,d1
+        bhi.s   .AddRed
+        move.w  d1,(a0)+
+        rts
 
 .AddRed:                               
-                addq.w  #2,(a0)+
-                rts
+        addq.w  #2,(a0)+
+        rts
 
 .NextColor:                            
-                addq.w  #2,a0
-                rts
+        addq.w  #2,a0
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Function to fade a palette to black
 ; ---------------------------------------------------------------------------
 
 PalFadeOut:                             
-                move.w  #64-1,palFadeArgs.w
-                move.w  #21-1,d4
+        move.w  #64-1,palFadeArgs.w
+        move.w  #21-1,d4
 
 .Loop:                                 
-                move.b  #vbID_PALFUNC,(vblankCmd).w
-                bsr.w   VSync
+        move.b  #vbID_PALFUNC,(vblankCmd).w
+        bsr.w   VSync
 
-                bsr.s   .DoFadeCalc
-                bsr.w   ProcessArtLoading
-                dbf     d4,.Loop
-                rts
+        bsr.s   .DoFadeCalc
+        bsr.w   ProcessArtLoading
+        dbf     d4,.Loop
+        rts
 
 ; !!! note: _levelDoFadeCalc equals PalFadeOut.DoFadeCalc                    
 .DoFadeCalc:
-                moveq   #0,d0
-                lea     palette.w,a0
-                move.b  palFadeArgs.w,d0
-                adda.w  d0,a0
-                move.b  (palFadeSize).w,d0
+        moveq   #0,d0
+        lea     palette.w,a0
+        move.b  palFadeArgs.w,d0
+        adda.w  d0,a0
+        move.b  (palFadeSize).w,d0
 
 .DoRequestedSize:                               
-                bsr.s   .CalcColor
-                dbf     d0,.DoRequestedSize
-                rts
+        bsr.s   .CalcColor
+        dbf     d0,.DoRequestedSize
+        rts
 
 ; ---------------------------------------------------------------------------
 
 .CalcColor:                               
-                move.w  (a0),d2
-                beq.s   .NextColor
+        move.w  (a0),d2
+        beq.s   .NextColor
 .DecRed:
-                move.w  d2,d1
-                andi.w  #$00E,d1
-                beq.s   .DecGreen
-                subq.w  #2,(a0)+
-                rts
+        move.w  d2,d1
+        andi.w  #$00E,d1
+        beq.s   .DecGreen
+        subq.w  #2,(a0)+
+        rts
 
 .DecGreen:                               
-                move.w  d2,d1
-                andi.w  #$0E0,d1
-                beq.s   .DecBlue
-                subi.w  #$20,(a0)+
-                rts
+        move.w  d2,d1
+        andi.w  #$0E0,d1
+        beq.s   .DecBlue
+        subi.w  #$20,(a0)+
+        rts
 
 .DecBlue:                               
-                move.w  d2,d1
-                andi.w  #$E00,d1
-                beq.s   .NextColor
-                subi.w  #$200,(a0)+
-                rts
+        move.w  d2,d1
+        andi.w  #$E00,d1
+        beq.s   .NextColor
+        subi.w  #$200,(a0)+
+        rts
 
 .NextColor:                               
-                addq.w  #2,a0
-                rts
+        addq.w  #2,a0
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine exclusive to the SEGA screen (GM_LOGO)
 ; ---------------------------------------------------------------------------
 
-_logoCyclePalette:                      
-                subq.w  #1,palCycTimer.w
-                bpl.s   .Exit
-                move.w  #3,palCycTimer.w
-                move.w  palCycStep.w,d0
-                bmi.s   .Exit
-                subq.w  #2,palCycStep.w
-                lea     PalCyc_SEGAScr,a0
-                lea     palette+(2*2).w,a1
-                adda.w  d0,a0
-                move.l  (a0)+,(a1)+
-                move.l  (a0)+,(a1)+
-                move.l  (a0)+,(a1)+
-                move.l  (a0)+,(a1)+
-                move.l  (a0)+,(a1)+
-                move.w  (a0)+,(a1)+
+_logoCycPal:                      
+        subq.w  #1,palCycTimer.w
+        bpl.s   .Exit
+        move.w  #3,palCycTimer.w
+        move.w  palCycStep.w,d0
+        bmi.s   .Exit
+        subq.w  #2,palCycStep.w
+        lea     PalCyc_LOGO,a0
+        lea     palette+(2*2).w,a1
+        adda.w  d0,a0
+        move.l  (a0)+,(a1)+
+        move.l  (a0)+,(a1)+
+        move.l  (a0)+,(a1)+
+        move.l  (a0)+,(a1)+
+        move.l  (a0)+,(a1)+
+        move.w  (a0)+,(a1)+
 
 .Exit:                                 
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; !!! split
-PalCyc_SEGAScr: dc.w $EC0               
-                dc.w $EA0
-                dc.w $E80
-                dc.w $E60
-                dc.w $E40
-                dc.w $E20
-                dc.w $E00
-                dc.w $C00
-                dc.w $A00
-                dc.w $800
-                dc.w $600
-                dc.w $800
-                dc.w $A00
-                dc.w $C00
-                dc.w $E00
-                dc.w $E20
-                dc.w $E40
-                dc.w $E60
-                dc.w $E80
-                dc.w $EA0
-                dc.w $EC0
-                dc.w $EA0
-                dc.w $E80
-                dc.w $E60
-                dc.w $E40
-                dc.w $E20
-                dc.w $E00
-                dc.w $C00
-                dc.w $A00
-                dc.w $800
-                dc.w $600
+PalCyc_LOGO: 	
+	dc.w $EC0               
+        dc.w $EA0
+        dc.w $E80
+        dc.w $E60
+        dc.w $E40
+        dc.w $E20
+        dc.w $E00
+        dc.w $C00
+        dc.w $A00
+        dc.w $800
+        dc.w $600
+        dc.w $800
+        dc.w $A00
+        dc.w $C00
+        dc.w $E00
+        dc.w $E20
+        dc.w $E40
+        dc.w $E60
+        dc.w $E80
+        dc.w $EA0
+        dc.w $EC0
+        dc.w $EA0
+        dc.w $E80
+        dc.w $E60
+        dc.w $E40
+        dc.w $E20
+        dc.w $E00
+        dc.w $C00
+        dc.w $A00
+        dc.w $800
+        dc.w $600
 
 ; ---------------------------------------------------------------------------
-; Load a palette into the palette fading buffer
+; Load a palette into the palette fading buffer, queueing it for when
+; a fade in or out is called.
 ; ---------------------------------------------------------------------------
 
 PalQueueForFade:                        
-                lea     PaletteIndex,a1
-                lsl.w   #3,d0
-                adda.w  d0,a1
-                movea.l (a1)+,a2 	; Get palette data address
-                movea.w (a1)+,a3 	; Get target address
-                adda.w  #palFadeBuffer-palette,a3  ; Move into fade buffer
-                move.w  (a1)+,d7 	; Get size
+        lea     PaletteIndex,a1
+        lsl.w   #3,d0
+        adda.w  d0,a1
+        movea.l (a1)+,a2 	; Get palette data address
+        movea.w (a1)+,a3 	; Get target address
+        adda.w  #palFadeBuffer-palette,a3  ; Move into fade buffer
+        move.w  (a1)+,d7 	; Get size
 
 .LoadToQueue:                          
-                move.l  (a2)+,(a3)+
-                dbf     d7,.LoadToQueue
-                rts
+        move.l  (a2)+,(a3)+
+        dbf     d7,.LoadToQueue
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Load a palette into the palette loading buffer
 ; ---------------------------------------------------------------------------
 
 PalLoad:                                
-                lea     PaletteIndex,a1
-                lsl.w   #3,d0
-                adda.w  d0,a1
-                movea.l (a1)+,a2 	; Get palette data address
-                movea.w (a1)+,a3 	; Get target address
-                move.w  (a1)+,d7 	; Get loading size 
+        lea     PaletteIndex,a1
+        lsl.w   #3,d0
+        adda.w  d0,a1
+        movea.l (a1)+,a2 	; Get palette data address
+        movea.w (a1)+,a3 	; Get target address
+        move.w  (a1)+,d7 	; Get loading size 
 
 .LoadToBuffer:                         
-                move.l  (a2)+,(a3)+
-                dbf     d7,.LoadToBuffer
-                rts
+        move.l  (a2)+,(a3)+
+        dbf     d7,.LoadToBuffer
+        rts
 
 
 ; ---------------------------------------------------------------------------
@@ -477,22 +482,22 @@ palentr	macro	dataddr, off, size
 
 ; ---------------------------------------------------------------------------
 ; Palette ID entries
-; Numbers after the pointer define the offset into the buffer and load size
 ; ---------------------------------------------------------------------------
 
-PaletteIndex:
-	palentr 	Pal_LOGO,	0,64
-        palentr  	Pal_TITLE,	0,64
-        palentr  	Pal_SELECT,	0,64
-        palentr  	Pal_Sonic,	0,16
-        palentr  	Pal_GHZ,	16,48
-        palentr  	Pal_LZ,		16,48
-        palentr  	Pal_MZ,		16,48
-        palentr  	Pal_SLZ,	16,48
-        palentr  	Pal_SZ,		16,48
-        palentr  	Pal_CWZ,	16,48
-        palentr  	Pal_SPECIAL,	0,64
-        palentr  	Pal_Unk,	0,64
+PaletteIndex:	      
+; 	         Data       Color num.	       Size
+	palentr  Pal_LOGO,	0,		64
+        palentr  Pal_TITLE,	0,		64
+        palentr  Pal_SELECT,	0,		64
+        palentr  Pal_Sonic,	0,		16
+        palentr  Pal_GHZ,	16,		48
+        palentr  Pal_LZ,	16,		48
+        palentr  Pal_MZ,	16,		48
+        palentr  Pal_SLZ,	16,		48
+        palentr  Pal_SZ,	16,		48
+        palentr  Pal_CWZ,	16,		48
+        palentr  Pal_SPECIAL,	0,		64
+        palentr  Pal_Unk,	0,		64
 ; !!! split
 Pal_LOGO:       dc.w   0,$EEE,$EC0,$EA0,$E80,$E60,$E40,$E20 
                 dc.w $E00,$C00,$A00,$800,$600,  0,  0,  0

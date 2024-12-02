@@ -187,3 +187,9 @@ WaitPlayerInput:
         rts
 
 ; ---------------------------------------------------------------------------
+
+ArtUnc_Text:    incbin  "Art/Unc/Generic Text.unc"
+ArtUnc_TextE:
+ArtUnc_TextSZ   EQU     ArtUnc_TextE-ArtUnc_Text
+
+; ---------------------------------------------------------------------------

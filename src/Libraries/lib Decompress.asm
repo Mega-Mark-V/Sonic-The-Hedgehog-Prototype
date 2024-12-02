@@ -198,6 +198,226 @@ NemBCT_ShortCode_Loop:
         dbf     d5,NemBCT_ShortCode_Loop        ; Repeat for required number of entries
 
         bra.s   NemBCT_Loop                     ; Loop 
+        
+; ---------------------------------------------------------------------------
+; Load an art list (known as "PLCs" elsewhere)
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       d0.w - Artlist ID
+; ---------------------------------------------------------------------------
+
+LoadArtList:                         
+        movem.l a1-a2,-(sp)
+
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        lea     decompQueue.w,a2
+
+.Loop:                                 
+        tst.l   (a2)
+        beq.s   .FoundFree
+        addq.w  #6,a2
+        bra.s   .Loop
+
+.FoundFree:                            
+        move.w  (a1)+,d0
+        bmi.s   .End
+
+.Load:                                 
+        move.l  (a1)+,(a2)+
+        move.w  (a1)+,(a2)+
+        dbf     d0,.Load
+
+.End:                                  
+        movem.l (sp)+,a1-a2
+
+        rts
+
+
+; ---------------------------------------------------------------------------
+; Clear any existing queue entries and initialize with a new art list
+; ---------------------------------------------------------------------------
+; PARAMETERS:
+;       d0.w - Artlist ID
+; ---------------------------------------------------------------------------
+
+InitArtList:                           
+        movem.l a1-a2,-(sp)
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        bsr.s   ClearArtListQueue
+        lea     decompQueue.w,a2
+        move.w  (a1)+,d0
+        bmi.s   .End
+
+.Load:                               
+        move.l  (a1)+,(a2)+
+        move.w  (a1)+,(a2)+
+        dbf     d0,.Load
+
+.End:                               
+        movem.l (sp)+,a1-a2
+        rts
+
+
+; ---------------------------------------------------------------------------
+; Clear the art list queue
+; ---------------------------------------------------------------------------
+
+ClearArtListQueue:                      
+        lea     decompQueue.w,a2
+        moveq   #32-1,d0
+
+.Loop:                                 
+        clr.l   (a2)+
+        dbf     d0,.Loop
+        rts
+
+; ---------------------------------------------------------------------------
+; Process any entries in the art list decompression queue
+; ---------------------------------------------------------------------------
+
+ProcessArtLoading:                      
+        tst.l   decompQueue.w
+        beq.s   .End
+
+        tst.w   decompTileCount.w
+        bne.s   .End
+
+        movea.l decompQueue.w,a0
+        lea     NemPCD_WriteRowToVDP,a3
+        lea     globalBuffer.w,a1
+        move.w  (a0)+,d2
+        bpl.s   .NotXOR
+        adda.w  #NemPCD_WriteRowToVDP_XOR-NemPCD_WriteRowToVDP,a3
+
+.NotXOR:                               
+        andi.w  #$7FFF,d2
+        move.w  d2,decompTileCount.w
+
+        bsr.w   NemDec_BuildCodeTable
+
+        move.b  (a0)+,d5
+        asl.w   #8,d5
+        move.b  (a0)+,d5
+        moveq   #16,d6
+
+        moveq   #0,d0
+        move.l  a0,decompQueue.w
+        move.l  a3,decompNemWrite.w
+        move.l  d0,decompRepeat.w
+        move.l  d0,decompPixel.w
+        move.l  d0,decompRow.w
+        move.l  d5,decompRead.w
+        move.l  d6,decompShift.w
+
+.End:                                  
+        rts
+
+; ---------------------------------------------------------------------------
+; Decompress an art list
+; The user defines whether it's fast or slow on their end
+; ---------------------------------------------------------------------------
+
+DecompArtList:
+
+.Fast                     
+        tst.w   decompTileCount.w
+        beq.w   .Done
+
+        move.w  #9,decompProcTileCnt.w
+        moveq   #0,d0
+        move.w  decompQueue+4.w,d0
+        addi.w  #9*32,decompQueue+4.w
+        bra.s   .Main
+
+; ---------------------------------------------------------------------------
+
+.Slow:                     
+        tst.w   decompTileCount.w
+        beq.s   .Done
+        move.w  #3,decompProcTileCnt.w
+        moveq   #0,d0
+        move.w  decompQueue+4.w,d0
+        addi.w  #$60,decompQueue+4.w
+
+; -------------------------------------------------------------------------
+
+.Main:                               
+        lea     VDPCTRL,a4              ; Set a4 = VDPCTRL
+        lsl.l   #2,d0
+        lsr.w   #2,d0
+        ori.w   #$4000,d0
+        swap    d0
+        move.l  d0,(a4)
+        subq.w  #4,a4
+
+        movea.l decompQueue.w,a0        ; Set decompression registers
+        movea.l decompNemWrite.w,a3
+        move.l  decompRepeat.w,d0
+        move.l  decompPixel.w,d1
+        move.l  decompRow.w,d2
+        move.l  decompRead.w,d5
+        move.l  decompShift.w,d6
+
+        lea     globalBuffer.w,a1       ; Get bufferspace
+
+.Decomp:                               
+        movea.w #8,a5
+        bsr.w   NemPCD_NewRow
+        subq.w  #1,decompTileCount.w
+        beq.s   .Pop
+        subq.w  #1,decompProcTileCnt.w
+        bne.s   .Decomp
+        move.l  a0,decompQueue.w
+        move.l  a3,decompNemWrite.w
+        move.l  d0,decompRepeat.w
+        move.l  d1,decompPixel.w
+        move.l  d2,decompRow.w
+        move.l  d5,decompRead.w
+        move.l  d6,decompShift.w
+
+.Done:                            
+        rts
+
+; ---------------------------------------------------------------------------
+
+.Pop:                               
+        lea     decompQueue.w,a0
+        moveq   #$15,d0
+
+.Loop:                                  
+        move.l  6(a0),(a0)+
+        dbf     d0,.Loop
+        rts
+
+; ---------------------------------------------------------------------------
+; Decompress an art list immediately 
+; ---------------------------------------------------------------------------
+
+LoadArtListImm:                         
+        lea     ArtListIndex,a1
+        add.w   d0,d0
+        move.w  (a1,d0.w),d0
+        lea     (a1,d0.w),a1
+        move.w  (a1)+,d1
+
+.Load:                                 
+        movea.l (a1)+,a0
+        moveq   #0,d0
+        move.w  (a1)+,d0
+        lsl.l   #2,d0
+        lsr.w   #2,d0
+        ori.w   #$4000,d0
+        swap    d0
+        move.l  d0,VDPCTRL
+        bsr.w   NemDec
+        dbf     d1,.Load
+        rts
 
 ; -------------------------------------------------------------------------
 ; Decompress Enigma tilemap data into RAM
