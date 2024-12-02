@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; Player and Object foot collision physics library for level terrain
+; Object foot collision physics library for walking on level terrain
 ; This is also Sonic's main collision detection code. 
 ; ---------------------------------------------------------------------------
 
