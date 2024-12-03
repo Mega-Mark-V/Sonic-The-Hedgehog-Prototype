@@ -200,7 +200,7 @@ CycPal_Unknown:
 ; ---------------------------------------------------------------------------
 ; !!! split these later 
 
-PalCycData_TitleScreen:
+PalCycData_Title:
 	dc.w $C42,$E86,$ECA,$EEC 
         dc.w $EEC,$C42,$E86,$ECA
         dc.w $ECA,$EEC,$C42,$E86
@@ -477,7 +477,7 @@ PalLoad:
 ; Macro for defining these easier (see "_include/Macros.i" for "dclww")
 
 palentr	macro	dataddr, off, size
-	dclww   \dataddr, (palette+(\off)*2).w, ((\size)/2)-1
+	dclww   \dataddr, palette+(\off)*2, ((\size)/2)-1
 	endm
 
 ; ---------------------------------------------------------------------------

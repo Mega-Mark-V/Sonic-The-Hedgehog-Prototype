@@ -109,9 +109,9 @@ DrawErrorMsg:
         
         moveq   #0,d0
         move.b  errorCode.w,d0
-        move.w  @ErrorMsgs(pc,d0.w),d0
-        lea     @ErrorMsgs(pc,d0.w),a0
-        move.l  #$46040003,VDPCTRL		; VRAM @ $C604
+        move.w  ErrorMsgs(pc,d0.w),d0
+        lea     ErrorMsgs(pc,d0.w),a0
+        move.l  #$46040003,VDPCTRL		; VRAM  $C604
         moveq   #18-1,d1			; Set string size
 
 .DrawMsg:                  
@@ -126,17 +126,17 @@ DrawErrorMsg:
 ; Error ASCIItext Index
 ; ---------------------------------------------------------------------------
 
-@ErrorMsgs:     dc.w ascErrorExcp-@ErrorMsgs     
-		dc.w ascErrorBusE-@ErrorMsgs
-		dc.w ascErrorAddr-@ErrorMsgs
-		dc.w ascErrorIlle-@ErrorMsgs
-		dc.w ascErrorZDiv-@ErrorMsgs
-		dc.w ascErrorChkI-@ErrorMsgs
-		dc.w ascErrorTRPV-@ErrorMsgs
-		dc.w ascErrorPriv-@ErrorMsgs
-		dc.w ascErrorTrac-@ErrorMsgs
-		dc.w ascErrorLinA-@ErrorMsgs
-		dc.w ascErrorLinF-@ErrorMsgs
+ErrorMsgs:     dc.w ascErrorExcp-ErrorMsgs     
+		dc.w ascErrorBusE-ErrorMsgs
+		dc.w ascErrorAddr-ErrorMsgs
+		dc.w ascErrorIlle-ErrorMsgs
+		dc.w ascErrorZDiv-ErrorMsgs
+		dc.w ascErrorChkI-ErrorMsgs
+		dc.w ascErrorTRPV-ErrorMsgs
+		dc.w ascErrorPriv-ErrorMsgs
+		dc.w ascErrorTrac-ErrorMsgs
+		dc.w ascErrorLinA-ErrorMsgs
+		dc.w ascErrorLinF-ErrorMsgs
 		
 ascErrorExcp:   dc.b 'ERROR EXCEPTION    ' 
 ascErrorBusE:   dc.b 'BUS ERROR          ' 

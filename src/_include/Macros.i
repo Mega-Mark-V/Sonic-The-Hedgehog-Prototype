@@ -2,7 +2,7 @@
 ; General purpose macros for defining pointer data
 ; ---------------------------------------------------------------------------
 
-dclww	macro	long, word1, word2,
+dclww	macro	long, word1, word2
 	dc.l 	\long
 	dc.w 	\word1
 	dc.w 	\word2
@@ -100,6 +100,4 @@ VDPFILL macro addr, len, byte, inc, port
 	VDPCMD	move.l,\addr,VRAM,DMA,(\port)
 	move.w	#(\byte)<<8,VDPDATA
 	DMAWAIT	\port
-
-	VDPFILL $C000,$1FFE,$00,1,a6
-
+	endm

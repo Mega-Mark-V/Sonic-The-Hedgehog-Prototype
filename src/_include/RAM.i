@@ -2,7 +2,7 @@
 ; Data RAM allocations
 ; ---------------------------------------------------------------------------
 
-	rsset	WORKRAM
+	rsset	WORKRAM+$FF000000
 levelChunks:    	rs.b 	$A400
 levelLayout:    	rs.b 	$400 
 deformScrollBuffer:	rs.b 	$200

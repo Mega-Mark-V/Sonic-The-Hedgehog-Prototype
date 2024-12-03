@@ -22,7 +22,8 @@ vdpPlaneZPosX:  	rs.b 2
 vdpPlaneZPosY2: 	rs.b 2    
 vdpHBLANKLine:  	rs.b 1    
 hblankLine:     	rs.b 1    
-palFadeArgs:    	rs.b 1    
+palFadeArgs:    	
+palFadeOff:			rs.b 1    
 palFadeSize:    	rs.b 1    
 vblankUnk1:     	rs.b 1    
 vblankUnk2:    		rs.b 1    
@@ -30,7 +31,7 @@ vblankCmd:      	rs.b 1
                 	rs.b 1
 spriteCount:    	rs.b 1    
                 	rs.b 5
-palCycCurrent:  	rs.b 2    
+palCycStep:  		rs.b 2    
 palCycTimer:    	rs.b 2    
 randomUserSeed: 	rs.b 4    
 paused:         	rs.b 2    
@@ -48,7 +49,7 @@ lvlselCurTimer: 	rs.b 2
 lvlselCurSelection:	rs.b 2 
 lvlselCurSound: 	rs.b 2    
                 	rs.b $14
-decompBuffer:   	rs.b $60  
+decompQueue:   		rs.b $60  
 decompNemWrite: 	rs.b 4    
 decompRepeat:   	rs.b 4    
 decompPixel:    	rs.b 4    
@@ -149,7 +150,7 @@ switchActive:   	rs.b 2
 unkMarbleVar:   	rs.b 1    
 scrollBlockSize:	rs.b 2    
                 	rs.b $E
-sprites:     		rs.b $280 
+vdpSprites:     	rs.b $280 
 paletteWater:   	rs.b $80
 palette:        	rs.b $80  
 palFadeBuffer:  	rs.b $80  

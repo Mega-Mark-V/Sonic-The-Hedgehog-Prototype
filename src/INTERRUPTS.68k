@@ -11,7 +11,7 @@ vbID_LEVEL          EQU         4*2
 vbID_SPECIAL        EQU         5*2
 vbID_LVLSTART       EQU         6*2
 vbID_TIMER          EQU         7*2
-vdID_PAUSE          EQU         8*2
+vbID_PAUSE          EQU         8*2
 vbID_PALFUNC        EQU         9*2
 
 ; ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ VBLANK_LEVEL:
         move.w  vdpHBLANKLine.w,a5
         move.w  vdpPlaneZPosY.w,vdpPlaneZPosY2.w
 
-        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
 
         tst.b   sonicRedrawFlag.w
         beq.s   .NoSonicRedraw
@@ -175,7 +175,7 @@ VBLANK_SPECIAL:
         bne.s   .WaitZ80
 
         VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
-        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
         move.w  #0,Z80BUS
@@ -209,7 +209,7 @@ VBLANK_LVLSTART:
         btst    #0,Z80BUS
         bne.s   .WaitZ80
         VDPDMA  palette,$0000,$80,CRAM,a5               ; Palette DMA
-        VDPDMA  sprites,$F800,$280,VRAM,a5              ; Sprite DMA
+        VDPDMA  vdpSprites,$F800,$280,VRAM,a5              ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5              ; Hscroll DMA
         tst.b   sonicRedrawFlag.w
         beq.s   .NoSonicRedraw
@@ -258,7 +258,7 @@ RefreshVDPBuffers:
         bne.s   .WaitZ80
 
         VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
-        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
         move.w  #0,Z80BUS

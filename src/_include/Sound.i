@@ -21,11 +21,27 @@ musID_GameOver        	EQU     $8F
 musID_Continue        	EQU     $90
 musID_StaffRoll       	EQU     $91
 
+sfxID_Jump              EQU         $A0
+sfxID_Death             EQU         $A3
+sfxID_MissileExplode    EQU         $A5
+sfxID_Spikes            EQU         $A6
+sfxID_Shield            EQU         $AF
+sfxID_Bumper            EQU         $B4
+sfxID_RingCollect       EQU         $B5
+sfxID_Spin              EQU         $BE
+sfxID_Pop               EQU         $C1
+
+sndCMD_Stop             EQU         $E0
+sndCMD_e1               EQU         $E1
+sndCMD_Fast             EQU         $E2
+sndCMD_Slow             EQU         $E3
+
+
 ; ---------------------------------------------------------------------------
 ; Sound RAM allocation
 ; ---------------------------------------------------------------------------
 
-SOUNDRAM	EQU	$FFF000      
+SOUNDRAM	EQU	$FFFFF000      
 	rsset	SOUNDRAM
 			rs.b $A   
 soundqueueA:    	rs.b 1    

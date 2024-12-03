@@ -8,6 +8,7 @@
         include         "_include/RAM.i"
         include         "_include/Sound.i"
         include         "_include/Variables.i"
+        include         "_include/Macros.i"
 
 ; ---------------------------------------------------------------------------   
 ; Header and initial program
@@ -409,13 +410,13 @@ ReadJoypads:
 InitVDP:                                
         lea     VDPCTRL,a0
         lea     VDPDATA,a1
-        lea     @VDPInitValues,a2
+        lea     VDPInitValues,a2
         moveq   #$13-1,d7
 
 .WriteRegs:                            
         move.w  (a2)+,(a0)
         dbf     d7,.WriteRegs
-        move.w  @VDPInitValues+2,d0
+        move.w  VDPInitValues+2,d0
         move.w  d0,vdpBuffer.w
         moveq   #0,d0
         move.l  #CRAMWRITE,VDPCTRL
@@ -434,7 +435,7 @@ InitVDP:
 
 ; ---------------------------------------------------------------------------
 
-@VDPInitValues:  
+VDPInitValues:  
         dc.w $8004              
         dc.w $8134
         dc.w $8230
@@ -491,7 +492,7 @@ InitSound:
         nop
         move.w  #$100,Z80BUS         ; Stop and reset the Z80
         move.w  #$100,Z80RES
-        lea     Z80_SOUND_ROM        ; !!! Needs new name?
+        lea     Z80_SOUND_ROM,a0     ; !!! Needs new name?
         lea     Z80RAM,a1
         move.w  #$1C5B,d0            ; !!! Get size later
 
@@ -627,3 +628,6 @@ DrawTileMap:
         rts
 
 ; ---------------------------------------------------------------------------
+
+        include "Libraries/lib Decompress.asm"
+        include "Libraries/lib Palette.asm"
