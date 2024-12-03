@@ -3,7 +3,7 @@
 ; The code for Sonic's main player object
 ; ---------------------------------------------------------------------------
 
-objSonic:                  
+objPlayer:                  
         tst.w   editMode.w      ; Load into editor object if enabled
         bne.w   EditMode
 
@@ -15,15 +15,15 @@ objSonic:
 ; ---------------------------------------------------------------------------
 
 .Index:                                         ; obj.Action:
-                dc.w Sonic_Init-.Index          ; 0  
-                dc.w Sonic_Main-.Index          ; 2
-                dc.w Sonic_Hurt-.Index          ; 4
-                dc.w Sonic_Death-.Index         ; 6
-                dc.w Sonic_Reset-.Index         ; 8
+                dc.w Player_Init-.Index          ; 0  
+                dc.w Player_Main-.Index          ; 2
+                dc.w Player_Hurt-.Index          ; 4
+                dc.w Player_Death-.Index         ; 6
+                dc.w Player_Reset-.Index         ; 8
 
 ; ---------------------------------------------------------------------------
 
-Sonic_Init:                             
+Player_Init:                             
         addq.b  #2,obj.Action(a0)               
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)         
@@ -39,7 +39,7 @@ Sonic_Init:
         move.w  #12,playerAccel.w       
         move.w  #64,playerDecel.w
 
-Sonic_Main:                             
+Player_Main:                             
         andi.w  #$7FF,obj.Y(a0)         ; Clamp Y pos. to $800 pix. max        
         andi.w  #$7FF,cameraMainY.w
 
@@ -58,25 +58,25 @@ Sonic_Main:
         move.w  .PhysicsModes(pc,d0.w),d1
         jsr     .PhysicsModes(pc,d1.w)
 
-        bsr.s   _playerTrackPowerups    ; Handle powerup states and drawing
-        bsr.w   _playerRecordPos        ; Record previous positions
+        bsr.s   _playTrackPowerups    ; Handle powerup states and drawing
+        bsr.w   _playRecordPos        ; Record previous positions
 
         move.b  footFrontAngle.w,play.FootFront(a0)
         move.b  footBackAngle.w,play.FootBack(a0)
 
-        bsr.w   _sonicAnimate           ; Handle Sonic's animation
-        bsr.w   _playerTouchObjs        ; Handle player/object interactions           
-        bsr.w   _playerSpecialLvlChunks ; Handle special chunks
-        bsr.w   _sonicDynamicGFX        ; Handle dynamic GFX in VRAM
+        bsr.w   _playAnimate            ; Handle Sonic's animation
+        bsr.w   _playObjInteract        ; Handle player/object interactions           
+        bsr.w   _playSpecialLvlChunks   ; Handle special chunks
+        bsr.w   _playDynamicGFX         ; Handle dynamic GFX in VRAM
         rts
 
 ; ---------------------------------------------------------------------------
 
 .PhysicsModes:                                
-                dc.w Sonic_MainCtrl-.PhysicsModes
-                dc.w Sonic_AirCtrl-.PhysicsModes
-                dc.w Sonic_RollCtrl-.PhysicsModes    
-                dc.w Sonic_AirRollCtrl-.PhysicsModes
+                dc.w Player_MainCtrl-.PhysicsModes
+                dc.w Player_AirCtrl-.PhysicsModes
+                dc.w Player_RollCtrl-.PhysicsModes    
+                dc.w Player_AirRollCtrl-.PhysicsModes
 
 ; ---------------------------------------------------------------------------
 ; Handle powerup state tracking, music, and drawing
@@ -90,7 +90,7 @@ Sonic_Main:
                 dc.b musID_SZ
                 dc.b musID_CWZ
 
-_playerTrackPowerups:
+_playTrackPowerups:
         move.w  play.Timeout(a0),d0     ; Skip if timeout is over
         beq.s   .NoTimeout
 
@@ -145,7 +145,7 @@ _playerTrackPowerups:
 ; Record previous player positions for use with powerups
 ; ---------------------------------------------------------------------------
 
-_playerRecordPos:
+_playRecordPos:
         move.w  trackPos.w,d0
         lea     playerPosBuffer.w,a1
         lea     a1,d0.w,a1
@@ -155,45 +155,45 @@ _playerRecordPos:
         rts
 
 ; ---------------------------------------------------------------------------
-; Sonic physics routines
+; Player physics routines
 ; See .PhysicsModes - each series of branches corresponds to obj.Status bits
 ; ---------------------------------------------------------------------------
 
-Sonic_MainCtrl:                                 ; Status unset
-        bsr.w   _playerJump
-        bsr.w   _playerUpSlope
-        bsr.w   _playerMove
-        bsr.w   _playerCheckRoll
-        bsr.w   _playerLevelBoundries
+Player_MainCtrl:                                 ; Status unset
+        bsr.w   _playJump
+        bsr.w   _playUpSlope
+        bsr.w   _playMove
+        bsr.w   _playCheckRoll
+        bsr.w   _playLevelBoundries
         bsr.w   _objectSetSpeed
         bsr.w   _physFootCollision
-        bsr.w   _playerFallOff
+        bsr.w   _playFallOff
         rts
 
-Sonic_AirCtrl:                                  ; Status air bit set
-        bsr.w   _playerJumpHeight
-        bsr.w   _playerAirCtrl
-        bsr.w   _playerLevelBoundries
+Player_AirCtrl:                                  ; Status air bit set
+        bsr.w   _playJumpHeight
+        bsr.w   _playAirCtrl
+        bsr.w   _playLevelBoundries
         bsr.w   _objectFall
-        bsr.w   _playerJumpDir
+        bsr.w   _playJumpDir
         bsr.w   _physAirColCheck
         rts
 
-Sonic_RollCtrl:                                 ; Status roll bit set
-        bsr.w   _playerJump
+Player_RollCtrl:                                 ; Status roll bit set
+        bsr.w   _playJump
         bsr.w   _physRollDown
-        bsr.w   _playerRollCalc
-        bsr.w   _playerLevelBoundries
+        bsr.w   _playRollCalc
+        bsr.w   _playLevelBoundries
         bsr.w   _objectSetSpeed
         bsr.w   _physFootCollision
-        bsr.w   _playerFallOff
+        bsr.w   _playFallOff
         rts
 
-Sonic_AirRollCtrl:                              ; Both statuses set
-        bsr.w   _playerJumpHeight
-        bsr.w   _playerAirCtrl
-        bsr.w   _playerLevelBoundries
+Player_AirRollCtrl:                              ; Both statuses set
+        bsr.w   _playJumpHeight
+        bsr.w   _playAirCtrl
+        bsr.w   _playLevelBoundries
         bsr.w   _objectFall
-        bsr.w   _playerJumpDir
+        bsr.w   _playJumpDir
         bsr.w   _physAirColCheck
         rts

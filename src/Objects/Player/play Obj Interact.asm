@@ -1,4 +1,4 @@
-_playObjCollision:                      
+_playObjInteract:                      
         nop
         moveq   #0,d5
         move.b  obj.YRad(a0),d5
@@ -102,10 +102,10 @@ loc_FBFE:
         tst.b   d1
         bmi.w   loc_FCE0
         move.b  obj.Collision(a1),d0
-        andi.b  #$3F,d0 ; '?'
+        andi.b  #$3F,d0
         cmpi.b  #6,d0
         beq.s   loc_FC2E
-        cmpi.w  #$5A,obj.field_30(a0) ; 'Z'
+        cmpi.w  #$5A,obj.field_30(a0)
         bcc.w   locret_FC2C
         addq.b  #2,obj.Action(a1)
 
