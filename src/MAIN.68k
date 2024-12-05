@@ -579,7 +579,7 @@ PauseGame:
 
         btst    #6,joypadPress.w        ; If A button pressed while paused...
         beq.s   .ABtnNotPressed         
-        move.b  #gmID_TITLE,gamemode.w  go to title screen
+        move.b  #gmID_TITLE,gamemode.w  ; ..go to title screen
         nop
         bra.s   .Unpause
 
