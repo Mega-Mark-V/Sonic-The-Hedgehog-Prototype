@@ -475,7 +475,7 @@ InitScreen:
 .ClearSprites:
         move.l  d0,(a1)+
         dbf     d1,.ClearSprites
-        lea     hscrollTable.w,a1
+        lea     hscroll.w,a1
         moveq   #0,d0
         move.w  #$100,d1
 
@@ -631,3 +631,15 @@ DrawTileMap:
 
         include "Libraries/lib Decompress.asm"
         include "Libraries/lib Palette.asm"
+
+; ---------------------------------------------------------------------------
+; VSync (Wait for VBLANK to fire)
+; ---------------------------------------------------------------------------
+
+VSync:
+        move    #$2300,sr
+
+.Wait: 
+        tst.b   vblankCmd.w
+        bne.s   .Wait
+        rts

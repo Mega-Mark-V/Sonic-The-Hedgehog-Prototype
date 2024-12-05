@@ -147,7 +147,7 @@ _physUnkFallReverse:
         move.l  d3,obj.Y(a0)
         rts
 
-Exactly the same as _objectSetSpeed, but stubbed
+; Exactly the same as _objectSetSpeed, but stubbed
 
 _physUnkSetSpeed    
         rts
