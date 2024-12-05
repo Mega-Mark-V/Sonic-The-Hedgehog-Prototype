@@ -793,4 +793,4 @@ loc_1042C:
         add.w   d1,d0
         bpl.w   loc_103B6
         not.w   d1
-                rts
+        rts
