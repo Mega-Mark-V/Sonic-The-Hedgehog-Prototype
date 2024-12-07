@@ -253,7 +253,7 @@ Start:
         beq.w   .WarmBoot
 
 .ForceColdBoot:        
-        movea.l #HeaderEnd,a0   ; Get header end location
+        movea.l #HEADEREND,a0   ; Get header end location
         movea.l #GAMEEND,a1     ; Get the catalogued ROM end location
         move.l  (a1),d0
         moveq   #0,d1

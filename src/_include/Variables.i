@@ -33,7 +33,7 @@ spriteCount:    	rs.b 1
                 	rs.b 5
 palCycStep:  		rs.b 2    
 palCycTimer:    	rs.b 2    
-randomUserSeed: 	rs.b 4    
+randomSeed: 		rs.b 4    
 paused:         	rs.b 2    
                 	rs.b 8
 vdpIntBuffer:   	rs.b 2    

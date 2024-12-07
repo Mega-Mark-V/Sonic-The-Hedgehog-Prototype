@@ -126,7 +126,7 @@ DrawErrorMsg:
 ; Error ASCIItext Index
 ; ---------------------------------------------------------------------------
 
-ErrorMsgs:     dc.w ascErrorExcp-ErrorMsgs     
+ErrorMsgs:      dc.w ascErrorExcp-ErrorMsgs     
 		dc.w ascErrorBusE-ErrorMsgs
 		dc.w ascErrorAddr-ErrorMsgs
 		dc.w ascErrorIlle-ErrorMsgs
