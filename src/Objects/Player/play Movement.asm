@@ -124,7 +124,7 @@ loc_EB12:
 
 loc_EB16:                               
         move.b  obj.Angle(a0),d0
-        jsr     (CalcSine).l
+        jsr     (CalcSinCos).l
         muls.w  phys.Momentum(a0),d1
         asr.l   #8,d1
         move.w  d1,obj.XSpeed(a0)
@@ -329,7 +329,7 @@ _playRollCalc:
 
 .CalcSpeed:                            
                 move.b  obj.Angle(a0),d0
-                jsr     (CalcSine).l
+                jsr     (CalcSinCos).l
                 muls.w  phys.Momentum(a0),d1
                 asr.l   #8,d1
                 move.w  d1,obj.XSpeed(a0)
@@ -579,7 +579,7 @@ _playJump:
         moveq   #0,d0
         move.b  obj.Angle(a0),d0
         subi.b  #64,d0
-        jsr     (CalcSine).l
+        jsr     (CalcSinCos).l
         muls.w  #$680,d1
         asr.l   #8,d1
         add.w   d1,obj.XSpeed(a0)
@@ -664,7 +664,7 @@ _playerJump:
         moveq   #0,d0
         move.b  obj.Angle(a0),d0
         subi.b  #64,d0
-        jsr     CalcSine
+        jsr     CalcSinCos
         muls.w  #$680,d1
         asr.l   #8,d1
         add.w   d1,obj.XSpeed(a0)

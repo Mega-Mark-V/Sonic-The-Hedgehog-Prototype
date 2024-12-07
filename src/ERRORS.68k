@@ -74,7 +74,7 @@ ErrorDetailed:
         bsr.w   DrawErrorValue			; Draw longword onscreen
         move.l  errorInfo.w,d0			; Get saved info from earlier
         bsr.w   DrawErrorValue			; Draw another longword
-        bra.s   .Exit				; Finish to loop
+        bra.s   ErrorExit			; Finish to loop
         
 ; ---------------------------------------------------------------------------
 ; Main "Handler"
@@ -87,7 +87,7 @@ ErrorMain:
         move.l  2(sp),d0                        
         bsr.w   DrawErrorValue                  ; Draw its information
 
-.Exit:                 
+ErrorExit:                 
         bsr.w   WaitPlayerInput
         movem.l objectStates.w,d0-d7/a0-a7
         move    #$2300,sr
@@ -111,7 +111,7 @@ DrawErrorMsg:
         move.b  errorCode.w,d0
         move.w  ErrorMsgs(pc,d0.w),d0
         lea     ErrorMsgs(pc,d0.w),a0
-        move.l  #$46040003,VDPCTRL		; VRAM  $C604
+        VDPCMD  move.l,$C604,VRAM,WRITE,VDPCTRL
         moveq   #18-1,d1			; Set string size
 
 .DrawMsg:                  

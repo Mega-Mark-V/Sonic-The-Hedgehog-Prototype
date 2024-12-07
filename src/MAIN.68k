@@ -418,7 +418,7 @@ InitVDP:
         move.w  (a2)+,(a0)
         dbf     d7,.WriteRegs
         move.w  VDPInitValues+2,d0
-        move.w  d0,vdpBuffer.w
+        move.w  d0,vdpModeReg1.w
         moveq   #0,d0
         move.l  #CRAMWRITE,VDPCTRL
         move.w  #64-1,d7
@@ -537,19 +537,19 @@ InitSound:
 ; Queue A is used for music most of the time, B for sounds. C is unused.
 ; ---------------------------------------------------------------------------
 
-QueueSoundA:
+SndSetBGM:
         move.b  d0,soundqueueA.w
         rts
 
 ; ---------------------------------------------------------------------------
 
-QueueSoundB:
+SndSetSFX:
         move.b  d0,soundqueueB.w
         rts
 
 ; ---------------------------------------------------------------------------
 
-QueueSoundC:
+SndSetUnk:
         move.b  d0,soundqueueC.w
         rts
 
@@ -673,6 +673,12 @@ CalcRandom:
 
 ; ---------------------------------------------------------------------------
 ; Function to get the sine and cosine from an angle unit
+; There are only 256 degree units, to store that of a full circle, so...
+;
+; 45  degrees = $20 units
+; 90  degrees = $40 units
+; 180 degrees = $80 units
+; ...and so on.
 ;
 ; INPUT:
 ; d0.w  = Angle Unit
@@ -835,6 +841,7 @@ CalcATan:
         rts
 
 ; ---------------------------------------------------------------------------
+
 AngleTable:     
         dc.b   0,  0,  0,  0,  1,  1,  1,  1
         dc.b   1,  1,  2,  2,  2,  2,  2,  2
@@ -869,3 +876,6 @@ AngleTable:
         dc.b $1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F
         dc.b $1F,$1F,$20,$20,$20,$20,$20,$20
         dc.b $20,  0
+
+        include         "GM LOGO/_LOGO.68k"
+;       include         "GM TITLE/_TITLE.68k"

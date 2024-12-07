@@ -1,0 +1,64 @@
+; ---------------------------------------------------------------------------
+; SEGA "LOGO" Main Game Mode Program
+; ---------------------------------------------------------------------------
+
+; Chunk rendering isn't used here, so the location is free
+logoMapBuffer	 EQU 	levelChunks      
+
+GM_LOGO:                                
+        move.b  #sndCMD.Fade,d0
+        bsr.w   SndSetSFX
+
+        bsr.w   ClearArtListQueue
+        bsr.w   PalFadeOut
+
+        lea     VDPCTRL,a6
+        move.w  #$8004,(a6) 		  ; Set normal color mode
+        move.w  #$8200+($C000>>10),(a6)   ; Set Plane A nametable addr.
+        move.w  #$8407+($E000>>13),(a6)   ; Set Plane B nametable addr.
+        move.w  #$8700,(a6) 		  ; Set background color num.
+        move.w  #$8B00,(a6)               ; Set fullscreen V and H scroll
+        move.w  vdpModeReg1.w,d0	  ; Get mode reg. 1 info
+        andi.b  #%10111111,d0             ; Mask display enable bit
+        move.w  d0,VDPCTRL                ; Set mode reg. 1 
+        bsr.w   InitScreen
+
+        VDPCMD	move.l,$0000,VRAM,WRITE,d0   ; Set VRAM write address
+        lea     ArtNem_LOGO,a0  	     ; Get compressed bitstream
+        bsr.w   NemDec
+
+        lea     logoMapBuffer,a1          ; Set output addr.
+        lea     MapEni_LOGO,a0            ; Get compressed data
+        move.w  #0,d0                     ; Decompress to output addr.
+        bsr.w   EniDec
+
+        lea     logoMapBuffer,a1
+        VDPCMD	move.l,$C61C,VRAM,WRITE,d0   ; Set VRAM write address
+        moveq   #12-1,d1                     ; Set Width
+        moveq   #4-1,d2 		     ; Set Height
+        bsr.w   DrawTileMap 		     ; Draw Tilemap to location
+
+        moveq   #0,d0 		; !!! Make ID	     
+        bsr.w   PalLoad
+
+        move.w  #40,palCycStep.w 	  ; Set palette cycle info
+        move.w  #0,logoUnk2.w
+        move.w  #0,logoUnk1.w
+        move.w  #180,genericTimer.w 
+        move.w  vdpModeReg1.w,d0          
+        ori.b   #%1000000,d0
+        move.w  d0,VDPCTRL		  ; Enable display when ready
+
+.Wait:                                 
+        move.b  #vbID_LOGO,vblankCmd.w
+        bsr.w   VSync
+        bsr.w   _logoCyclePal 		  ; see: Libraries/lib Palette.asm
+
+        tst.w   genericTimer.w
+        beq.s   .Exit
+        andi.b  #%10000000,joypadPress.w  ; If start not pressed, wait
+        beq.s   .Wait 			  
+
+.Exit:                                 
+        move.b  #gmID_TITLE,gamemode.w
+        rts

@@ -257,9 +257,9 @@ RefreshVDPBuffers:
         btst    #0,Z80BUS
         bne.s   .WaitZ80
 
-        VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
+        VDPDMA  palette,$0000,$80,CRAM,a5        ; Palette DMA
         VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
-        VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
+        VDPDMA  hscroll,$FC00,$380,VRAM,a5       ; Hscroll DMA
 
         move.w  #0,Z80BUS
         rts

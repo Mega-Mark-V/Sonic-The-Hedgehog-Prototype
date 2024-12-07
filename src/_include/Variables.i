@@ -10,7 +10,7 @@ joypadMirrorPress:	rs.b 1
 joypad:         	rs.b 1    
 joypadPress:    	rs.b 1    
                 	rs.b 6
-vdpBuffer:      	rs.b 2    
+vdpModeReg1:      	rs.b 2    
                 	rs.b 6
 genericTimer:   	rs.b 2    
 vdpPlaneAPosY:  	rs.b 2    
@@ -42,8 +42,8 @@ hblankFlag:     	rs.b 2
                 	rs.b 2
 water:          	rs.b 2    
                 	rs.b $12
-segaUnk1:       	rs.b 2    
-segaUnk2:       	rs.b 2    
+logoUnk1:       	rs.b 2    
+logoUnk2:       	rs.b 2    
                 	rs.b 2
 lvlselCurTimer: 	rs.b 2    
 lvlselCurSelection:	rs.b 2 
