@@ -6,7 +6,7 @@ This disassembly is meant to serve as the basis for the rest of the disassemblie
 
 This uses a completely different stylization from the disassemblies Sonic Retro hosts. I intend to emphasize documentation over ease-of-access. The structure of Sonic Retro's disassemblies is highly criticized for its lack of documentation and simplicity in presentation. Research and documentation is crucial, and I believe that explaining and providing context to systems and engine functionality not only allow researchers to better understand the thought processes and intent programmers might have had, but would serve to better educate novice ROM-hackers and programmers on the engine's code, which in turn would make things more accessible. 
 
-This disassembly should target asm68K or Naoto's vasm Psi-X module. You can find that here : https://github.com/NaotoNTP/vasm-psi-x
+This disassembly targets Naoto's vasm Psi-X module. You can find that here : https://github.com/NaotoNTP/vasm-psi-x
 
 ## Notes
 
@@ -14,7 +14,7 @@ This disassembly should target asm68K or Naoto's vasm Psi-X module. You can find
 - At this time, I have not gone through the sound driver's code yet. It should be compiled separately, alongside the sound driver Z80 ROM which is uncompressed in this build of the game
 - The special stage should also be compiled separately, as it has its own RAM layout, which is why RAM is currently split into two files ("Variables.i" and "RAM.i")
 - Assembly files (.68K and .Z80) should be read with a tab width of 8.
-- ../src/_TEMPORARY/idaraw.ASM contains the raw disassembly output, and should provide context for current progress
+- ../src/_TEMPORARY/_TEMP.ASM contains the raw disassembly output, and should provide context for current progress
 
 ## Notice
 
