@@ -32,6 +32,15 @@ Z80START macro
 ; ---------------------------------------------------------------------------
 
 VDPCMD macro ins, addr, type, rwd, end, end2
+	local	cmd
+cmd	= (\type\\rwd\)|(((\addr)&$3FFF)<<16)|((\addr)/$4000)
+	if narg=5
+		\ins	#\#cmd,\end
+	elseif narg>=6
+		\ins	#(\#cmd)\end,\end2
+	else
+		\ins	cmd
+	endif
 	endm
 
 ; ---------------------------------------------------------------------------
