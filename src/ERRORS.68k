@@ -99,7 +99,7 @@ ErrorExit:
 
 DrawErrorMsg:                
         lea     VDPDATA,a6
-        move.l  #$78000003,VDPCTRL
+        VDPCMD  move.l,$F800,VRAM,WRITE,d0      ; Set VRAM write address
         lea     ArtUnc_Text,a0
         move.w  #$27F,d1
 
@@ -156,7 +156,7 @@ ascErrorLinF:  	dc.b 'LINE 1111 EMULATOR '
 ; ---------------------------------------------------------------------------
 
 DrawErrorValue:                 
-        move.w  #'$'+ERRORTILEBASE,(a6)	; Draw '$' symbol first
+        move.w  #ERRORTILEBASE+$3A,(a6)	; Draw '$' symbol first
         
         moveq   #8-1,d2			; Draw each nybble in a longword 		
 

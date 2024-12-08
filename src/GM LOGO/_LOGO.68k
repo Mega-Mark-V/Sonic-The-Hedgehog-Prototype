@@ -3,6 +3,7 @@
 ; ---------------------------------------------------------------------------
 
 ; Chunk rendering isn't used here, so the location is free
+
 logoMapBuffer	 EQU 	levelChunks      
 
 GM_LOGO:                                
