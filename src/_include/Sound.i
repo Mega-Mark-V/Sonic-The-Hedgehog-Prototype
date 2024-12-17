@@ -14,7 +14,7 @@ musID.CWZ               EQU     $86
 musID.Invincible        EQU     $87
 musID.ExtraLife         EQU     $88
 musID.Special           EQU     $89
-musID.TitleScreen       EQU     $8A
+musID.Title             EQU     $8A
 musID.Ending            EQU     $8B
 musID.Boss            	EQU     $8C
 musID.Final           	EQU     $8D

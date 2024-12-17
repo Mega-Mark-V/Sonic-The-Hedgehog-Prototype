@@ -15,8 +15,8 @@
 ; ---------------------------------------------------------------------------
 
 HEADER:
-        dc.l $FFFE00            ; Initial SP
-        dc.l SECURITY           ; Initial PC
+        dc.l STACK              ; Initial SP
+        dc.l ICD_BLK            ; Initial PC
                 
         dc.l ERROR_BUS          ; Error vectors
         dc.l ERROR_ADDRESS
@@ -91,7 +91,7 @@ UINT:
 ; The final game uses ICD_BLK4.PRG, which is dated June 6th, 1990
 ; ---------------------------------------------------------------------------
 
-SECURITY:
+ICD_BLK:
         tst.l   IOCTRL1_        ; Test controller 1 and 2 bits
 
 .WaitBoot:          
@@ -191,32 +191,25 @@ SECURITYDATA:
 SECURITY_VDP:
         dc.b %0000100   ; 00 (MODE REG1) Normal color mode           
         dc.b %0010100   ; 01 (MODE REG2) Mode 5 display on, DMA on
-        
         dc.b $C000>>10  ; 02 Plane A Nametable Address 
         dc.b $F000>>10  ; 03 Window Nametable Address
         dc.b $E000>>13  ; 04 Plane B Nametable Address
-        
         dc.b $D800>>9   ; 05 Sprite Table Address
         dc.b 0          ; 06 *Unused on MD*
         dc.b (0<<4)+0   ; 07 Background color
         dc.b 0          ; 08 *Unused on MD*
         dc.b 0          ; 09 *Unused on MD*
         dc.b 256-1      ; 0A H-BLANK Scanline Interval
-        
         dc.b 0          ; 0B (MODE REG3) Scroll fullscreen
         dc.b %10000001  ; 0C (MODE REG4) H40 Cell mode
-        
         dc.b $DC00>>10  ; 0D H-Scroll Tablle Address
         dc.b 0          ; 0E *Unused on MD*
         dc.b 1          ; 0F VDP Address Autoincrement value
         dc.b 1          ; 10 Plane size (256x512)
-        
         dc.b 0          ; 11 Window Plane Xpos
         dc.b 0          ; 12 Window Plane Ypos
-        
         dc.b $FF        ; 13 DMA Length (Low)
         dc.b $FF        ; 14 DMA Length (Hi)
-        
         dc.b 0          ; 15 DMA Source (Low)
         dc.b 0          ; 16 DMA Source (Mid)
         dc.b $80        ; 17 DMA Source (Hi)
@@ -418,7 +411,7 @@ InitVDP:
         move.w  (a2)+,(a0)
         dbf     d7,.WriteRegs
         move.w  VDPInitValues+2,d0
-        move.w  d0,vdpModeReg1.w
+        move.w  d0,displayMode.w
         moveq   #0,d0
         move.l  #CRAMWRITE,VDPCTRL
         move.w  #64-1,d7
@@ -878,4 +871,5 @@ AngleTable:
         dc.b $20,  0
 
         include         "GM LOGO/_LOGO.68k"
-;       include         "GM TITLE/_TITLE.68k"
+        ;include         "GM TITLE/_TITLE.68k"
+        include         "Objects/object Main.asm"

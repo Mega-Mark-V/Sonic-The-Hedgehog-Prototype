@@ -3,17 +3,18 @@
 ; ---------------------------------------------------------------------------
 ; Constants
 ; ---------------------------------------------------------------------------
-
-errorBus         EQU 	2          	; Error IDs (For ASCII text index)
-errorIllegal     EQU 	4          	
-errorAddress     EQU 	6          
-errorZeroDiv     EQU 	8          
-errorChkInst     EQU 	$A         
-errorTrapV       EQU 	$C         
-errorPrivilege   EQU 	$E         
-errorTrace       EQU 	$10        
-errorLineA       EQU 	$12        
-errorLineF       EQU 	$14
+                rsreset
+errorGeneric    rs.w    1
+errorBus        rs.w    1
+errorIllegal    rs.w    1     	
+errorAddress    rs.w    1      
+errorZeroDiv    rs.w    1      
+errorChkInst    rs.w    1   
+errorTrapV      rs.w    1     
+errorPrivilege  rs.w    1       
+errorTrace      rs.w    1
+errorLineA      rs.w    1
+errorLineF      rs.w    1
 
 ERRORTILEBASE	 EQU 	$0790		; VRAM Tile ID base
 
@@ -56,7 +57,7 @@ ERROR_LINEF:
         addq.l  #2,2(sp)
         bra.s   ErrorMain
 ERROR:                  
-        move.b  #0,errorCode.w
+        move.b  #errorGeneric,errorCode.w
         bra.s   ErrorMain
         
 ; ---------------------------------------------------------------------------

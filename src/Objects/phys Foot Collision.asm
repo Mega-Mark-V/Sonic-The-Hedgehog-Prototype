@@ -274,8 +274,8 @@ _physWalkCeiling:
         moveq   #0,d0
         move.b  obj.YRad(a0),d0         ; For ceiling, top edge of course
         ext.w   d0
-        sub.w   d0,d2                   
-        eori.w  #$F,d2                  ; Y
+        sub.w   d0,d2                   ; Y
+        eori.w  #$F,d2                  ; Reverse low nybble to reverse pos. in block
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
@@ -294,8 +294,8 @@ _physWalkCeiling:
         moveq   #0,d0
         move.b  obj.YRad(a0),d0
         ext.w   d0
-        sub.w   d0,d2                   
-        eori.w  #$F,d2                  ; Y
+        sub.w   d0,d2                   ; Y
+        eori.w  #$F,d2                  ; Reverse low nybble to reverse pos. in block
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3                   ; X
@@ -485,7 +485,8 @@ _physFindBlock:
 
 ; ---------------------------------------------------------------------------
 ; Routine to get the current block in a chunk from two points, and then      
-; return all their relevant attributes based on user inputs
+; return all their relevant attributes based on HEIGHT data and user input.
+; Used when running on a floor or ceiling.
 ;
 ; INPUTS:
 ;       d2.w = Y point
@@ -504,151 +505,187 @@ _physFindBlock:
 
 
 _physGetFloorAttr:
-        bsr.s   _physFindBlock
-        move.w  (a1),d0                         ; a1 = Block address
-        move.w  d0,d4                           
-        andi.w  #$7FF,d0                        ; Mask out info bits
-        beq.s   .Skip
-        btst    d5,d4
-        bne.s   .DoFloorCalc
+        bsr.s   _physFindBlock          ; a1 = Block address in chunk mem.
+        move.w  (a1),d0                 ; Get solid, orientation and block ID
+        move.w  d0,d4                   ; d4 = block attributes from blk addr.       
+        andi.w  #$7FF,d0                ; Mask out info bits
+        beq.s   .TryNext
 
-.Skip:                                 
-        add.w   a3,d2                           ; Add height for adjacent block
-        bsr.w   _physGetFloorAttrAdj            ; Try to find block adjacent to this one
-        sub.w   a3,d2 
-        addi.w  #16,d1
+        btst    d5,d4                   ; Does this have solids the user needs?
+        bne.s   .GetBlkAttrib           ; If so, get other attributes
+
+.TryNext:                                 
+        add.w   a3,d2                   ; Add height for block below this one
+        bsr.w   _physGetFloorAttrAdj    ; Try to find block adjacent
+        sub.w   a3,d2                   ; Re-adjust up by block size
+        addi.w  #16,d1                  ; Set distance 1 block below
         rts
 
-.DoFloorCalc:                          
-        movea.l collisionPtr.w,a2
-        move.b  (a2,d0.w),d0
-        andi.w  #$FF,d0                         ; Mask out top bytes
-        beq.s   .TryNext                        ; Try next block down if empty
-        lea     AngleMap,a2
+.GetBlkAttrib:                          
+        movea.l collisionPtr.w,a2       ; Get collision height ID
+        move.b  (a2,d0.w),d0            
+        andi.w  #$FF,d0                 ; Get only low byte
+        beq.s   .TryNext                ; Try next block down if empty
+
+        lea     AngleMap,a2             ; Get angle value
         move.b  (a2,d0.w),(a4)
-        lsl.w   #4,d0
-        move.w  d3,d1
-        btst    #$B,d4
-        beq.s   loc_10202
-        not.w   d1
-        neg.b   (a4)
+        lsl.w   #4,d0                   ; Multiply by 16 for data offset
+        move.w  d3,d1                   ; Xpos to d1
+        btst    #BLK.XFLIP,d4           ; Skip ahead if no Xflip
+        beq.s   .NotXFlip
 
-loc_10202:                              
-        btst    #$C,d4
-        beq.s   loc_10212
-        addi.b  #$40,(a4)
-        neg.b   (a4)
-        subi.b  #$40,(a4) 
+        not.w   d1                      ; Reverse position within block height
+        neg.b   (a4)                    ; Negate angle value
 
-loc_10212:                              
-        andi.w  #$F,d1
-        add.w   d0,d1
-        lea     BlkColHeights,a2
+.NotXFlip:                              
+        btst    #BLK.YFLIP,d4           ; Skip ahead if no Yflip
+        beq.s   .NotYFlip               
+
+        addi.b  #$40,(a4)               ; Push over 90 degrees
+        neg.b   (a4)
+        subi.b  #$40,(a4)               ; Push back for negated "refracted" angle
+
+.NotYFlip:                              
+        andi.w  #$F,d1                  ; Mask to only low nybble for xpos. in block
+        add.w   d0,d1                   ; Add x-pos to data offset
+        lea     BlkColHeights,a2        ; Use it to get location within heightmap
         move.b  (a2,d1.w),d0
-        ext.w   d0
-        eor.w   d6,d4
-        btst    #$C,d4
-        beq.s   loc_1022E
-        neg.w   d0
 
-loc_1022E:                              
-        tst.w   d0
-        beq.s   .Skip
-        bmi.s   loc_1024A
-        cmpi.b  #$10,d0
-        beq.s   loc_10256
-        move.w  d2,d1
-        andi.w  #$F,d1
-        add.w   d1,d0
-        move.w  #$F,d1
+        ext.w   d0                      ; !!! SIGN USED HERE - doublecheck this doc.
+        eor.w   d6,d4                   ; Set user orientation mask
+        btst    #BLK.YFLIP,d4
+        beq.s   .NotUserYFlip  
+               
+        neg.w   d0                      ; Negate height for Y flip 
+
+.NotUserYFlip:                              
+        tst.w   d0                      ; If our height is 0, try block below this one.
+        beq.s   .TryNext
+
+        bmi.s   .NegativeHeight         ; If it's negative, branch ahead 
+
+        cmpi.b  #16,d0                  ; If max height, check block ABOVE this one.
+        beq.s   .MaxHeight  
+
+        move.w  d2,d1                   ; Get Ypos low nybble for in-block loc.
+        andi.w  #$F,d1                  
+        add.w   d1,d0                   ; Add to height                 
+        move.w  #16-1,d1     
         sub.w   d0,d1
         rts
 
-loc_1024A:                              
+.NegativeHeight:                              
         move.w  d2,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        bpl.w   .Skip
+        bpl.w   .TryNext                
 
-loc_10256:                              
-        sub.w   a3,d2
-        bsr.w   _physGetFloorAttrAdj
-        add.w   a3,d2
-        subi.w  #$10,d1
+.MaxHeight:                              
+        sub.w   a3,d2                   ; Subtract for block above this one
+        bsr.w   _physGetFloorAttrAdj    ; Check for it instead
+        add.w   a3,d2                   ; Re-adjust down by block size      
+        subi.w  #16,d1                  ; Set distance 1 block above
         rts
 
-; =============== S U B R O U T I N E =======================================
-
+; ---------------------------------------------------------------------------
+; Simpler version of above routine that exits if no good block info found
+; ---------------------------------------------------------------------------
 
 _physGetFloorAttrAdj:                   
-        bsr.w   _physFindBlock
-        move.w  (a1),d0
-        move.w  d0,d4
-        andi.w  #$7FF,d0
-        beq.s   loc_10276
-        btst    d5,d4
-        bne.s   loc_10284
+        bsr.s   _physFindBlock          ; a1 = Block address
+        move.w  (a1),d0                 ; Get attribute information
+        move.w  d0,d4                   ; d4 = attributes       
+        andi.w  #$7FF,d0                ; Mask out info bits
+        beq.s   .Return
 
-loc_10276:                              
+        btst    d5,d4                   ; If solid matches then get attributes
+        bne.s   .GetBlkAttrib
+
+.Return:                              
         move.w  #$F,d1
         move.w  d2,d0
         andi.w  #$F,d0
         sub.w   d0,d1
         rts
 
-loc_10284:                              
+.GetBlkAttrib:                              
         movea.l collisionPtr.w,a2
         move.b  (a2,d0.w),d0
         andi.w  #$FF,d0
-        beq.s   loc_10276
+        beq.s   .Return
+
         lea     AngleMap,a2
         move.b  (a2,d0.w),(a4)
         lsl.w   #4,d0
         move.w  d3,d1
-        btst    #$B,d4
-        beq.s   loc_102AA
+        btst    #BLK.XFLIP,d4
+        beq.s   .NotXFlip
+
         not.w   d1
         neg.b   (a4)
 
-loc_102AA:                              
-        btst    #$C,d4
-        beq.s   loc_102BA
+.NotXFlip:                              
+        btst    #BLK.YFLIP,d4
+        beq.s   .NotYFlip
+
         addi.b  #$40,(a4) 
         neg.b   (a4)
         subi.b  #$40,(a4) 
 
-loc_102BA:                              
+.NotYFlip:                              
         andi.w  #$F,d1
         add.w   d0,d1
         lea     BlkColHeights,a2
         move.b  (a2,d1.w),d0
+
         ext.w   d0
         eor.w   d6,d4
-        btst    #$C,d4
-        beq.s   loc_102D6
+        btst    #BLK.YFLIP,d4
+        beq.s   .NotUserYFlip
+
         neg.w   d0
 
-loc_102D6:                              
+.NotUserYFlip:                              
         tst.w   d0
-        beq.s   loc_10276
-        bmi.s   loc_102EC
+        beq.s   .Return
+
+        bmi.s   .NegativeHeight
+
         move.w  d2,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        move.w  #$F,d1
+        move.w  #16-1,d1
         sub.w   d0,d1
         rts
-; ---------------------------------------------------------------------------
 
-loc_102EC:                              
+.NegativeHeight:                              
         move.w  d2,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        bpl.w   loc_10276
+        bpl.w   .Return
+
         not.w   d1
         rts
 
-; =============== S U B R O U T I N E =======================================
+; ---------------------------------------------------------------------------
+; Routine to get the current block in a chunk from two points, and then      
+; return all their relevant attributes based on WIDTH data and user input.
+; Used when running on walls.
+;
+; INPUTS:
+;       d2.w = Y point
+;       d3.w = X point
+;       d5.w = Solidity bit
+;       d6.w = Orientation bits
+;       a3.w = Width of the tile 
+;       a4   = Angle information output location
+;
+; OUTPUTS:
+;       d1.w   = Distance from floor
+;       a1     = Block address in the chunk map
+;       (a4).b = Angle of block stood on
+;
+; ---------------------------------------------------------------------------
 
 
 _physGetWallAttr:                       
@@ -656,76 +693,86 @@ _physGetWallAttr:
         move.w  (a1),d0
         move.w  d0,d4
         andi.w  #$7FF,d0
-        beq.s   loc_1030E
-        btst    d5,d4
-        bne.s   loc_1031C
+        beq.s   .TryNext
 
-loc_1030E:                              
-        add.w   a3,d3
-        bsr.w   _physGetWallAttrAdj
-        sub.w   a3,d3
-        addi.w  #$10,d1
+        btst    d5,d4
+        bne.s   .GetBlkAttrib
+
+.TryNext:                              
+        add.w   a3,d3                   ; Add for tile to right of this one
+        bsr.w   _physGetWallAttrAdj     ; Get its attributes
+        sub.w   a3,d3                   ; Re-adjust
+        addi.w  #16,d1                  ; Set distance 1 block over
         rts
 
-loc_1031C:                              
-        movea.l collisionPtr.w,a2
+.GetBlkAttrib:                              
+        movea.l collisionPtr.w,a2       ; Get collision width ID
         move.b  (a2,d0.w),d0
-        andi.w  #$FF,d0
-        beq.s   loc_1030E
-        lea     AngleMap,a2
+        andi.w  #$FF,d0                 ; Get only low byte
+        beq.s   .TryNext                ; Try next block over if empty
+
+        lea     AngleMap,a2             ; Get angle value
         move.b  (a2,d0.w),(a4)
-        lsl.w   #4,d0
-        move.w  d2,d1
-        btst    #$C,d4
-        beq.s   loc_1034A
-        not.w   d1
-        addi.b  #$40,(a4) 
-        neg.b   (a4)
-        subi.b  #$40,(a4) 
+        lsl.w   #4,d0                   ; Multiply by 16 for data offset
+        move.w  d2,d1                   ; Ypos to d1
+        btst    #BLK.YFLIP,d4           ; Skip ahead if no Yflip
+        beq.s   .NotYFlip
 
-loc_1034A:                              
-        btst    #$B,d4
-        beq.s   loc_10352
+        not.w   d1                      ; Reverse position within block width
+        addi.b  #$40,(a4)               ; Push over 90 degrees
         neg.b   (a4)
+        subi.b  #$40,(a4)               ; Push back for negated "refracted" angle
 
-loc_10352:                              
+.NotYFlip:                              
+        btst    #BLK.XFLIP,d4           ; Skip ahead if no Xflip
+        beq.s   .NotXFlip
+
+        neg.b   (a4)                    ; Negate angle value
+
+.NotXFlip:                              
         andi.w  #$F,d1
         add.w   d0,d1
         lea     BlkColWidths,a2
         move.b  (a2,d1.w),d0
-        ext.w   d0
-        eor.w   d6,d4
-        btst    #$B,d4
-        beq.s   loc_1036E
+
+        ext.w   d0                      ; !!!
+        eor.w   d6,d4                   ; Set user orientation
+        btst    #BLK.XFLIP,d4
+        beq.s   .NotUserXFlip
         neg.w   d0
 
-loc_1036E:                              
-        tst.w   d0
-        beq.s   loc_1030E
-        bmi.s   loc_1038A
-        cmpi.b  #$10,d0
-        beq.s   loc_10396
+.NotUserXFlip:                              
+        tst.w   d0                      ; If width is 0, try block to right
+        beq.s   .TryNext
+
+        bmi.s   .NegativeWidth          ; If neg, skip ahead
+
+        cmpi.b  #16,d0                  ; If max width, check block to left
+        beq.s   .MaxWidth
+
         move.w  d3,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        move.w  #$F,d1
+        move.w  #16-1,d1
         sub.w   d0,d1
         rts
 
-loc_1038A:                              
+.NegativeWidth:                              
         move.w  d3,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        bpl.w   loc_1030E
+        bpl.w   .TryNext
 
-loc_10396:                              
-        sub.w   a3,d3
-        bsr.w   _physGetWallAttrAdj
-        add.w   a3,d3
-        subi.w  #$10,d1
+.MaxWidth:                              
+        sub.w   a3,d3                   ; Subtract for block to left of this one
+        bsr.w   _physGetWallAttrAdj     ; Check its attributes
+        add.w   a3,d3                   ; Re-adjust down by block size      
+        subi.w  #16,d1                  ; Return attributes for above block
         rts
 
-; =============== S U B R O U T I N E =======================================
+; ---------------------------------------------------------------------------
+; Again, simpler version of above.
+; ---------------------------------------------------------------------------
 
 
 _physGetWallAttrAdj:                    
@@ -733,53 +780,56 @@ _physGetWallAttrAdj:
         move.w  (a1),d0
         move.w  d0,d4
         andi.w  #$7FF,d0
-        beq.s   loc_103B6
-        btst    d5,d4
-        bne.s   loc_103C4
+        beq.s   .Return
 
-loc_103B6:                              
+        btst    d5,d4
+        bne.s   .GetBlkAttrib
+
+.Return:                              
         move.w  #$F,d1
         move.w  d3,d0
         andi.w  #$F,d0
         sub.w   d0,d1
         rts
 
-loc_103C4:                              
+.GetBlkAttrib:                              
         movea.l collisionPtr.w,a2
         move.b  (a2,d0.w),d0
         andi.w  #$FF,d0
-        beq.s   loc_103B6
+        beq.s   .Return
+
         lea     AngleMap,a2
         move.b  (a2,d0.w),(a4)
         lsl.w   #4,d0
         move.w  d2,d1
-        btst    #$C,d4
-        beq.s   loc_103F2
+        btst    #BLK.YFLIP,d4
+        beq.s   .NotYFlip
+
         not.w   d1
         addi.b  #$40,(a4) 
         neg.b   (a4)
         subi.b  #$40,(a4) 
 
-loc_103F2:                              
-        btst    #$B,d4
-        beq.s   loc_103FA
+.NotYFlip:                              
+        btst    #BLK.XFLIP,d4
+        beq.s   .NotXFlip
         neg.b   (a4)
 
-loc_103FA:                              
+.NotXFlip:                              
         andi.w  #$F,d1
         add.w   d0,d1
         lea     BlkColWidths,a2
         move.b  (a2,d1.w),d0
         ext.w   d0
         eor.w   d6,d4
-        btst    #$B,d4
-        beq.s   loc_10416
+        btst    #BLK.XFLIP,d4
+        beq.s   .NotUserXFlip
         neg.w   d0
 
-loc_10416:                              
+.NotUserXFlip:                              
         tst.w   d0
-        beq.s   loc_103B6
-        bmi.s   loc_1042C
+        beq.s   .Return
+        bmi.s   .NegativeWidth
         move.w  d3,d1
         andi.w  #$F,d1
         add.w   d1,d0
@@ -787,10 +837,109 @@ loc_10416:
         sub.w   d0,d1
         rts
 
-loc_1042C:                              
+.NegativeWidth:                              
         move.w  d3,d1
         andi.w  #$F,d1
         add.w   d1,d0
-        bpl.w   loc_103B6
+        bpl.w   .Return
         not.w   d1
+        rts
+
+; ---------------------------------------------------------------------------
+; A function that would convert the original source code solids array into
+; two separate height and width maps for use with the above calculations
+;
+; The original source file, blkcol.bct, is in a 1BPP "arcade-style" format,
+; where everything is stored rotated at -90 degrees
+; So basically, heights are able to read per-column, which is faster
+; 
+; The arcade-style format could be from working around arcade game libraries,
+; as the sine calculation function angles are also rotated -90 degrees
+; ---------------------------------------------------------------------------
+; This is no longer used, as the solidity array was finalized by this point.
+; It also would not work in its current form on stock Mega Drive hardware,
+; so it presumably would have used a development system's memory, much like
+; how the demo recording function does, but here, it seems like it may
+; have just overwritten the data it was processing as it goes along.
+;
+; Angle and collision data is aligned out to 0x68000 in ROM
+; Height starts at 0x68100, Widths start at 0x69100
+; ---------------------------------------------------------------------------
+
+        COLSOLIDSBITMAP    EQU  $68100
+
+ConvertBlkCol: 
+        rts                             ; Exit without running, nullsub
+        lea     COLSOLIDSBITMAP,a1
+        lea     COLSOLIDSBITMAP,a2
+        move.w  #256-1,d3             
+
+.LoopBlock:                            
+        moveq   #16,d5
+        move.w  #16-1,d2
+
+.LoopColumn:                           
+        moveq   #0,d4
+        move.w  #16-1,d1
+
+.LoopRow:                              
+        move.w  (a1)+,d0
+        lsr.l   d5,d0
+        addx.w  d4,d4
+        dbf     d1,.LoopRow
+        move.w  d4,(a2)+
+        suba.w  #32,a1
+        subq.w  #1,d5
+        dbf     d2,.LoopColumn
+        adda.w  #32,a1
+        dbf     d3,.LoopBlock
+        lea     COLSOLIDSBITMAP,a1
+        lea     BlkColWidths,a2
+        bsr.s   .ConvertToColBlk
+        lea     COLSOLIDSBITMAP,a1
+        lea     BlkColHeights,a2
+
+.ConvertToColBlk:                      
+        move.w  #$1000-1,d3
+
+.MainLoop:                             
+        moveq   #0,d2
+        move.w  #16-1,d1
+        move.w  (a1)+,d0
+        beq.s   .EmptyColumn
+        bmi.s   .UpsideDwnBlk
+
+.NormalBlk:                            
+        lsr.w   #1,d0
+        bcc.s   .EmptyPix
+        addq.b  #1,d2
+
+.EmptyPix:                             
+        dbf     d1,.NormalBlk
+        bra.s   .ColumnDone
+; ---------------------------------------------------------------------------
+
+.UpsideDwnBlk:                         
+        cmpi.w  #$FFFF,d0
+        beq.s   .ColumnFullSolid
+
+.GetColumnHeight:                      
+        lsl.w   #1,d0
+        bcc.s   .EmptyPix2
+        subq.b  #1,d2
+
+.EmptyPix2:                            
+        dbf     d1,.GetColumnHeight
+        bra.s   .ColumnDone
+; ---------------------------------------------------------------------------
+
+.ColumnFullSolid:                      
+        move.w  #16,d0
+
+.EmptyColumn:                          
+        move.w  d0,d2
+
+.ColumnDone:                           
+        move.b  d2,(a2)+
+        dbf     d3,.MainLoop
         rts

@@ -2,7 +2,7 @@
 ; Global Variables
 ; ---------------------------------------------------------------------------
 
-VARIABLES       EQU $FFFFF600
+VARIABLES       EQU $FFFFF600 	; +FF000000 for sign extension optimization
 	rsset	VARIABLES
 gamemode:       	rs.b 2    
 joypadMirror:   	rs.b 1    
@@ -10,7 +10,7 @@ joypadMirrorPress:	rs.b 1
 joypad:         	rs.b 1    
 joypadPress:    	rs.b 1    
                 	rs.b 6
-vdpModeReg1:      	rs.b 2    
+displayMode:      	rs.b 2    
                 	rs.b 6
 genericTimer:   	rs.b 2    
 vdpPlaneAPosY:  	rs.b 2    
@@ -23,7 +23,7 @@ vdpPlaneZPosY2: 	rs.b 2
 vdpHBLANKLine:  	rs.b 1    
 hblankLine:     	rs.b 1    
 palFadeArgs:    	
-palFadeOff:			rs.b 1    
+palFadeOff:		rs.b 1    
 palFadeSize:    	rs.b 1    
 vblankUnk1:     	rs.b 1    
 vblankUnk2:    		rs.b 1    
@@ -159,6 +159,8 @@ errorInfo:       	rs.b 4
 errorCode:      	rs.b 1    
 
 GAMEINFO     EQU $FFFFFE00
+STACK        EQU $00FFFE00 		; for vector table entry 		
+
 	rsset	GAMEINFO
 stack:          	rs.b 2    
 restart:        	rs.b 2    
