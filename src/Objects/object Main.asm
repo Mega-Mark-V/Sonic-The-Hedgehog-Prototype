@@ -10,7 +10,7 @@ RunObjects:
         lea     OBJECTRAM.w,a0
         moveq   #96-1,d7
         moveq   #0,d0
-        cmpi.b  #6,objSlot00+obj.Action.w ; Sonic routine counter
+        cmpi.b  #6,(objSlot00+obj.Action).w ; Sonic routine counter
         bcc.s   .Paused
 
 .RunObjLoop:                       
@@ -548,9 +548,9 @@ _objectChkOnscreen:
 ; Reads an object layout list during active gameplay and allocates memory
 ; for each object as it is read. 
 ; ---------------------------------------------------------------------------
-OBJTBL.SZ       EQU  6
+OBJENTRSZ       EQU  6
 
-objtbl          struct
+objentr         struct
 X:              rs.w 1
 Y:              rs.w 1
 ID:             rs.b 1
@@ -558,7 +558,7 @@ Arg:            rs.b 1
                 ends
 ; ---------------------------------------------------------------------------
 ; NOTES:
-; objectChunkRight and objectChunkLeft are current list offset for each dir.
+; objtblEntryRight and objtblEntryLeft are current list offset for each dir.
 ; objectChunk is the current chunk cameraA is in (so left scr. edge)
 ; !!! not finished here, working on it
 ; ---------------------------------------------------------------------------
@@ -585,11 +585,11 @@ GetObjects_Init:
                 lea     ObjPosIndex,a0
                 movea.l a0,a1
                 adda.w  (a0,d0.w),a0
-                move.l  a0,objectChunkRight.w
-                move.l  a0,objectChunkLeft.w
+                move.l  a0,objtblEntryRight.w
+                move.l  a0,objtblEntryLeft.w
                 adda.w  2(a1,d0.w),a1
-                move.l  a1,objunkChunkRight.w   ; ! Unused
-                move.l  a1,objunkChunkLeft.w
+                move.l  a1,objtblEntryRight.w   ; ! Unused
+                move.l  a1,objtblEntryLeft.w
                 lea     objectStates.w,a2       ; Reset object flags
                 move.w  #$101,(a2)+
                 move.w  #$5F-1,d0
@@ -597,153 +597,186 @@ GetObjects_Init:
 .ClearStates:                          
                 clr.l   (a2)+
                 dbf     d0,.ClearStates
-                move.w  #-1,objectChunk.w
+                move.w  #-1,cameraAChunkX.w
 
 ; ---------------------------------------------------------------------------
 
 GetObjects_Main:                        
         lea     objectStates.w,a2
         moveq   #0,d2
-        move.w  cameraAPosX.w,d6     ; Get Cam A X position
-        andi.w  #$FF80,d6            ; Shorten to multiples of 128
-        cmp.w   objectChunk.w,d6     ; Check against chunk value
-        beq.w   .Exit                ; Exit if within same chunk 
-        bge.s   .GetObjectsRright    ; Get rightward if from chunk ahead
-        move.w  d6,objectChunk.w     
+        move.w  cameraAPosX.w,d6        ; Get Cam A X position
+        andi.w  #$FF80,d6               ; Shorten to multiples of 128
+        cmp.w   cameraAChunkX.w,d6      ; Check against chunk value
+        beq.w   .Exit                   ; Exit if within same chunk 
+        bge.s   _getobjRight            ; Get rightward if from chunk ahead  
 
-.GetObjectsLeft:
-        movea.l objectChunkLeft.w,a0
-        subi.w  #$80,d6
-        blo.s   .RightDone                     
-        cmp.w   -OBJTBL.SZ(a0),d6
-        bge.s   .RightDone
-        subq.w  #OBJTBL.SZ,a0
-        tst.b   objtbl.ID(a0)
-        bpl.s   .SkipStateLeft
+; ---------------------------------------------------------------------------
+; Get and spawn objects for leftwards camera movement 
+; ---------------------------------------------------------------------------
+
+_getobjsLeft:
+        move.w  d6,cameraAChunkX.w   
+        movea.l objentrCurLeft.w,a0
+        subi.w  #128,d6
+        bcs.s   .CheckRight
+
+.FindLeft:            
+
+        cmp.w   -OBJENTRSZ(a0),d6
+        bge.s   .CheckRight
+
+        subq.w  #OBJENTRSZ,a0
+        tst.b   objentr.ID(a0)
+        bpl.s   .NoStateInf
+        
         subq.b  #1,1(a2)
         move.b  1(a2),d2
 
-.SkipStateLeft:                       
-        bsr.w   .LoadEntry
-        bne.s   .Failed
-        subq.w  #OBJTBL.SZ,a0
-        bra.s   .RightLoop
+.NoStateInf:                              
+        bsr.w   _getobjCreate           ; Try to spawn object 
+                                        ; (and increment current entry)
+        bne.s   .Failed                 ; Perform rightward check if failed
+
+        subq.w  #OBJENTRSZ,a0           ; Otherwise dec. entry and try again
+        bra.s   .FindLeft
 
 .Failed:                               
-        tst.b   objtbl.ID(a0)       ; If object MSB not set, no state entry
-        bpl.s   .Rewind
+        tst.b   objentr.ID(a0)
+        bpl.s   .NoStInf2
         addq.b  #1,1(a2)
 
-.Rewind:                               
-        addq.w  #OBJTBL.SZ,a0
+.NoStateInf2:                               
+        addq.w  #OBJENTRSZ,a0
 
-.RightDone:                            
-        move.l  a0,objectChunkLeft.w
-        movea.l objectChunkRight.w,a0
-        addi.w  #(320)*2,d6              ; two screen sizes
+; --------------------------------------
 
-.FindRightChunk:                       
-        cmp.w   -OBJTBL.SZ(a0),d6
-        bgt.s   .FoundRight
-        tst.b   -2(a0)
-        bpl.s   .NextObjRight
+.CheckRight:                                
+        move.l  a0,objentrCurLeft.w
+        movea.l objentrCurRight.w,a0
+        addi.w  #256*3,d6
+
+.FindRight:                        
+        cmp.w   -OBJENTRSZ(a0),d6
+        bgt.s   .FoundLeft
+        tst.b   -2(a0)                  ; objentr.ID ref. *backwards*
+        bpl.s   .TryNextLeft
         subq.b  #1,(a2)
 
-.NextObjRight:                         
-        subq.w  #6,a0
-        bra.s   .FindRightChunk
+.TryNextLeft:                          
+        subq.w  #OBJENTRSZ,a0
+        bra.s   .FindRight
 
-.FoundRight:                           
-        move.l  a0,objectChunkRight.w
+.FoundLeft:                            
+        move.l  a0,objentrCurRight.w
         rts
 
 ; ---------------------------------------------------------------------------
+; Get and create objects for rightwards camera movement 
+; ---------------------------------------------------------------------------
 
-.GetObjectsRright:                       
-                move.w  d6,objectChunk.w
-                movea.l objectChunkRight.w,a0
-                addi.w  #640,d6
+_getobjRight:                      
+        move.w  d6,cameraAChunkX.w     ; cameraAPosX in multiples of 128 for "chunks"
+        movea.l objentrCurRight.w,a0
+        addi.w  #320*2,d6              ; Range is 2 screens forward (scr+320)
 
-.LeftLoop:                             
-                cmp.w   objtbl.X(a0),d6
-                bls.s   .LeftDone
-                tst.b   objtbl.ID(a0)
-                bpl.s   .SkipStateLeft
-                move.b  (a2),d2
-                addq.b  #1,(a2)
+.FindRight:                            
+        cmp.w   objentr.X(a0),d6       ; Branch if out of fwd. range
+        bls.s   .CheckLeft
 
-.SkipStateLeft:                        
-                bsr.w   .LoadEntry
-                beq.s   .LeftLoop
+        tst.b   objentr.ID(a0)         ; Skip state set if MSB unset
+        bpl.s   .NoStateInfo
 
-.LeftDone:                             
-                move.l  a0,objectChunkRight.w
-                movea.l objectChunkLeft.w,a0
-                subi.w  #768,d6
-                bcs.s   .FoundLeft
+        move.b  (a2),d2
+        addq.b  #1,(a2)
 
-.FindLeftChunk:                        
-                cmp.w   objtbl.X(a0),d6
-                bls.s   .FoundLeft
-                tst.b   objtbl.ID(a0)
-                bpl.s   .NextObjLeft
-                addq.b  #1,1(a2)
+.NoStateInfo:                       
+        bsr.w   _getobjCreate           ; Try to spawn object 
+                                        ; (and increment current entry)
+        beq.s   .FindRight              ; Loop if object spawned successfully
 
-.NextObjLeft:                          
-                addq.w  #6,a0
-                bra.s   .FindLeftChunk
+; --------------------------------------
 
-.FoundLeft:                            
-                move.l  a0,objectChunkLeft.w
-                rts
+.CheckLeft:                            
+        move.l  a0,objentrCurRight.w    ; Save new location in entry table rightward
+        movea.l objentrCurLeft.w,a0
+        subi.w  #256*3,d6               ; Move 3 chunks back (So scrX-128 now)
+        blo.s   .FoundLeft
 
-unusedZObjLoad:                   
-                movea.l objunkChunkRight.w,a0   
-                move.w  cameraZPosX.w,d0        
-                addi.w  #320,d0                 ; Adjust to 1 screen (320pix) ahead
-                andi.w  #$FF80,d0               ; Shorten to multiples of 128/$80
-                cmp.w   objtbl.X(a0),d0         
-                blo.s   .Exit                   ; Exit if not in position
-                bsr.w   .LoadEntry              
-                move.l  a0,objunkChunkRight.w   ; Store new entry
-                bra.w   ??_getobjectsUnknown    ; Check for another entry
+.FindLeft:                       
+        cmp.w   objentr.X(a0),d6
+        bls.s   .FoundLeft
+
+        tst.b   objentr.ID(a0)
+        bpl.s   .NoStInf2
+
+        addq.b  #1,1(a2)
+
+.NoStInf2:                         
+        addq.w  #OBJENTRSZ,a0
+        bra.s   .FindLeft
+
+.FoundLeft:                           
+        move.l  a0,objentrCurLeft.w
+        rts
+
+; ---------------------------------------------------------------------------
+; Get and create objects for camera-Z movement (forwards)
+; ---------------------------------------------------------------------------
+
+_getobjZ:                   
+        movea.l objtblEntryRight.w,a0   
+        move.w  cameraZPosX.w,d0        
+        addi.w  #320,d0                 ; Adjust to 1 screen (320pix) ahead
+        andi.w  #$FF80,d0               ; Shorten to multiples of 128/$80
+        cmp.w   objentr.X(a0),d0         
+        blo.s   .Exit                   ; Exit if not in position
+        bsr.w   _getobjCreate               
+        move.l  a0,objtblEntryRight.w   ; Store new entry
+        bra.w   _getobjZ                ; Check for another entry
 
 .Exit:                                 
-                rts
+        rts
 
-.LoadEntry:                            
-                tst.b   objtbl.ID(a0)           ; If no respawn info, create
-                bpl.s   .Create
-                bset    #7,2(a2,d2.w)           ; If set to respawn, create
-                beq.s   .Create
-                addq.w  #6,a0                   ; Increment entry, clear and exit
-                moveq   #0,d0
-                rts
+; ---------------------------------------------------------------------------
+; Create an object based on object table entry input
+; ---------------------------------------------------------------------------
+
+_getobjCreate:                        
+                                        ; Check state info    
+        tst.b   objentr.ID(a0)          ; If no respawn info, create
+        bpl.s   .Create
+
+        bset    #7,2(a2,d2.w)           ; If set to respawn, create
+        beq.s   .Create
+
+        addq.w  #6,a0                   ; Increment entry, clear and exit
+        moveq   #0,d0
+        rts
 
 .Create:                               
-                bsr.w   _objectFindFreeSlot
-                bne.s   .NoSlotFound
-                move.w  (a0)+,obj.X(a1)         ; Write X
-                move.w  (a0)+,d0                ; Get Y
-                move.w  d0,d1      
-                andi.w  #$0FFF,d0               ; Mask out top nybble
-                move.w  d0,obj.Y(a1)            ; Write Y
-                rol.w   #2,d1                   ; Get that top nybble
-                andi.b  #3,d1
-                move.b  d1,obj.Render(a1)       ; Write to render and status
-                move.b  d1,obj.Status(a1)
-                move.b  (a0)+,d0                ; Get ID
-                bpl.s   .NoState                ; If no state entry skip over
-                andi.b  #$7F,d0                 ; Mask top bit out
-                move.b  d2,obj.Respawn(a1)      ; Write respawn info
+        bsr.w   _objectFindFreeSlot
+        bne.s   .NoSlotFound
+        move.w  (a0)+,obj.X(a1)         ; Write X
+        move.w  (a0)+,d0                ; Get Y
+        move.w  d0,d1      
+        andi.w  #$0FFF,d0               ; Mask out top nybble
+        move.w  d0,obj.Y(a1)            ; Write Y
+        rol.w   #2,d1                   ; Get that top nybble (orientation)
+        andi.b  #3,d1
+        move.b  d1,obj.Render(a1)       ; Write to render and status
+        move.b  d1,obj.Status(a1)
+        move.b  (a0)+,d0                ; Get ID
+        bpl.s   .NoState                ; If no state entry skip over
+        andi.b  #$7F,d0                 ; Mask top bit out
+        move.b  d2,obj.Respawn(a1)      ; Write respawn info
 
 .NoState:                               
-                move.b  d0,obj.ID(a1)           ; Write ID
-                move.b  (a0)+,obj.Arg(a1)       ; Write argument
-                moveq   #0,d0
+        move.b  d0,obj.ID(a1)           ; Write ID
+        move.b  (a0)+,obj.Arg(a1)       ; Write argument
+        moveq   #0,d0
 
 .NoSlotFound:                            
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Function to find a free slot in dynamic object memory for an object
