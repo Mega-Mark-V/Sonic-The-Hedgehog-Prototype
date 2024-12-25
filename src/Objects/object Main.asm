@@ -548,6 +548,7 @@ _objectChkOnscreen:
 ; Reads an object layout list during active gameplay and allocates memory
 ; for each object as it is read. 
 ; ---------------------------------------------------------------------------
+
 OBJENTRSZ       EQU  6
 
 objentr         struct
@@ -556,48 +557,49 @@ Y:              rs.w 1
 ID:             rs.b 1
 Arg:            rs.b 1
                 ends
-; ---------------------------------------------------------------------------
-; NOTES:
-; objtblEntryRight and objtblEntryLeft are current list offset for each dir.
-; objectChunk is the current chunk cameraA is in (so left scr. edge)
-; !!! not finished here, working on it
+
 ; ---------------------------------------------------------------------------
 
 GetObjects:                             
-                moveq   #0,d0
-                move.b  getObjectsMode.w,d0
-                move.w  .Index(pc,d0.w),d0
-                jmp     .Index(pc,d0.w)
+        moveq   #0,d0
+        move.b  getObjectsMode.w,d0
+        move.w  .Index(pc,d0.w),d0
+        jmp     .Index(pc,d0.w)
 
 ; ---------------------------------------------------------------------------
 
 .Index:                                
-                dc.w GetObjects_Init-*
-                dc.w GetObjects_Main-.Index
+        dc.w GetObjects_Init-.Index
+        dc.w GetObjects_Main-.Index
 
 ; ---------------------------------------------------------------------------
 
 GetObjects_Init:                        
-                addq.b  #2,getObjectsMode.w
-                move.w  zone.w,d0
-                lsl.b   #6,d0
-                lsr.w   #4,d0
-                lea     ObjPosIndex,a0
-                movea.l a0,a1
-                adda.w  (a0,d0.w),a0
-                move.l  a0,objtblEntryRight.w
-                move.l  a0,objtblEntryLeft.w
-                adda.w  2(a1,d0.w),a1
-                move.l  a1,objtblEntryRight.w   ; ! Unused
-                move.l  a1,objtblEntryLeft.w
-                lea     objectStates.w,a2       ; Reset object flags
-                move.w  #$101,(a2)+
-                move.w  #$5F-1,d0
+        addq.b  #2,getObjectsMode.w
+
+        move.w  zone.w,d0               ; Get current zone objtbls
+        lsl.b   #6,d0
+        lsr.w   #4,d0
+        lea     ObjPosIndex,a0
+        movea.l a0,a1
+
+        adda.w  (a0,d0.w),a0            ; Store index tables 'A' (main)
+        move.l  a0,objtblEntryRight.w
+        move.l  a0,objtblEntryLeft.w
+
+        adda.w  2(a1,d0.w),a1           ; Store index tables 'Z'
+        move.l  a1,objtblEntryRightZ.w  
+        move.l  a1,objtblEntryLeftZ.w
+
+        lea     objectStates.w,a2       ; Reset object states
+        move.w  #$101,(a2)+
+        move.w  #$5F-1,d0
 
 .ClearStates:                          
-                clr.l   (a2)+
-                dbf     d0,.ClearStates
-                move.w  #-1,cameraAChunkX.w
+        clr.l   (a2)+
+        dbf     d0,.ClearStates
+        
+        move.w  #-1,cameraAChunkX.w
 
 ; ---------------------------------------------------------------------------
 
@@ -720,18 +722,18 @@ _getobjRight:
         rts
 
 ; ---------------------------------------------------------------------------
-; Get and create objects for camera-Z movement (forwards)
+; Get and create objects for camera Z movement (forwards)
 ; ---------------------------------------------------------------------------
 
 _getobjZ:                   
-        movea.l objtblEntryRight.w,a0   
+        movea.l objtblEntryRightZ.w,a0   
         move.w  cameraZPosX.w,d0        
         addi.w  #320,d0                 ; Adjust to 1 screen (320pix) ahead
         andi.w  #$FF80,d0               ; Shorten to multiples of 128/$80
         cmp.w   objentr.X(a0),d0         
         blo.s   .Exit                   ; Exit if not in position
         bsr.w   _getobjCreate               
-        move.l  a0,objtblEntryRight.w   ; Store new entry
+        move.l  a0,objtblEntryRightZ.w  ; Store new entry
         bra.w   _getobjZ                ; Check for another entry
 
 .Exit:                                 

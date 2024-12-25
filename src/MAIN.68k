@@ -360,18 +360,13 @@ InitJoypads:
 ; ---------------------------------------------------------------------------
 
 ReadJoypads:        
-
         Z80STOP
-
         lea     joypad.w,a0             ; Set output location
         lea     IODATA1,a1              ; Read pad 1
         bsr.s   .ReadPad
-
         addq.w  #IODATA2-IODATA1,a1     ; Quick increment to pad 2
         bsr.s   .ReadPad                ; and read it
-
         Z80START
-
         rts
 
 .ReadPad:                              
