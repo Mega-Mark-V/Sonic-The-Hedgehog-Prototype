@@ -21,14 +21,14 @@ _physFootCollision:
         btst    #PHYS.PLATFORM,obj.Status(a0)
         beq.s   .NotOnPlatform
         moveq   #0,d0                   ; Clear sensor angle information
-        move.b  d0,footFrontAngle.w
-        move.b  d0,footBackAngle.w
+        move.b  d0,angleFront.w
+        move.b  d0,angleBack.w
         rts
 
 .NotOnPlatform:                             
         moveq   #3,d0                   ;   ...flag foot sensors?
-        move.b  d0,footFrontAngle.w
-        move.b  d0,footBackAngle.w
+        move.b  d0,angleFront.w
+        move.b  d0,angleBack.w
 
         move.b  obj.Angle(a0),d0
         addi.b  #$20,d0                 ; Rotate unit circle 45 degrees
@@ -56,7 +56,7 @@ _physWalkFloor:
         move.b  obj.XRad(a0),d0         ; Get right edge of the object's radius
         ext.w   d0                      ; and also set as x input for branch
         add.w   d0,d3
-        lea     footFrontAngle.w,a4     ; Set angle output location in a4
+        lea     angleFront.w,a4     ; Set angle output location in a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Set Checking top solidity
@@ -76,7 +76,7 @@ _physWalkFloor:
         ext.w   d0
         neg.w   d0                      ; Except get left edge of radius this time
         add.w   d0,d3                   ; X
-        lea     footBackAngle.w,a4
+        lea     angleBack.w,a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -170,10 +170,10 @@ _physUnkSetSpeed
 ; ---------------------------------------------------------------------------
 
 _physPickFoot:                          
-        move.b  footBackAngle.w,d2      ; Set to use back sensor
+        move.b  angleBack.w,d2      ; Set to use back sensor
         cmp.w   d0,d1                   ; Check against front 
         ble.s   .BackFootHigher         ; Skip over if higher    
-        move.b  footFrontAngle.w,d2
+        move.b  angleFront.w,d2
         move.w  d0,d1
 
 .BackFootHigher:                               
@@ -208,7 +208,7 @@ _physWalkWallRight:
         move.b  obj.YRad(a0),d0         ; ..and X from YRad
         ext.w   d0
         add.w   d0,d3                   ; for X position input
-        lea     footFrontAngle.w,a4     ; Same inputs as before:
+        lea     angleFront.w,a4     ; Same inputs as before:
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -227,7 +227,7 @@ _physWalkWallRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     footBackAngle.w,a4      ; Angle output
+        lea     angleBack.w,a4      ; Angle output
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -279,7 +279,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     footFrontAngle.w,a4     ; Angle output
+        lea     angleFront.w,a4     ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -299,7 +299,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3                   ; X
-        lea     footFrontAngle.w,a4     ; Angle output
+        lea     angleFront.w,a4     ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -354,7 +354,7 @@ _physWalkWallLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     footFrontAngle.w,a4     ; Angle output loc
+        lea     angleFront.w,a4     ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity
@@ -374,7 +374,7 @@ _physWalkWallLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     footBackAngle.w,a4      ; Angle output loc
+        lea     angleBack.w,a4      ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity
@@ -433,7 +433,7 @@ _physFindBlock:
 
         moveq   #$FFFFFFFF,d1           ; Set d1 signed for RAM address
 
-        lea     levelLayout.w,a1        
+        lea     layoutA.w,a1        
         move.b  (a1,d0.w),d1            ; Use d0 to get chunk ID
         beq.s   .Blank                  ; If the ID is 00 (blank) then exit
         bmi.s   .SpecialChunk           ; If the ID is >$7F then handle as special

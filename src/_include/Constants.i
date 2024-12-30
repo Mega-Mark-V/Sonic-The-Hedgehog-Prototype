@@ -28,11 +28,11 @@ _6	EQU	    $6
 _7	EQU	    $7
 _8	EQU	    $8
 _9	EQU	    $9
-_symHex	EQU	    $A
-_symDas	EQU	    $B
-_symEqu	EQU	    $C
-_symPt1 EQU	    $D
-_symPt2 EQU	    $E
+_txHex	EQU	    $A
+_tsDash	EQU	    $B
+_txEqu	EQU	    $C
+_txPt1 	EQU	    $D
+_txPt2 	EQU	    $E
 _Y      EQU         $F
 _Z      EQU         $10
 _A      EQU         $11

@@ -275,7 +275,7 @@ PalFadeIn:
 .DoFadeCalc:                           
         moveq   #0,d0
         lea     palette.w,a0
-        lea     palFadeBuffer.w,a1
+        lea     fadingPalette.w,a1
         move.b  palFadeArgs.w,d0
         adda.w  d0,a0
         adda.w  d0,a1
@@ -447,7 +447,7 @@ PalQueueForFade:
         adda.w  d0,a1
         movea.l (a1)+,a2 	; Get palette data address
         movea.w (a1)+,a3 	; Get target address
-        adda.w  #palFadeBuffer-palette,a3  ; Move into fade buffer
+        adda.w  #fadingPalette-palette,a3  ; Move into fade buffer
         move.w  (a1)+,d7 	; Get size
 
 .LoadToQueue:                          

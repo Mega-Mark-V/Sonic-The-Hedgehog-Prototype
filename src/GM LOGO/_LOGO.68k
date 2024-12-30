@@ -50,16 +50,17 @@ GM_LOGO:
         ori.b   #%1000000,d0
         move.w  d0,VDPCTRL		     ; Enable display when ready
 
-.Wait:                                 
+.MainLoop:                                 
         move.b  #vbID_LOGO,vblankCmd.w
         bsr.w   VSync
         bsr.w   _logoCycPal 		     ; see: Libraries/lib Palette.asm
-
+        
         tst.w   genericTimer.w
         beq.s   .Exit
+
         andi.b  #%10000000,joypadPress.w     ; If start not pressed, wait
-        beq.s   .Wait 			  
+        beq.s   .MainLoop 			  
 
 .Exit:                                 
-        move.b  #gmID_TITLE,gamemode.w
+        move.b  #GmID.TITLE,gamemode.w
         rts

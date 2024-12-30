@@ -14,10 +14,10 @@ objPlayer:
 
 ; ---------------------------------------------------------------------------
 
-.Index:                                         ; obj.Action:
+.Index:                                          ; obj.Action:
                 dc.w Player_Init-.Index          ; 0  
                 dc.w Player_Main-.Index          ; 2
-                dc.w Player_Hurt-.Index          ; 4
+                dc.w Player_Damage-.Index        ; 4
                 dc.w Player_Death-.Index         ; 6
                 dc.w Player_Reset-.Index         ; 8
 
@@ -61,8 +61,8 @@ Player_Main:
         bsr.s   _playTrackPowerups    ; Handle powerup states and drawing
         bsr.w   _playRecordPos        ; Record previous positions
 
-        move.b  footFrontAngle.w,play.FootFront(a0)
-        move.b  footBackAngle.w,play.FootBack(a0)
+        move.b  angleFront.w,play.FootFront(a0)
+        move.b  angleBack.w,play.FootBack(a0)
 
         bsr.w   _playAnimate            ; Handle Sonic's animation
         bsr.w   _playObjInteract        ; Handle player/object interactions           

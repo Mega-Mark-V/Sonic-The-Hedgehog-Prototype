@@ -295,24 +295,26 @@ Main:
         bra.s   Main
         
 ; ---------------------------------------------------------------------------
+; macro to define gamemodes and their ID
+GAMEMODE macro   addr, id
+        bra.w   \addr
+        \id:     rs.b    4
+        endm
 
-.Index:        
-        bra.w   GM_LOGO                 ; SEGA Logo program (Standard)
-        bra.w   GM_TITLE                ; Title Screen
-        bra.w   GM_LEVEL                ; Demo
-        bra.w   GM_LEVEL                ; Level
-        bra.w   GM_SPECIAL              ; Special Stage
-                                        ; Ending sequence (unimplemented)
-                                        ; Continue screen (unimplemented)
-        rts
-
+; ---------------------------------------------------------------------------    
+; Game Mode table
 ; --------------------------------------------------------------------------- 
 
-gmID_LOGO               EQU         0*4 ; *4 for jumptable entry
-gmID_TITLE              EQU         1*4 ; !!! Do something better for this.
-gmID_DEMO               EQU         2*4
-gmID_LEVEL              EQU         3*4
-gmID_SPECIAL            EQU         4*4
+.Index:      
+        rsreset   ; prg.       ; ID equ
+        GAMEMODE   GM_LOGO,     GmID.LOGO       ; SEGA Logo
+        GAMEMODE   GM_TITLE,    GmID.TITLE      ; Title Screen
+        GAMEMODE   GM_LEVEL,    GmID.DEMO       ; Demo
+        GAMEMODE   GM_LEVEL,    GmID.LEVEL      ; Level
+        GAMEMODE   GM_SPECIAL,  GmID.SPECIAL    ; Special Stage
+                                                ; (unimplemented)
+                                                ; (unimplemented) 
+        rts
 
 ; ---------------------------------------------------------------------------
 ; Checksum Failure routine (unused)
@@ -414,8 +416,8 @@ InitVDP:
 .ClearCRAM:                            
         move.w  d0,(a1)
         dbf     d7,.ClearCRAM
-        clr.l   vdpPlaneAPosY.w
-        clr.l   vdpPlaneAPosX.w
+        clr.l   mainAPosY.w
+        clr.l   mainAPosX.w
         move.l  d1,-(sp)
         VDPFILL $0000,$1FFFE,$00,1,a6
         move.w  #$8F02,(a5)
@@ -454,8 +456,8 @@ InitScreen:
         move.w  #$8F02,(a5)
         VDPFILL $E000,$1FFE,$00,1,a5    ; Clear plane B nametable
         move.w  #$8F02,(a5)
-        move.l  #0,vdpPlaneAPosY.w
-        move.l  #0,vdpPlaneAPosX.w
+        move.l  #0,mainAPosY.w
+        move.l  #0,mainAPosX.w
 
         lea     vdpSprites.w,a1
         moveq   #0,d0
@@ -567,7 +569,7 @@ PauseGame:
 
         btst    #6,joypadPress.w        ; If A button pressed while paused...
         beq.s   .ABtnNotPressed         
-        move.b  #gmID_TITLE,gamemode.w  ; ..go to title screen
+        move.b  #GmID.TITLE,gamemode.w  ; ..go to title screen
         nop
         bra.s   .Unpause
 
@@ -865,6 +867,23 @@ AngleTable:
         dc.b $1F,$1F,$20,$20,$20,$20,$20,$20
         dc.b $20,  0
 
+; ---------------------------------------------------------------------------
+; Game Modes
+; ---------------------------------------------------------------------------
+
         include         "GM LOGO/_LOGO.68k"
-        ;include         "GM TITLE/_TITLE.68k"
-        include         "Objects/object Main.asm"
+        include         "GM TITLE/_TITLE.68k"
+;       include         "GM LEVEL/_LEVEL.68k"
+;       include         "GM SPECIAL/_SPECIAL.68k"
+
+; ---------------------------------------------------------------------------
+; Camera System
+; ---------------------------------------------------------------------------
+
+;       include         level camera init here or whatever i guess
+        include         "Camera/Camera.asm"
+
+; ---------------------------------------------------------------------------
+; Object System 
+; ---------------------------------------------------------------------------
+        include         "Objects/Objects.asm"   ; Main functions for objs

@@ -26,7 +26,7 @@ VBLANK:
         beq.s   .End
         move.w  VDPCTRL,d0
         move.l  #VSRAMWRITE,VDPCTRL
-        move.l  vdpPlaneAPosY.w,VDPDATA
+        move.l  mainAPosY.w,VDPDATA
 
         btst    #6,hardwareVersion.w  ; Get hardware region
         beq.s   .NTSC                 ; Skip if NTSC
@@ -41,7 +41,7 @@ VBLANK:
         jsr     .Index(pc,d0.w)
 
 .End:                                  
-        addq.l  #1,vblankCounter.w
+        addq.l  #1,vblankCntr.w
         jsr     UpdateMusic
         movem.l (sp)+,d0-d7/a0-a6
         rte
@@ -70,7 +70,7 @@ VBLANK:
 ; ---------------------------------------------------------------------------
 
 VBLANK_LOGO:                                
-        bsr.w   RefreshVDPBuffers
+        bsr.w   _vblVDPRefresh
         tst.w   genericTimer.w
         beq.w   .Exit
         subq.w  #1,genericTimer.w
@@ -83,8 +83,8 @@ VBLANK_LOGO:
 ; ---------------------------------------------------------------------------
 
 VBLANK_TITLE:                               
-        bsr.w   RefreshVDPBuffers
-        bsr.w   ProcessBGScrollingTiles
+        bsr.w   _vblVDPRefresh
+        bsr.w   _titleDrawCams
         bsr.w   DecompArtList.Fast
         tst.w   genericTimer.w
         beq.w   .Exit
@@ -98,7 +98,7 @@ VBLANK_TITLE:
 ; ---------------------------------------------------------------------------
 
 VBLANK_UNK:                               
-        bsr.w   RefreshVDPBuffers
+        bsr.w   _vblVDPRefresh
         rts
 
 ; ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ VBLANK_UNK:
 ; ---------------------------------------------------------------------------
 
 VBLANK_PAUSE:                               
-        cmpi.b  #gmID_SPECIAL,gamemode.w
+        cmpi.b  #GmID.SPECIAL,gamemode.w
         beq.w   VBLANK_SPECIAL
 
 ; ---------------------------------------------------------------------------
@@ -125,8 +125,8 @@ VBLANK_LEVEL:
         VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
         move.w  #$8407,a5
-        move.w  vdpHBLANKLine.w,a5
-        move.w  vdpPlaneZPosY.w,vdpPlaneZPosY2.w
+        move.w  hblankLine.w,a5
+        move.w  mainZPosY.w,vdpUnkPos.w
 
         VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
 
@@ -140,7 +140,7 @@ VBLANK_LEVEL:
 .NoSonicRedraw:                                
         move.w  #0,Z80BUS
 
-        bsr.w   ProcessScrollingTiles
+        bsr.w   DrawCameras
         jsr     AnimatedLevelGFX
         jsr     UpdateHUD
         bsr.w   DecompArtList.Slow
@@ -218,7 +218,7 @@ VBLANK_LVLSTART:
 
 .NoSonicRedraw:                        
         move.w  #0,Z80BUS
-        bsr.w   ProcessScrollingTiles
+        bsr.w   DrawCameras
         jsr     AnimatedLevelGFX
         jsr     UpdateHUD
         bsr.w   DecompArtList.Fast
@@ -230,7 +230,7 @@ VBLANK_LVLSTART:
 ; ---------------------------------------------------------------------------
 
 VBLANK_TIMER:                                 
-        bsr.w   RefreshVDPBuffers
+        bsr.w   _vblVDPRefresh
         bsr.w   RunObjects
         bsr.w   DrawObjects
         addq.b  #1,vblankUnk1.w
@@ -242,14 +242,14 @@ VBLANK_TIMER:
 ; ---------------------------------------------------------------------------
 
 VBLANK_PALFUNC:                             
-        bsr.w   RefreshVDPBuffers
+        bsr.w   _vblVDPRefresh
         bra.w   DecompArtList.Fast
 
 ; ---------------------------------------------------------------------------
 ; Refresh VDP tile/sprite data with most recent buffer data in memory
 ; ---------------------------------------------------------------------------
 
-RefreshVDPBuffers:                      
+_vblVDPRefresh:                      
         bsr.w   ReadJoypads
         move.w  #$100,Z80BUS
 
@@ -277,7 +277,7 @@ HBLANK:
         tst.w   hblankFlag.w
         beq.s   .Exit
         move.l  a5,-(sp)
-        VDPDMA  palFadeBuffer,$0000,$80,CRAM,a5  ; Palette DMA
+        VDPDMA  fadingPalette,$0000,$80,CRAM,a5  ; Palette DMA
         movem.l (sp)+,a5
         move.w  #0,hblankFlag.w                  ; Set as executed
 

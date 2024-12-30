@@ -107,10 +107,10 @@ GM_TITLE:
         bsr.w   PalFadeIn                       ; Fade palette in
 
 .MainLoop:                      
-        move.b  #vbID_TITLE,(vblankCmd).w
+        move.b  #vbID_TITLE,vblankCmd.w
         bsr.w   VSync
         bsr.w   RunObjects
-        bsr.w   Parallax
+        bsr.w   CameraScroll
         bsr.w   DrawObjects
         bsr.w   _titleDoPalCyc
         bsr.w   ProcessArtLoading
@@ -185,7 +185,7 @@ LevelSelect:
                 bmi.s   LevelSelect
                 cmpi.w  #$700,d0
                 bne.s   .IsLevel
-                move.b  #gmID_SPECIAL,(gamemode).w
+                move.b  #GmID.SPECIAL,(gamemode).w
                 rts
 ; ---------------------------------------------------------------------------
 
@@ -199,7 +199,7 @@ LevelSelect:
                 move.w  d0,(zone).w
 
 _titleStartGame:                        
-                move.b  #gmID_LEVEL,(gamemode).w
+                move.b  #GmID.LEVEL,(gamemode).w
                 move.b  #3,(lives).w
                 moveq   #0,d0
                 move.w  d0,(rings).w
@@ -233,7 +233,7 @@ _titleAdvanceCam:
                 move.w  d0,(objSlot00+obj.X).w
                 cmpi.w  #$1C00,d0
                 bcs.s   .StartDemo
-                move.b  #gmID_LOGO,(gamemode).w
+                move.b  #GmID.LOGO,(gamemode).w
                 rts
 ; ---------------------------------------------------------------------------
 
@@ -254,10 +254,10 @@ _titleAdvanceCam:
 
 .DoLevelDemo:                          
                 move.w  #1,(demo).w
-                move.b  #gmID_DEMO,(gamemode).w
+                move.b  #GmID.DEMO,(gamemode).w
                 cmpi.w  #$600,d0
                 bne.s   .ClearLevelVars
-                move.b  #gmID_SPECIAL,(gamemode).w
+                move.b  #GmID.SPECIAL,(gamemode).w
 
 .ClearLevelVars:                       
                 move.b  #3,(lives).w
@@ -269,7 +269,8 @@ _titleAdvanceCam:
 ; End of function LevelSelect
 
 ; ---------------------------------------------------------------------------
-Demo_LevelOrder:dc.w 0
+Demo_LevelOrder:
+                dc.w $000
                 dc.w $600
                 dc.w $200
                 dc.w $600
