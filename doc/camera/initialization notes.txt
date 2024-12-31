@@ -1,0 +1,53 @@
+# CAMERA INIT NOTES
+
+so for the values in the table defined in "Camera Init.asm" at "@CameraLimits" there's some unused values that i have named 
+this is not speculation, they're based on the source code names i could extrapolate from sonic CD PC 95/96 symbols
+
+see: https://git.sr.ht/~benoitren/soniccddecompilation/tree/master/item/src/EQU.C
+
+so, there:
+
+; ---------------------------------------------------------------------------
+	short scralim_n_left;
+	short scralim_n_right;
+	short scralim_n_up;
+	short scralim_n_down;
+	short scralim_left;
+	short scralim_right;
+	short scralim_up;
+	short scralim_down;
+	short scrar_no;
+	short scra_h_keep;
+	short scra_v_keep;
+	short scra_hz;
+	short scra_vz;
+	short scra_vline;
+; ---------------------------------------------------------------------------
+
+and here:
+
+; ---------------------------------------------------------------------------
+	eventLimALeft:  	ds.b 2                  
+	eventLimARight: 	ds.b 2
+	eventLimAUp:    	ds.b 2                  
+	eventLimADown:  	ds.b 2                  
+	limitALeft:     	ds.b 2                  
+	limitARight:    	ds.b 2                  
+	limitAUp:       	ds.b 2                  
+	limitADown:     	ds.b 2                  
+	camARoutine:    	ds.b 2                  
+	camAKeepH:      	ds.b 2                  
+	camAKeepV:      	ds.b 2
+	                	ds.b 2
+	                	ds.b 2
+; ---------------------------------------------------------------------------
+
+scrar_no = Screen/Scroll A Routine Number (so camARoutine)
+
+scra_X_keep = idfk. H is left limit + 576, V isn't defined or referenced
+
+i have really no idea what "scra_Xz" values could be, initial camZ position?
+not referenced, so i'm not sure what to name them because no reference point beyond this
+
+these could also not be accurate, btw, sonic CD is based on rev01 sonic 1, which ditched a lot of the camera system from rev00 and here
+

@@ -164,7 +164,7 @@ Player_MainCtrl:                                 ; Status unset
         bsr.w   _playUpSlope
         bsr.w   _playMove
         bsr.w   _playCheckRoll
-        bsr.w   _playLevelBoundries
+        bsr.w   _playLevelLimits
         bsr.w   _objectSetSpeed
         bsr.w   _physFootCollision
         bsr.w   _playFallOff
@@ -173,7 +173,7 @@ Player_MainCtrl:                                 ; Status unset
 Player_AirCtrl:                                  ; Status air bit set
         bsr.w   _playJumpHeight
         bsr.w   _playAirCtrl
-        bsr.w   _playLevelBoundries
+        bsr.w   _playLevelLimits
         bsr.w   _objectFall
         bsr.w   _playJumpDir
         bsr.w   _physAirColCheck
@@ -183,7 +183,7 @@ Player_RollCtrl:                                 ; Status roll bit set
         bsr.w   _playJump
         bsr.w   _physRollDown
         bsr.w   _playRollCalc
-        bsr.w   _playLevelBoundries
+        bsr.w   _playLevelLimits
         bsr.w   _objectSetSpeed
         bsr.w   _physFootCollision
         bsr.w   _playFallOff
@@ -192,7 +192,7 @@ Player_RollCtrl:                                 ; Status roll bit set
 Player_AirRollCtrl:                              ; Both statuses set
         bsr.w   _playJumpHeight
         bsr.w   _playAirCtrl
-        bsr.w   _playLevelBoundries
+        bsr.w   _playLevelLimits
         bsr.w   _objectFall
         bsr.w   _playJumpDir
         bsr.w   _physAirColCheck

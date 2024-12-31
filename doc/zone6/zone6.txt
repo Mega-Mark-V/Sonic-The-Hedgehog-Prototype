@@ -1,0 +1,54 @@
+# THE MYSTERY OF ZONE 6......
+
+so zone 6 internally is not entirely defined but does have associated data with it
+
+there isn't any scrolling camera or event scripts for it defined, no entry in the tables for it
+but it *does* have initialization data in "src/Camera/Camera Init.asm" ----> @CameraLimits
+
+; ---------------------------------------------------------------------------
+	dc.w   4,  0,$2FFF,  0,$320,$60 ; Unk
+	dc.w   4,  0,$2FFF,  0,$320,$60
+	dc.w   4,  0,$2FFF,  0,$320,$60
+	dc.w   4,  0,$2FFF,  0,$320,$60
+; ---------------------------------------------------------------------------
+
+most of this is actually somewhat unique, which is funny
+also at @PlayStartLocs in the same file, there's base/placeholder start positions defined:
+
+; ---------------------------------------------------------------------------
+        dc.w $80,$A8
+        dc.w $80,$A8
+        dc.w $80,$A8
+        dc.w $80,$A8
+; ---------------------------------------------------------------------------
+
+it DOESN'T have draw limit information though, nor does it have special chunk data
+
+======================================================================================================
+
+now, the obvious and main leftover is the layout data (see zone6lvl.png)
+
+it almost looks like a normal layout definition but every chunk is in chronological order
+
+0x01 being base ground chunk
+0x02 to 0x3C being actual chronological chunk data
+
+this data is actually pointed to in the layout tables for zone 6, but the zone crashes due to the above missing info
+
+
+======================================================================================================
+
+there's also something else - chunk patching data???
+(see zone6patch pngs provided in folder)
+
+two routines in the level subroutine list (which is pretty much globally run) checks for zone 6 
+it would then applies some patches if within it, issue is that the data it patches is like completely unknown
+
+to me, it just looks like two platforms, or maybe the ground breaking open for something
+
+i personally believe the layout and patch data is in fact related in some way
+for one, chunks 0x05 and 0x1A both occur at the top of what looks like large incline or high ledge
+chunks 0x29 and 0x2A, which are forced collision on, occur  just one chunk before the end of the level
+
+one thing is for sure though - this *definitely* is or was something, not just ending zone remnants
+maybe the ending was more elaborate? maybe there was a cut zone? who knows.
