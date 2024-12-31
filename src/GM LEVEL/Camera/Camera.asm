@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; Camera System main routine
+; Camera System main program library
 ; ---------------------------------------------------------------------------
 ; local enums
 
@@ -42,6 +42,7 @@ CameraScroll:
         jmp     .ScrollIndex(pc,d0.w)
 
 ; ---------------------------------------------------------------------------
+
 .ScrollIndex:                        
         dc.w Scroll_GreenHill-.ScrollIndex
         dc.w Scroll_Labyrinth-.ScrollIndex

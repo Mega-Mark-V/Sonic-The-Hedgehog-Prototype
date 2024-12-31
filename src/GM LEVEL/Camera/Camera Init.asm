@@ -1,3 +1,8 @@
+; ---------------------------------------------------------------------------
+; Camera System level initialize routines
+; Player start position is updated here, for some reason.
+; ---------------------------------------------------------------------------
+
 InitCameraLimits:                       
         moveq   #0,d0
         move.b  d0,camAResetX.w
@@ -44,6 +49,7 @@ InitCameraLimits:
         bra.w   InitPlayerInfo 		; Initialize player object (and exit)
 
 ; ---------------------------------------------------------------------------
+
 @CameraLimits:                           
                 dc.w   4,  0,$24BF,  0,$300,$60 ; GHZ
                 dc.w   4,  0,$1EBF,  0,$300,$60 ;
@@ -83,45 +89,47 @@ InitCameraLimits:
 ; ---------------------------------------------------------------------------
 
 InitPlayerInfo:                    
-                move.w  zone.w,d0
-                cmpi.b  #act4,d0        ; Check if act 4
-                bne.s   .NotAct4
-                subq.b  #1,(act).w      ; If so, subtract 1 and set zone to act 3
+        move.w  zone.w,d0
+        cmpi.b  #act4,d0        ; Check if act 4
+        bne.s   .NotAct4
+        subq.b  #1,act.w      	; If so, subtract 1 and set zone to act 3
 
 .NotAct4:                              
-                lsl.b   #6,d0
-                lsr.w   #4,d0
-                lea     @PlayStartLocs(pc,d0.w),a1
-                moveq   #0,d1
-                move.w  (a1)+,d1
-                move.w  d1,(objSlot00+obj.X).w
-                subi.w  #$A0,d1
-                bcc.s   .UsePlayPosX
-                moveq   #0,d1
+        lsl.b   #6,d0
+        lsr.w   #4,d0
+        lea     @PlayStartLocs(pc,d0.w),a1
+        moveq   #0,d1
+        move.w  (a1)+,d1
+        move.w  d1,(objSlot00+obj.X).w
+        subi.w  #$A0,d1
+        bcc.s   .UsePlayPosX
+        moveq   #0,d1
 
 .UsePlayPosX:                          
-                move.w  d1,(cameraAPosX).w
-                moveq   #0,d0
-                move.w  (a1),d0
-                move.w  d0,(objSlot00+obj.Y).w
-                subi.w  #$60,d0
-                bcc.s   .UsePlayPosY
-                moveq   #0,d0
+        move.w  d1,(cameraAPosX).w
+        moveq   #0,d0
+        move.w  (a1),d0
+        move.w  d0,(objSlot00+obj.Y).w
+        subi.w  #$60,d0
+        bcc.s   .UsePlayPosY
+        moveq   #0,d0
 
 .UsePlayPosY:                          
-                cmp.w   limitADown.w,d0
-                blt.s   .LimNotMet
-                move.w  limitADown.w,d0
+        cmp.w   limitADown.w,d0
+        blt.s   .LimNotMet
+        move.w  limitADown.w,d0
 
 .LimNotMet:                            
-                move.w  d0,cameraAPosY.w
-                bsr.w   InitBgCams
-                moveq   #0,d0
-                move.b  zone.w,d0
-                lsl.b   #2,d0
-                move.l  SpecialChunkIDs(pc,d0.w),specialChunks.w
-                bra.w   InitScrollBlocks
+        move.w  d0,cameraAPosY.w
+        bsr.w   InitBgCams
+        moveq   #0,d0
+        move.b  zone.w,d0
+        lsl.b   #2,d0
+        move.l  SpecialChunkIDs(pc,d0.w),specialChunks.w
+        bra.w   InitScrollBlocks
+
 ; ---------------------------------------------------------------------------
+
 @PlayStartLocs:                         
         dc.w $50,$3B0 	; GHZ
         dc.w $50,$FC
@@ -158,13 +166,16 @@ InitPlayerInfo:
         dc.w $80,$A8
         dc.w $80,$A8
 
+; ---------------------------------------------------------------------------
+
 SpecialChunkIDs:                        
-                dc.b $B5,$7F,$1F,$20    ; GHZ
-                dc.b $7F,$7F,$7F,$7F    ; LZ
-                dc.b $7F,$7F,$7F,$7F    ; MZ
-                dc.b $B5,$A8,$7F,$7F    ; SLZ
-                dc.b $7F,$7F,$7F,$7F    ; SZ
-                dc.b $7F,$7F,$7F,$7F	; CWZ
+        dc.b $B5,$7F,$1F,$20    ; GHZ
+        dc.b $7F,$7F,$7F,$7F    ; LZ
+        dc.b $7F,$7F,$7F,$7F    ; MZ
+        dc.b $B5,$A8,$7F,$7F    ; SLZ
+        dc.b $7F,$7F,$7F,$7F    ; SZ
+        dc.b $7F,$7F,$7F,$7F	; CWZ
+
 ; ---------------------------------------------------------------------------
 
 InitScrollBlocks:                       
@@ -176,6 +187,7 @@ InitScrollBlocks:
         move.l  (a1)+,(a2)+
         move.l  (a1)+,(a2)+
         rts
+
 ; ---------------------------------------------------------------------------
 .Limits:                               
         dc.w $70 	; GHZ
@@ -231,6 +243,7 @@ InitBgCams:
         move.w  .BGIndex(pc,d2.w),d2
         jmp     .BGIndex(pc,d2.w)
 ; ---------------------------------------------------------------------------
+
 .BGIndex:                              
         dc.w BgInit_GHZ-.BGIndex
         dc.w BgInit_LZ -.BGIndex
@@ -272,7 +285,8 @@ BgInit_SZ:
         asr.l   #8,d0
         move.w  d0,cameraBPosY.w
         move.w  d0,cameraCPosY.w
-                rts
+        rts
+
 ; ---------------------------------------------------------------------------
 
 BgInit_CWZ:                             
