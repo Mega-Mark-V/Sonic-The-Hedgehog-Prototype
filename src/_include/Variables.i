@@ -82,8 +82,8 @@ camAKeepV:      	ds.b 2
 cameraDiffX:    	ds.b 2                  
 cameraDiffY:    	ds.b 2                  
 cameraCenterY:  	ds.b 2                  
-cameraXReset:   	ds.b 1                  
-cameraYReset:   	ds.b 1                  
+autoscrollX:	   	ds.b 1                  
+autoscrollY:   		ds.b 1                  
 eventRoutine:   	ds.b 1                                 
                 	ds.b 1
 cameraLock:     	ds.b 1                  
@@ -138,7 +138,11 @@ bossFlag:       	rs.b 1
 trackPos:       	rs.b 1    
 trackPosEntry:  	rs.b 1    
 screenLocked:   	rs.b 2    
-specialChunkIDs:	rs.b 4    
+specialChunks:    
+loopChunk1:     	ds.b 1
+loopChunk2:     	ds.b 1                  
+spinChunk1:     	ds.b 1                  
+spinChunk2:     	ds.b 1                  
 animGFXFrame1:  	rs.b 1    
 animGFXTimer1:  	rs.b 1    
 animGFXFrame2:  	rs.b 1    

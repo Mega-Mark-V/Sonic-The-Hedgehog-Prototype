@@ -9,7 +9,7 @@ Scroll_StarLight:
         move.w  camADiffY.w,d5
         ext.l   d5
         asl.l   #7,d5
-        bsr.w   _cameraBMvXSetY
+        bsr.w   _cameraBMoveDrawY
         move.w  cameraBPosY.w,mainBPosY.w
         bsr.w   _scrslzSetupSects
         lea     hscrollWork.w,a2              ; this is the only zone to use this buffer

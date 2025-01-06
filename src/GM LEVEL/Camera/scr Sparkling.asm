@@ -12,7 +12,7 @@ Scroll_Sparkling:
         move.l  d5,d1
         asl.l   #1,d5
         add.l   d1,d5
-        bsr.w   _cameraBSetXY
+        bsr.w   _cameraBMoveDraw
         move.w  cameraBPosY.w,mainBPosY.w
         lea     hscroll.w,a1
         move.w  #224-1,d1

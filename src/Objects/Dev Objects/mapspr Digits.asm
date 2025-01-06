@@ -1,5 +1,5 @@
 MapSpr_Digits:
-	dc.w dbug0-*        
+	dc.w dbug0-MapSpr_Digits        
         dc.w dbug1-MapSpr_Digits
         dc.w dbug2-MapSpr_Digits
         dc.w dbug3-MapSpr_Digits

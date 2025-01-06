@@ -10,7 +10,7 @@ Scroll_Marble:
         asl.l   #1,d4
         add.l   d1,d4
         moveq   #0,d5
-        bsr.w   _cameraBSetXY
+        bsr.w   _cameraBMoveDraw
         move.w  #$200,d0
         move.w  cameraAPosY.w,d1
         subi.w  #456,d1
@@ -23,7 +23,7 @@ Scroll_Marble:
 
 .CapScrollY:                           
         move.w  d0,cameraCPosY.w
-        bsr.w   _cameraBSetY
+        bsr.w   _cameraBUserSetY
         move.w  cameraBPosY.w,mainBPosY.w
         lea     hscroll.w,a1
         move.w  #224-1,d1

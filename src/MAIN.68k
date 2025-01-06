@@ -881,7 +881,7 @@ AngleTable:
 ; ---------------------------------------------------------------------------
 
 ;       include         level camera init here or whatever i guess
-        include         "Camera/Camera.asm"
+        include         "GM LEVEL/Camera/Camera Main.asm"
 
 ; ---------------------------------------------------------------------------
 ; Object System 

@@ -10,7 +10,7 @@ Scroll_GreenHill:
         asl.l   #1,d4
         add.l   d1,d4
         moveq   #0,d5
-        bsr.w   _cameraBSetXY           ; Use as cam info inputs
+        bsr.w   _cameraBMoveDraw           ; Use as cam info inputs
         bsr.w   _cameraCSetX
         lea     hscroll.w,a1            ; Start calculating new scroll info
         move.w  cameraAPosY.w,d0
@@ -20,7 +20,7 @@ Scroll_GreenHill:
         addi.w  #38,d0
         move.w  d0,cameraCPosY.w
         move.w  d0,d4
-        bsr.w   _cameraBSetY
+        bsr.w   _cameraBUserSetY
         move.w  cameraBPosY.w,mainBPosY.w
         move.w  #112-1,d1               ; Set abs. size of initial scroll
         sub.w   d4,d1                   ; Subtract how far upwards we are

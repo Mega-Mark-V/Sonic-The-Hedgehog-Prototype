@@ -1,0 +1,289 @@
+ArtListIndex:   
+        dc.w ArtList_GameAttr1--ArtListIndex
+        dc.w ArtList_GameAttr2-ArtListIndex
+        dc.w ArtList_Explosions-ArtListIndex
+        dc.w ArtList_GameOver-ArtListIndex
+
+        dc.w ArtList_GreenHill-ArtListIndex
+        dc.w ArtList_GreenHillSub-ArtListIndex
+        dc.w ArtList_Labyrinth-ArtListIndex
+        dc.w ArtList_LabyrinthSub-ArtListIndex
+        dc.w ArtList_Marble-ArtListIndex
+        dc.w ArtList_MarbleSub-ArtListIndex
+        dc.w ArtList_StarLight-ArtListIndex
+        dc.w ArtList_StarLightSub-ArtListIndex
+        dc.w ArtList_Sparkling-ArtListIndex
+        dc.w ArtList_SparklingSub-ArtListIndex
+        dc.w ArtList_ClockWork-ArtListIndex
+        dc.w ArtList_ClockWorkSub-ArtListIndex
+
+        dc.w ArtList_TitleCard-ArtListIndex
+        dc.w ArtList_Boss-ArtListIndex
+        dc.w ArtList_Signpost-ArtListIndex
+        dc.w ArtList_Warp-ArtListIndex
+
+        dc.w ArtList_SpecialStage-ArtListIndex
+
+        dc.w ArtList_Friends1-ArtListIndex
+        dc.w ArtList_Friends2-ArtListIndex
+        dc.w ArtList_Friends3-ArtListIndex
+        dc.w ArtList_Friends4-ArtListIndex
+        dc.w ArtList_Friends5-ArtListIndex
+        dc.w ArtList_Friends6-ArtListIndex
+
+; ---------------------------------------------------------------------------
+; General game information art list
+; ---------------------------------------------------------------------------     
+
+ArtList_GameAttr1:
+        dc.w 4                 
+        dc.l ArtNem_UnusedSmoke
+        dc.w $F400
+        dc.l ArtNem_HUD
+        dc.w $D940
+        dc.l ArtNem_HUDLives
+        dc.w $FA80
+        dc.l ArtNem_Rings
+        dc.w $F640
+        dc.l ArtNem_ScoreNumbers
+        dc.w $F2E0
+ArtList_GameAttr2:
+        dc.w 2             
+        dc.l ArtNem_Monitors
+        dc.w $D000
+        dc.l ArtNem_Shield
+        dc.w $A820
+        dc.l ArtNem_Invincibility
+        dc.w $AB80
+ArtList_Explosions:
+        dc.w 0               
+        dc.l ArtNem_Explosions
+        dc.w $B400
+ArtList_GameOver:dc.w 0                 
+        dc.l ArtNem_GameOver
+        dc.w $B000
+ArtList_GreenHill:dc.w $B               
+        dc.l ArtNem_GreenHill1
+        dc.w 0
+        dc.l ArtNem_GreenHill2
+        dc.w $39A0
+        dc.l ArtNem_GreenHill3
+        dc.w $6B00
+        dc.l ArtNem_PurpleRock
+        dc.w $7A00
+        dc.l ArtNem_GaniGani
+        dc.w $8000
+        dc.l ArtNem_Beeton
+        dc.w $8880
+        dc.l ArtNem_BataBata
+        dc.w $8F60
+        dc.l ArtNem_Meleon
+        dc.w $9360
+        dc.l ArtNem_Motora
+        dc.w $9E00
+        dc.l ArtNem_Spikes
+        dc.w $A360
+        dc.l ArtNem_SpringH
+        dc.w $A460
+        dc.l ArtNem_SpringV
+        dc.w $A660
+ArtList_GreenHillSub:dc.w 5             
+        dc.l ArtNem_SwingingPlatform
+        dc.w $7000
+        dc.l ArtNem_Bridge
+        dc.w $71C0
+        dc.l ArtNem_SpikeLogs
+        dc.w $7300
+        dc.l ArtNem_RollingBall
+        dc.w $7540
+        dc.l ArtNem_GHZBreakable
+        dc.w $A1E0
+        dc.l ArtNem_GHZEdgeWalls
+        dc.w $6980
+ArtList_Labyrinth:dc.w 0                
+        dc.l ArtNem_Labyrinth
+        dc.w 0
+ArtList_LabyrinthSub:dc.w 0             
+        dc.l ArtNem_PukuPuku
+        dc.w $99C0
+ArtList_Marble: dc.w 9                  
+        dc.l ArtNem_Marble
+        dc.w 0
+        dc.l ArtNem_SpikedCrusher
+        dc.w $6000
+        dc.l ArtNem_FireBall
+        dc.w $68A0
+        dc.l ArtNem_SwingingPlatform
+        dc.w $7000
+        dc.l ArtNem_GlassCrusher
+        dc.w $71C0
+        dc.l ArtNem_LavaGeyser
+        dc.w $7500
+        dc.l ArtNem_Beeton
+        dc.w $8880
+        dc.l ArtNem_Yadrin
+        dc.w $8F60
+        dc.l ArtNem_Basaran
+        dc.w $9700
+        dc.l ArtNem_Splats
+        dc.w $9C80
+ArtList_MarbleSub:dc.w 4                
+        dc.l ArtNem_MarbleButton
+        dc.w $A260
+        dc.l ArtNem_Spikes
+        dc.w $A360
+        dc.l ArtNem_SpringH
+        dc.w $A460
+        dc.l ArtNem_SpringV
+        dc.w $A660
+        dc.l ArtNem_MarbleBlocks
+        dc.w $5700
+ArtList_StarLight:dc.w $A               
+        dc.l ArtNem_StarLight
+        dc.w 0
+        dc.l ArtNem_FireBall
+        dc.w $68A0
+        dc.l ArtNem_GaniGani
+        dc.w $8000
+        dc.l ArtNem_Beeton
+        dc.w $8880
+        dc.l ArtNem_StarLight2
+        dc.w $9000
+        dc.l ArtNem_SLZFloor
+        dc.w $9C00
+        dc.l ArtNem_Motora
+        dc.w $9E00
+        dc.l ArtNem_SLZBreakable
+        dc.w $A260
+        dc.l ArtNem_Spikes
+        dc.w $A360
+        dc.l ArtNem_SpringH
+        dc.w $A460
+        dc.l ArtNem_SpringV
+        dc.w $A660
+ArtList_StarLightSub:dc.w 3             
+        dc.l ArtNem_SeeSaw
+        dc.w $6E80
+        dc.l ArtNem_Fan
+        dc.w $7400
+        dc.l ArtNem_Girder
+        dc.w $7980
+        dc.l ArtNem_SLZSpikedPlatform
+        dc.w $7B80
+ArtList_Sparkling:dc.w 4                
+        dc.l ArtNem_Sparkling
+        dc.w 0
+        dc.l ArtNem_GaniGani
+        dc.w $8000
+        dc.l ArtNem_Beeton
+        dc.w $8880
+        dc.l ArtNem_Yadrin
+        dc.w $8F60
+        dc.l ArtNem_Arma
+        dc.w $9700
+ArtList_SparklingSub:dc.w 6             
+        dc.l ArtNem_Bumper
+        dc.w $7000
+        dc.l ArtNem_BigSpikedBall
+        dc.w $72C0
+        dc.l ArtNem_SpikedBall
+        dc.w $7740
+        dc.l ArtNem_Button
+        dc.w $A1E0
+        dc.l ArtNem_Spikes
+        dc.w $A360
+        dc.l ArtNem_SpringH
+        dc.w $A460
+        dc.l ArtNem_SpringV
+        dc.w $A660
+ArtList_ClockWork:dc.w 0                
+        dc.l ArtNem_ClockWork
+        dc.w 0
+ArtList_ClockWorkSub:dc.w 0             
+        dc.l ArtNem_PukuPuku
+        dc.w $99C0
+ArtList_TitleCard:dc.w 0                
+        dc.l ArtNem_TitleCard
+        dc.w $B000
+ArtList_Boss:   dc.w 2                  
+        dc.l ArtNem_BossEggman
+        dc.w $8000
+        dc.l ArtNem_BossWeapons
+        dc.w $8D80
+        dc.l ArtNem_BossCapsule
+        dc.w $93A0
+ArtList_Signpost:dc.w 0                 
+        dc.l ArtNem_Signpost
+        dc.w $D000
+ArtList_Warp:   dc.w 0                  
+        dc.l ArtNem_Warp
+        dc.w $A820
+ArtList_SpecialStage:dc.w $B            
+        dc.l ArtNem_SpecialStgBG1
+        dc.w 0
+        dc.l ArtNem_SpecialStgBG2
+        dc.w $A20
+        dc.l ArtNem_SpecialStgWalls
+        dc.w $2840
+        dc.l ArtNem_Bumper
+        dc.w $4760
+        dc.l ArtNem_SpecialStgGoal
+        dc.w $4A20
+        dc.l ArtNem_SpecialStgUpDown
+        dc.w $4C60
+        dc.l ArtNem_SpecialStgR
+        dc.w $5E00
+        dc.l ArtNem_SpecialStg1Up
+        dc.w $6E00
+        dc.l ArtNem_SpecialStgStars
+        dc.w $7E00
+        dc.l ArtNem_SpecialStgStriped
+        dc.w $8E00
+        dc.l ArtNem_SpecialStgSkull
+        dc.w $9E00
+        dc.l ArtNem_SpecialStgMagnet
+        dc.w $AE00
+        dc.l ArtNem_SpecialStgEmerald
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone1
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone2
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone3
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone4
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone5
+        dc.w 0
+        dc.l ArtNem_SpecialStgZone6
+        dc.w 0
+ArtList_Friends1:dc.w 1                 
+        dc.l ArtNem_Pocky
+        dc.w $B000
+        dc.l ArtNem_Cucky
+        dc.w $B240
+ArtList_Friends2:dc.w 1                 
+        dc.l ArtNem_Pecky
+        dc.w $B000
+        dc.l ArtNem_Rocky
+        dc.w $B240
+ArtList_Friends3:dc.w 1                 
+        dc.l ArtNem_Picky
+        dc.w $B000
+        dc.l ArtNem_Flicky
+        dc.w $B240
+ArtList_Friends4:dc.w 1                 
+        dc.l ArtNem_Ricky
+        dc.w $B000
+        dc.l ArtNem_Rocky
+        dc.w $B240
+ArtList_Friends5:dc.w 1                 
+        dc.l ArtNem_Picky
+        dc.w $B000
+        dc.l ArtNem_Cucky
+        dc.w $B240
+ArtList_Friends6:dc.w 1                 
+        dc.l ArtNem_Pocky
+        dc.w $B000
+        dc.l ArtNem_Flicky
+        dc.w $B240

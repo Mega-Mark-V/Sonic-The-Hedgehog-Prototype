@@ -178,17 +178,17 @@ Test04_Exit:
 ; ---------------------------------------------------------------------------
 
 objDevDigits1:                                
-                moveq   #0,d0
-                move.b  obj.Action(a0),d0
-                move.w  .Index(pc,d0.w),d1
-                jmp     .Index(pc,d1.w)
+        moveq   #0,d0
+        move.b  obj.Action(a0),d0
+        move.w  .Index(pc,d0.w),d1
+        jmp     .Index(pc,d1.w)
 
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Test05_Init-.Index
-                dc.w Test05_Main-.Index
-                dc.w Test05_Exit-.Index
-                dc.w Test05_Exit-.Index
+        dc.w Test05_Init-.Index
+        dc.w Test05_Main-.Index
+        dc.w Test05_Exit-.Index
+        dc.w Test05_Exit-.Index
 ; ---------------------------------------------------------------------------
 
 Test05_Init:                            
@@ -199,20 +199,19 @@ Test05_Init:
         move.b  #7,obj.Priority(a0)
 
 Test05_Main:                            
-                bsr.w   _objectDraw
-                rts
-; ---------------------------------------------------------------------------
+        bsr.w   _objectDraw
+        rts
 
 Test05_Exit:                            
-                bsr.w   _objectDelete
-                rts
+        bsr.w   _objectDelete
+        rts
 
 ; ---------------------------------------------------------------------------
 
 	include	"Objects/Dev Objects/mapspr Digits.asm"
 
 ; ---------------------------------------------------------------------------
-; Development Object 5 - More developer digits
+; Development Object 6 - More developer digits
 ; Basically the same object as objDevDigits1, but shifted onscreen by $A0
 ; It also uses a different VRAM position
 ; ---------------------------------------------------------------------------
