@@ -5,13 +5,13 @@ objPlayerTest:
         jmp     .Index(pc,d1.w)
 ; ---------------------------------------------------------------------------
 .Index:                                
-        dc.w TestAnims_Init-.Index
-        dc.w TestAnims_Do-.Index
-        dc.w TestAnims_Delete-.Index
-        dc.w TestAnims_Delete-.Index
+        dc.w PlayTest_Init-.Index
+        dc.w PlayTest_Do-.Index
+        dc.w PlayTest_Delete-.Index
+        dc.w PlayTest_Delete-.Index
 ; ---------------------------------------------------------------------------
 
-TestAnims_Init:                         
+PlayTest_Init:                         
         addq.b  #2,obj.Action(a0)
         move.b  #18,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
@@ -21,7 +21,7 @@ TestAnims_Init:
         move.b  #2,obj.Priority(a0)
         move.b  #1,obj.Frame
 
-TestAnims_Do:                           
+PlayTest_Do:                           
         bsr.w   _objectJoypadCtrl
         bsr.w   _playDynamicGFX
         jmp     _objectDraw
@@ -78,5 +78,5 @@ _objectJoypadCtrl:
 
 ; ---------------------------------------------------------------------------
 
-TestAnims_Delete:                     
+PlayTest_Delete:                     
         jmp     _objectDelete 
