@@ -714,7 +714,7 @@ _drawCamC:
 _drawCamZ:
         tst.b   (a2)
         beq.s   .Exit
-        bclr    #2,(a2)
+        bclr    #DRAW.LEFT,(a2)
         beq.s   .AlreadyDrawn
         move.w  #208,d4
         move.w  cam.Y(a3),d1
@@ -729,7 +729,7 @@ _drawCamZ:
         bsr.w   _drawColumn.UserSz
 
 .AlreadyDrawn:                         
-        bclr    #3,(a2)
+        bclr    #DRAW.RIGHT,(a2)
         beq.s   .Exit
         move.w  #208,d4
         move.w  cam.Y(a3),d1
@@ -745,8 +745,6 @@ _drawCamZ:
 
 .Exit:                                 
         rts
-; End of function _drawCamZ
-
 
 ; ---------------------------------------------------------------------------
 ; VDP Block Write Interface functions
@@ -954,7 +952,7 @@ _getBlock:
 
 
 ; ---------------------------------------------------------------------------      
-; Calculate address in high VRAM nametables ($8000)
+; Calculate address in high VRAM nametables ($C000+)
 ; ---------------------------------------------------------------------------
 
 _drawCalcAddrHi:                        
@@ -972,7 +970,7 @@ _drawCalcAddrHi:
 
 
 ; ---------------------------------------------------------------------------      
-; Calculate address in low VRAM nametables ($8000) (unused, see _drawCamZ)
+; Calculate address in low VRAM nametables ($8000+) (unused, see _drawCamZ)
 ; ---------------------------------------------------------------------------
 
 _drawCalcAddrLo:                        
