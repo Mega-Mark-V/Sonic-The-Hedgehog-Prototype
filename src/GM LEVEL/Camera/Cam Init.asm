@@ -5,8 +5,8 @@
 
 CameraInit:                       
         moveq   #0,d0
-        move.b  d0,camAResetX.w
-        move.b  d0,camAResetY.w
+        move.b  d0,autoscrollX.w
+        move.b  d0,autoscrollY.w
         move.b  d0,redrawUnk1.w
         move.b  d0,redrawUnk2.w
         move.b  d0,eventRoutine.w
@@ -28,7 +28,7 @@ CameraInit:
 
         cmp.w   limitALeft.w,d0 	; ..check value right after setting it?
         bne.s   .NoXReset		
-        move.b  #1,camAResetX.w
+        move.b  #1,autoscrollX.w
 
 .NoXReset:                             
         move.l  (a0)+,d0 		; Set Up and Down limits
@@ -37,7 +37,7 @@ CameraInit:
 
         cmp.w   limitAUp.w,d0 		 ; ..and again
         bne.s   .NoYReset
-        move.b  #1,camAResetY.w
+        move.b  #1,autoscrollY.w
 
 .NoYReset:                             
         move.w  limitALeft.w,d0

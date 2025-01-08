@@ -16,7 +16,7 @@ PLANE_B         =  $E000
 CameraScroll:                           
         tst.b   cameraLock.w
         bne.s   .SetBGScroll
-        tst.b   camAResetX.w
+        tst.b   autoscrollX.w
         bne.w   _cameraAMvAutoX
         bsr.w   _cameraASetX
 
@@ -471,10 +471,10 @@ _cameraCSetX:
 ;
 ; This code is seriously complex and does a lot of VDP interfacing.
 ; ---------------------------------------------------------------------------
-; Register equates to make this a bit easier to read
+; equates to make this a bit easier to read
 
-cam.X           =       0
-cam.Y           =       4
+cam.X           =       0       ; 0(a3)
+cam.Y           =       4       ; 4(a3)
 
 ; ---------------------------------------------------------------------------      
 ; Only draw cameras B and C for the titlescreen
@@ -513,7 +513,7 @@ DrawCameras:
 
         lea     camDrawC.w,a2
         lea     cameraCPosX.w,a3
-        bra.w   _drawCamC
+        bsr.w   _drawCamC
 
         lea     camDrawA.w,a2
         lea     cameraAPosX.w,a3
