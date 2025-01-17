@@ -8,7 +8,7 @@ memTitleSonic:       = objSlot01
 memTitlePSB:         = objSlot02
 memTitleMask:        = objSlot03
 
-GM_TITLE:                               
+GM_TITLE:                             
         bsr.w   ClearArtListQueue
         bsr.w   PalFadeOut
         lea     VDPCTRL,a6
@@ -221,7 +221,7 @@ ZoneSelect:
 
         btst    #4,joypad.w             ; If B not pressed,
         beq.s   .DoSelectedAct          ; then do selection.
-        move.w  #ZONE.GHZ+ACT4,d0       ; Otherwise, set GHZ act 4
+        move.w  #(ZONE.GHZ<<8)+ACT4,d0  ; Otherwise, set GHZ act 4
 
 .DoSelectedAct:                        
         move.w  d0,zone.w
@@ -251,33 +251,33 @@ SPECIAL = $700
 ; ZONE enums ----> ../include/Constants.i
 
 .LevelIDs:
-        dc.w ZONE.GHZ+ACT1
-        dc.w ZONE.GHZ+ACT2
-        dc.w ZONE.GHZ+ACT3
+        dc.w ZONE.GHZ,ACT1
+        dc.w ZONE.GHZ,ACT2
+        dc.w ZONE.GHZ,ACT3
 
-        dc.w ZONE.LZ+ACT1
-        dc.w ZONE.LZ+ACT2
-        dc.w ZONE.LZ+ACT3
+        dc.w ZONE.LZ,ACT1
+        dc.w ZONE.LZ,ACT2
+        dc.w ZONE.LZ,ACT3
 
-        dc.w ZONE.MZ+ACT1
-        dc.w ZONE.MZ+ACT2
-        dc.w ZONE.MZ+ACT3
+        dc.w ZONE.MZ,ACT1
+        dc.w ZONE.MZ,ACT2
+        dc.w ZONE.MZ,ACT3
 
-        dc.w ZONE.SLZ+ACT1
-        dc.w ZONE.SLZ+ACT2
-        dc.w ZONE.SLZ+ACT3
+        dc.w ZONE.SLZ,ACT1
+        dc.w ZONE.SLZ,ACT2
+        dc.w ZONE.SLZ,ACT3
 
-        dc.w ZONE.SZ+ACT1
-        dc.w ZONE.SZ+ACT2
-        dc.w ZONE.SZ+ACT3
+        dc.w ZONE.SZ,ACT1
+        dc.w ZONE.SZ,ACT2
+        dc.w ZONE.SZ,ACT3
 
-        dc.w ZONE.CWZ+ACT1
-        dc.w ZONE.CWZ+ACT2
-        dc.w ZONE.CWZ+ACT1+LOCKSEL
+        dc.w ZONE.CWZ,ACT1
+        dc.w ZONE.CWZ,ACT2
+        dc.w LOCKSEL+ZONE.CWZ,ACT1
 
         dc.w SPECIAL
         dc.w SPECIAL
-        dc.w 0+LOCKSEL
+        dc.w LOCKSEL+0
 
 ; ---------------------------------------------------------------------------
 

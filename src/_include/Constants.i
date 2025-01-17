@@ -7,13 +7,13 @@ ACT2        EQU         $1
 ACT3        EQU         $2
 ACT4        EQU         $3
 
-ZONE.GHZ              EQU         $0000
-ZONE.LZ               EQU         $0100
-ZONE.MZ               EQU         $0200
-ZONE.SLZ              EQU         $0300
-ZONE.SZ               EQU         $0400
-ZONE.CWZ              EQU         $0500
-ZONE.UNK              EQU         $0600
+ZONE.GHZ              EQU         $00
+ZONE.LZ               EQU         $01
+ZONE.MZ               EQU         $02
+ZONE.SLZ              EQU         $03
+ZONE.SZ               EQU         $04
+ZONE.CWZ              EQU         $05
+ZONE.UNK              EQU         $06
 
 ; ---------------------------------------------------------------------------
 ; Text code format equate table
