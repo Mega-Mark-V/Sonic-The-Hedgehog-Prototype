@@ -467,7 +467,7 @@ _zoneselTextLoad:
         add.w   d0,d1
         adda.w  d1,a1
         move.w  #$C680,d3
-        move.l  d4,4(a6)
+        move.l  d4,VDPCTRL-VDPDATA(a6)
         bsr.w   _textHighlight
         move.w  #$E680,d3
         cmpi.w  #19,zoneselItem.w
@@ -491,7 +491,7 @@ _textNybbleToTile:
         andi.w  #$F,d0
         cmpi.b  #$A,d0
         bcs.s   .Is1Thru9
-        addi.b  #7,d0           ; skip over 7 characters in art data
+        addi.b  #7,d0           ; Skip over 7 character tiles
 
 .Is1Thru9:                             
         add.w   d3,d0
@@ -501,7 +501,7 @@ _textNybbleToTile:
 ; ---------------------------------------------------------------------------
 
 _textHighlight:                        
-        moveq   #24-1,d2        ; Size of row to highlight
+        moveq   #24-1,d2        ; Size of row highlight
 
 .Loop:                                 
         moveq   #0,d0
