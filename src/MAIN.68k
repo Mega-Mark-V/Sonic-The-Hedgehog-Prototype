@@ -305,11 +305,11 @@ GAMEMODE macro   addr, id
 
 .Index:      
         rsreset   ; prg.       ; ID equ
-        GAMEMODE   GM_LOGO,     GMNO.LOGO       ; SEGA Logo
-        GAMEMODE   GM_TITLE,    GMNO.TITLE      ; Title Screen
-        GAMEMODE   GM_LEVEL,    GMNO.DEMO       ; Demo
-        GAMEMODE   GM_LEVEL,    GMNO.LEVEL      ; Level
-        GAMEMODE   GM_SPECIAL,  GMNO.SPECIAL    ; Special Stage
+        GAMEMODE   GM_LOGO,     GAMEMD.LOGO       ; SEGA Logo
+        GAMEMODE   GM_TITLE,    GAMEMD.TITLE      ; Title Screen
+        GAMEMODE   GM_LEVEL,    GAMEMD.DEMO       ; Demo
+        GAMEMODE   GM_LEVEL,    GAMEMD.LEVEL      ; Level
+        GAMEMODE   GM_SPECIAL,  GAMEMD.SPECIAL    ; Special Stage
                                                 ; (unimplemented)
                                                 ; (unimplemented) 
         rts
@@ -567,7 +567,7 @@ PauseGame:
 
         btst    #6,joypadPress.w        ; If A button pressed while paused...
         beq.s   .ABtnNotPressed         
-        move.b  #GMNO.TITLE,gamemode.w  ; ..go to title screen
+        move.b  #GAMEMD.TITLE,gamemode.w  ; ..go to title screen
         nop
         bra.s   .Unpause
 

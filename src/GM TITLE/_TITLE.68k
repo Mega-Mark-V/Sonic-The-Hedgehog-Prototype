@@ -1,5 +1,8 @@
 ; ---------------------------------------------------------------------------
 ; TITLE Screen (And level select) Main Program 
+;
+; See: ../INTERRUPTS.68k --> VBLANK_TITLE
+; genericTimer is decremented in VBLANK until 0.
 ; ---------------------------------------------------------------------------
 ; Local allocations for each object loaded here
 
@@ -92,7 +95,7 @@ GM_TITLE:
         moveq   #1,d0
         bsr.w   PalQueueForFade
 
-        move.b  #musID.Title,d0
+        move.b  #BGMNO.Title,d0
         bsr.w   QueueSoundB
 
         move.b  #0,debug.w
@@ -101,7 +104,7 @@ GM_TITLE:
         move.b  #OBJNO.TITLESONIC,memTitleSonic.w ; Set Title Sonic obj.
         move.b  #OBJNO.TITLEMISC,memTitlePSB.w    ; Set PSB obj.
         move.b  #OBJNO.TITLEMISC,memTitleMask.w   ; Set misc objno.
-        move.b  #2,objSlot03+obj.Frame.w          ; Set as masking sprite
+        move.b  #2,(memTitleMask+obj.Frame).w     ; Set as masking sprite
         
         moveq   #0,d0
         bsr.w   InitArtList
@@ -123,14 +126,19 @@ GM_TITLE:
         move.w  (memPlayer+obj.X).w,d0   ; Update "player" position for cams.
         addq.w  #2,d0
         move.w  d0,(memPlayer+obj.X).w
-        cmpi.w  #$1C00,d0               
+        cmpi.w  #$1C00,d0            
         bcs.s   .NotDone
 
-        move.b  #GMNO.SEGA,gamemode.w            ; If endpoint reached, leave (unused?)
+        ; This code is unreachable by normal means
+        ; If the X position is $1C00, it sets the SEGA LOGO gamemode
+        ; Even if this is restored, the cam. Y limit changes at $1800,
+        ; so the banner breaks. 
+
+        move.b  #GAMEMD.LOGO,gamemode.w  
         rts
 
 .NotDone:                              
-        tst.w   genericTimer.w
+        tst.w   genericTimer.w 
         beq.w   _titleAdvanceCam
 
         andi.b  #%10000000,joypadPress.w ; If start not pressed, 
@@ -141,10 +149,20 @@ GM_TITLE:
 
         ; | Otherwise, initialize the zone select. 
         ; V   
+; ---------------------------------------------------------------------------
+; Zone Select Main Program
+; This code is very messy due to being programmed within the title directly.
+; ---------------------------------------------------------------------------
 
-        moveq   #2,d0 
+LOCKSEL = $80   ; Zone selection lock number
+SPEDEMO = $6    ; Special zone demo num
+SPESEL  = $7    ; Special zone select num
+
+LevelSelect:
+        moveq   #PALNO.SELECT,d0 
         bsr.w   PalLoad
-        lea     hscrollTable.w,a1
+
+        lea     hscroll.w,a1
         moveq   #0,d0
         move.w  #224-1,d1
 
@@ -152,7 +170,7 @@ GM_TITLE:
         move.l  d0,(a1)+                ; Clear hscroll info
         dbf     d1,.ClearHScroll
 
-        move.l  d0,vdpPlaneAPosY.w      ; Clear Y plane A pos.
+        move.l  d0,mainAPosY.w      ; Clear Y plane A pos.
 
         move    #$2700,sr
 
@@ -163,52 +181,48 @@ GM_TITLE:
 .ClearBG:                              
         move.l  d0,(a6)
         dbf     d1,.ClearBG
-        bsr.w   _lvlselectTextLoad
+        bsr.w   _zoneselTextLoad
         ; Fall into main zone select program
 
-; ---------------------------------------------------------------------------
-; Zone Select Main Program
-; This code is very messy due to being programmed within the title directly.
-; ---------------------------------------------------------------------------
 
-ZoneSelect:                            
+.ZoneSelLoop:                            
         move.b  #VBCMD.TITLE,vblankCmd.w
         bsr.w   VSync
 
-        bsr.w   _lvlselectControl
+        bsr.w   _zoneselCtrl
         bsr.w   ProcessArtLoading
 
         tst.l   decompQueue.w
-        bne.s   ZoneSelect
+        bne.s   .ZoneSelLoop
 
         andi.b  #%11110000,joypadPress.w ; If S, A, C, or B not pressed,
-        beq.s   ZoneSelect               ; then loop.
+        beq.s   .ZoneSelLoop               ; then loop.
 
-        move.w  lvlselCurItem.w,d0       ; Get current item
+        move.w  zoneselItem.w,d0       ; Get current item
 
         cmpi.w  #19,d0                   ; If not selection 19,
-        bne.s   .ProcCurrentSel          ; then not level select.
+        bne.s   _zoneselProcSel          ; then not level select.
 
-        move.w  lvlselCurSound.w,d0
-        addi.w  #$80,d0
-        cmpi.w  #$93,d0
-        bcs.s   .Skip
+        move.w  zoneselSnd.w,d0      ; Get current sound
+        addi.w  #$80,d0                  ; Add $80 for driver no.
+        cmpi.w  #$93,d0                  ; Is sound >$93? 
+        blo.s   .PlaySnd                 ; If not, play sound
         cmpi.w  #$A0,d0
-        bcs.s   ZoneSelect
+        bcs.s   .ZoneSelLoop
 
-.Skip:                                 
+.PlaySnd:                                 
         bsr.w   QueueSoundB
-        bra.s   ZoneSelect
+        bra.s   .ZoneSelLoop
 
-.ProcCurrentSel:              
+_zoneselProcSel:              
         add.w   d0,d0
-        move.w  .LevelIDs(pc,d0.w),d0
-        bmi.s   ZoneSelect
+        move.w  SelectionList(pc,d0.w),d0
+        bmi.s   .ZoneSelLoop
 
-        cmpi.w  #$700,d0
+        cmpi.w  #(SPESEL<<8),d0
         bne.s   .IsLevel
 
-        move.b  #GMNO.SPECIAL,gamemode.w
+        move.b  #GAMEMD.SPECIAL,gamemode.w
         rts
 
 .IsLevel:                              
@@ -227,7 +241,7 @@ ZoneSelect:
         move.w  d0,zone.w
 
 _titleStartGame:                        
-        move.b  #GMNO.LEVEL,gamemode.w
+        move.b  #GAMEMD.LEVEL,gamemode.w
 
         move.b  #3,lives.w              ; Set 3 lives
 
@@ -236,21 +250,16 @@ _titleStartGame:
         move.l  d0,time.w
         move.l  d0,score.w
 
-        move.b  #sndCMD_Stop,d0 
+        move.b  #SNDCMD.Stop,d0 
         bsr.w   QueueSoundB
         rts
 
 ; ---------------------------------------------------------------------------
 ; Selection list lookup
 ; ---------------------------------------------------------------------------
-; local enums
-
-.LOCKSEL = $80   ; Zone selection lock number
-.SPECIAL = $7    ; Special stage num, not used elsewhere
-
 ; ZONE enums ----> ../include/Constants.i
 
-.LevelIDs:
+SelectionList:
         dc.b ZONE.GHZ,ACT1
         dc.b ZONE.GHZ,ACT2
         dc.b ZONE.GHZ,ACT3
@@ -273,11 +282,11 @@ _titleStartGame:
 
         dc.b ZONE.CWZ,ACT1
         dc.b ZONE.CWZ,ACT2
-        dc.b .LOCKSEL+ZONE.CWZ,ACT1
+        dc.b LOCKSEL+ZONE.CWZ,ACT1
 
-        dc.b .SPECIAL,0
-        dc.b .SPECIAL,0
-        dc.b .LOCKSEL+0,0
+        dc.b SPESEL,0
+        dc.b SPESEL,0
+        dc.b LOCKSEL+0,0
 
 ; ---------------------------------------------------------------------------
 
@@ -293,75 +302,82 @@ _titleAdvanceCam:
         bsr.w   ProcessArtLoading
         move.w  (memPlayer+obj.X).w,d0   ; Update "player" position for cams.
         addq.w  #2,d0
-        move.w  d0,(memPlayer+obj.X).w   ; If not at 
+        move.w  d0,(memPlayer+obj.X).w   ; If not at end position, continue
         cmpi.w  #$1C00,d0              
-        bcs.s   .StartDemo
-        move.b  #GMNO.LOGO,(gamemode).w
-        rts
-; ---------------------------------------------------------------------------
+        blo.s   .DoDemo
 
-.StartDemo:                            
-                tst.w   genericTimer.w
-                bne.w   .CheckIfReady
-                move.b  #sndCMD_Stop,d0
-                bsr.w   QueueSoundB
-                move.w  (demoCurLevel).w,d0
-                andi.w  #7,d0
-                add.w   d0,d0
-                move.w  Demo_LevelOrder(pc,d0.w),d0
-                move.w  d0,(zone).w
-                addq.w  #1,(demoCurLevel).w
-                cmpi.w  #6,(demoCurLevel).w
-                bcs.s   .DoLevelDemo
-                move.w  #0,(demoCurLevel).w
+        ; Also unreachable. (See --> GM_TITLE.MainLoop)
+
+        move.b  #GAMEMD.LOGO,gamemode.w
+        rts
+
+.DoDemo:                            
+        tst.w   genericTimer.w
+        bne.w   .CheckIfReady
+
+        move.b  #SNDCMD.Stop,d0
+        bsr.w   QueueSoundB
+
+        move.w  demoZone.w,d0
+        andi.w  #7,d0
+        add.w   d0,d0
+        move.w  DemoZoneList(pc,d0.w),d0
+        move.w  d0,zone.w
+        addq.w  #1,demoZone.w
+
+        cmpi.w  #6,demoZone.w  ; Max. of 6 demos to play
+        blo.s   .DoLevelDemo   ; if less than max, skip clr
+        move.w  #0,demoZone.w
 
 .DoLevelDemo:                          
-                move.w  #1,(demo).w
-                move.b  #GMNO.DEMO,(gamemode).w
-                cmpi.w  #$600,d0
-                bne.s   .ClearLevelVars
-                move.b  #GMNO.SPECIAL,(gamemode).w
+        move.w  #1,demo.w
+        move.b  #GAMEMD.DEMO,gamemode.w
 
-.ClearLevelVars:                       
-                move.b  #3,(lives).w
-                moveq   #0,d0
-                move.w  d0,(rings).w
-                move.l  d0,(time).w
-                move.l  d0,(score).w
-                rts
+        cmpi.w  #(SPEDEMO<<8),d0           ; If not special, skip
+        bne.s   .NotSpecStg                
+
+        move.b  #GAMEMD.SPECIAL,gamemode.w ; Otherwise, set mode to special
+
+.NotSpecStg:                       
+        move.b  #3,lives.w
+        moveq   #0,d0
+        move.w  d0,rings.w
+        move.l  d0,time.w
+        move.l  d0,score.w
+        rts
+        
+; ---------------------------------------------------------------------------
+
+DemoZoneList:
+        dc.b ZONE.GHZ,ACT1
+        dc.b SPEDEMO,0
+        dc.b ZONE.MZ,ACT1
+        dc.b SPEDEMO,0
+        dc.b ZONE.SZ,ACT1
+        dc.b SPEDEMO,0
+        dc.b ZONE.SLZ,ACT1
+        dc.b SPEDEMO,0
+        dc.b ZONE.MZ,ACT1
+        dc.b SPEDEMO,0
+        dc.b ZONE.SZ,ACT1
+        dc.b SPEDEMO,0
 
 ; ---------------------------------------------------------------------------
 
-Demo_LevelOrder:
-        dc.w $000
-        dc.w $600
-        dc.w $200
-        dc.w $600
-        dc.w $400
-        dc.w $600
-        dc.w $300
-        dc.w $600
-        dc.w $200
-        dc.w $600
-        dc.w $400
-        dc.w $600
 
-; ---------------------------------------------------------------------------
-
-
-_lvlselectControl:                      
-                move.b  (joypadPress).w,d1
+_zoneselCtrl:                      
+                move.b  joypadPress.w,d1
                 andi.b  #%11,d1
                 bne.s   loc_28B6
-                subq.w  #1,(lvlselCurTimer).w
+                subq.w  #1,zoneselTime.w
                 bpl.s   loc_28F0
 
 loc_28B6:                               
-                move.w  #11,(lvlselCurTimer).w
-                move.b  (joypad).w,d1
+                move.w  #11,zoneselTime.w
+                move.b  joypad.w,d1
                 andi.b  #%11,d1
                 beq.s   loc_28F0
-                move.w  (lvlselCurItem).w,d0
+                move.w  (zoneselItem).w,d0
                 btst    #0,d1
                 beq.s   .NoUpPress
                 subq.w  #1,d0
@@ -377,18 +393,18 @@ loc_28B6:
                 moveq   #0,d0
 
 .NoDwnPress:                           
-                move.w  d0,(lvlselCurItem).w
-                bsr.w   _lvlselectTextLoad
+                move.w  d0,(zoneselItem).w
+                bsr.w   _zoneselTextLoad
                 rts
 ; ---------------------------------------------------------------------------
 
 loc_28F0:                               
-                cmpi.w  #19,(lvlselCurItem).w
+                cmpi.w  #19,(zoneselItem).w
                 bne.s   .Exit
                 move.b  (joypadPress).w,d1
                 andi.b  #%1100,d1
                 beq.s   .Exit
-                move.w  (lvlselCurSound).w,d0
+                move.w  (zoneselSnd).w,d0
                 btst    #2,d1
                 beq.s   .NoLeftPress
                 subq.w  #1,d0
@@ -404,24 +420,22 @@ loc_28F0:
                 moveq   #0,d0
 
 .NoRightPress:                         
-                move.w  d0,(lvlselCurSound).w
-                bsr.w   _lvlselectTextLoad
+                move.w  d0,(zoneselSnd).w
+                bsr.w   _zoneselTextLoad
 
 .Exit:                                 
                 rts
-; End of function _lvlselectControl
-
 
 ; =============== S U B R O U T I N E =======================================
 
 
-_lvlselectTextLoad:                     
+_zoneselTextLoad:                     
 
-lvlselectTEXTPOS=  $62100003
+TEXTPOS=  $62100003
 
                 lea     (StageSelectText).l,a1
                 lea     (VDPDATA).l,a6
-                move.l  #lvlselectTEXTPOS,d4 ; DO_WRITE_TO_VRAM_AT_$E210_ADDR
+                move.l  #TEXTPOS,d4 ; DO_WRITE_TO_VRAM_AT_$E210_ADDR
                                         ; DO_OPERATION_WITHOUT_DMA
                 move.w  #$E680,d3
                 moveq   #$13,d1
@@ -432,7 +446,7 @@ lvlselectTEXTPOS=  $62100003
                 addi.l  #$800000,d4
                 dbf     d1,.DrawLoop
                 moveq   #0,d0
-                move.w  (lvlselCurItem).w,d0
+                move.w  (zoneselItem).w,d0
                 move.w  d0,d1
                 move.l  #$62100003,d4
                 lsl.w   #7,d0
@@ -448,14 +462,14 @@ lvlselectTEXTPOS=  $62100003
                 move.l  d4,4(a6)
                 bsr.w   .HighlightText
                 move.w  #$E680,d3
-                cmpi.w  #$13,(lvlselCurItem).w
+                cmpi.w  #$13,(zoneselItem).w
                 bne.s   .DrawSoundTest
                 move.w  #$C680,d3
 
 .DrawSoundTest:                        
                 move.l  #$6BB00003,(VDPCTRL).l ; DO_WRITE_TO_VRAM_AT_$EBB0_ADDR
                                         ; DO_OPERATION_WITHOUT_DMA
-                move.w  (lvlselCurSound).w,d0
+                move.w  (zoneselSnd).w,d0
                 addi.w  #$80,d0
                 move.b  d0,d2
                 lsr.b   #4,d0

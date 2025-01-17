@@ -44,9 +44,9 @@ water:          	rs.b 2
 logoUnk1:       	rs.b 2    
 logoUnk2:       	rs.b 2    
                 	rs.b 2
-lvlselCurTimer: 	rs.b 2    
-lvlselCurSelection:	rs.b 2 
-lvlselCurSound: 	rs.b 2    
+zoneselTime: 		rs.b 2    
+zoneselItem:		rs.b 2 
+zoneselSnd: 		rs.b 2    
                 	rs.b $14
 decompQueue:   		rs.b $60  
 decompNemWrite: 	rs.b 4    
@@ -171,8 +171,7 @@ STACK        EQU $00FFFE00 		; for vector table entry
 stack:          	rs.b 2    
 restart:        	rs.b 2    
 frameCntr:     		rs.b 2    
-editItem:       	rs.b 1    
-                	rs.b 1
+editItem:       	rs.b 2
 editMode:       	rs.b 2    
 editXVel:       	rs.b 1    
 editYVel:       	rs.b 1    
@@ -221,7 +220,7 @@ levelselectFlag:	rs.b 2
 hblankWaterFlag:	rs.b 2    
                 	rs.b 6
 demo:           	rs.b 2    
-demoCurLevel:   	rs.b 2    
+demoZone:   		rs.b 2    
                 	rs.b 4
 hardwareVersion:	rs.b 2    
 debug:          	rs.b 2    

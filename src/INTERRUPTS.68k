@@ -105,7 +105,7 @@ VBLANK_UNK:
 ; ---------------------------------------------------------------------------
 
 VBLANK_PAUSE:                               
-        cmpi.b  #GMNO.SPECIAL,gamemode.w
+        cmpi.b  #GAMEMD.SPECIAL,gamemode.w
         beq.w   VBLANK_SPECIAL
 
 ; ---------------------------------------------------------------------------

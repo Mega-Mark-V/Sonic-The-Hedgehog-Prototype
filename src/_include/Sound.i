@@ -5,48 +5,48 @@
 ; ---------------------------------------------------------------------------
 
 ; enum 	musID
-musID.GHZ               EQU     $81
-musID.LZ                EQU     $82
-musID.MZ                EQU     $83
-musID.SLZ               EQU     $84
-musID.SZ                EQU     $85
-musID.CWZ               EQU     $86
-musID.Invincible        EQU     $87
-musID.ExtraLife         EQU     $88
-musID.Special           EQU     $89
-musID.Title             EQU     $8A
-musID.Ending            EQU     $8B
-musID.Boss            	EQU     $8C
-musID.Final           	EQU     $8D
-musID.ZoneClear       	EQU     $8E
-musID.GameOver        	EQU     $8F
-musID.Continue        	EQU     $90
-musID.StaffRoll       	EQU     $91
+BGMNO.GHZ               EQU     $81
+BGMNO.LZ                EQU     $82
+BGMNO.MZ                EQU     $83
+BGMNO.SLZ               EQU     $84
+BGMNO.SZ                EQU     $85
+BGMNO.CWZ               EQU     $86
+BGMNO.Invincible        EQU     $87
+BGMNO.ExtraLife         EQU     $88
+BGMNO.Special           EQU     $89
+BGMNO.Title             EQU     $8A
+BGMNO.Ending            EQU     $8B
+BGMNO.Boss            	EQU     $8C
+BGMNO.Final           	EQU     $8D
+BGMNO.ZoneClear       	EQU     $8E
+BGMNO.GameOver        	EQU     $8F
+BGMNO.Continue        	EQU     $90
+BGMNO.StaffRoll       	EQU     $91
 
 ; ---------------------------------------------------------------------------
 ; Sound Effects
 ; ---------------------------------------------------------------------------
 
 ; enum	sfxID
-sfxID.Jump              EQU         $A0
-sfxID.Death             EQU         $A3
-sfxID.MissileExplode    EQU         $A5
-sfxID.Spikes            EQU         $A6
-sfxID.Shield            EQU         $AF
-sfxID.Bumper            EQU         $B4
-sfxID.RingCollect       EQU         $B5
-sfxID.Spin              EQU         $BE
-sfxID.Pop               EQU         $C1
+SFXNO.Jump              EQU         $A0
+SFXNO.Death             EQU         $A3
+SFXNO.MissileExplode    EQU         $A5
+SFXNO.Spikes            EQU         $A6
+SFXNO.Shield            EQU         $AF
+SFXNO.Bumper            EQU         $B4
+SFXNO.RingCollect       EQU         $B5
+SFXNO.Spin              EQU         $BE
+SFXNO.Pop               EQU         $C1
 
 ; ---------------------------------------------------------------------------
 ; Sound Command IDs
 ; ---------------------------------------------------------------------------
 
 ; enum	sndCMD
-sndCMD.Fade             EQU         $E0
-sndCMD.e1               EQU         $E1
-sndCMD.Fast             EQU         $E2
-sndCMD.Slow             EQU         $E3
+SNDCMD.Fade             EQU         $E0
+SNDCMD.e1               EQU         $E1
+SNDCMD.Fast             EQU         $E2
+SNDCMD.Slow             EQU         $E3
 
 ; ---------------------------------------------------------------------------
 ; Sound RAM allocation

@@ -5,8 +5,10 @@
 	rsset		WORKRAM+$FF000000
 
 levelChunks:    	rs.b 	$A400
-levelLayout:    	rs.b 	$400 
-deformScrollBuffer:	rs.b 	$200
+layoutA:	=		layoutMem+$00        
+layoutB:	=		layoutMem+$40
+layoutMem:    		rs.b 	$400 
+hscrollWork:		rs.b 	$200
 globalBuffer:   	rs.b 	$200 
 spriteDrawQueue:	rs.b 	$400 
 levelBlocks:    	rs.b 	$1800
