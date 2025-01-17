@@ -153,10 +153,17 @@ GM_TITLE:
 ; Zone Select Main Program
 ; This code is very messy due to being programmed within the title directly.
 ; ---------------------------------------------------------------------------
+; local enums.
 
 LOCKSEL = $80   ; Zone selection lock number
 SPEDEMO = $6    ; Special zone demo num
 SPESEL  = $7    ; Special zone select num
+
+TILEROW         =  $800000
+TEXTADDR        =  $E210
+SNDTILEADDR     =  $EBB0
+
+; ---------------------------------------------------------------------------
 
 LevelSelect:
         moveq   #PALNO.SELECT,d0 
@@ -345,7 +352,7 @@ _titleAdvanceCam:
         move.l  d0,time.w
         move.l  d0,score.w
         rts
-        
+
 ; ---------------------------------------------------------------------------
 
 DemoZoneList:
@@ -364,156 +371,158 @@ DemoZoneList:
 
 ; ---------------------------------------------------------------------------
 
-
 _zoneselCtrl:                      
-                move.b  joypadPress.w,d1
-                andi.b  #%11,d1
-                bne.s   loc_28B6
-                subq.w  #1,zoneselTime.w
-                bpl.s   loc_28F0
+        move.b  joypadPress.w,d1   
 
-loc_28B6:                               
-                move.w  #11,zoneselTime.w
-                move.b  joypad.w,d1
-                andi.b  #%11,d1
-                beq.s   loc_28F0
-                move.w  (zoneselItem).w,d0
-                btst    #0,d1
-                beq.s   .NoUpPress
-                subq.w  #1,d0
-                bcc.s   .NoUpPress
-                moveq   #19,d0
+        andi.b  #%00000011,d1      ; Go if down or up pressed
+        bne.s   .InputGiven    
 
-.NoUpPress:                            
-                btst    #1,d1
-                beq.s   .NoDwnPress
-                addq.w  #1,d0
-                cmpi.w  #20,d0
-                bcs.s   .NoDwnPress
-                moveq   #0,d0
+        subq.w  #1,zoneselTime.w
+        bpl.s   .DoSndTest
+
+.InputGiven:                               
+        move.w  #11,zoneselTime.w
+        move.b  joypad.w,d1        
+        andi.b  #%00000011,d1      ; Go if joypad not held
+        beq.s   .DoSndTest
+        move.w  zoneselItem.w,d0
+
+        btst    #0,d1              ; Down held?
+        beq.s   .ChkDwn            ; Skip if not
+        subq.w  #1,d0
+        bcc.s   .ChkDwn
+        moveq   #19,d0
+
+.ChkDwn:                            
+        btst    #1,d1
+        beq.s   .NoDwnPress
+        addq.w  #1,d0
+        cmpi.w  #20,d0
+        bcs.s   .NoDwnPress
+        moveq   #0,d0              ; Roll back to sel. 0
 
 .NoDwnPress:                           
-                move.w  d0,(zoneselItem).w
-                bsr.w   _zoneselTextLoad
-                rts
+        move.w  d0,zoneselItem.w
+        bsr.w   _zoneselTextLoad
+        rts
+
 ; ---------------------------------------------------------------------------
 
-loc_28F0:                               
-                cmpi.w  #19,(zoneselItem).w
-                bne.s   .Exit
-                move.b  (joypadPress).w,d1
-                andi.b  #%1100,d1
-                beq.s   .Exit
-                move.w  (zoneselSnd).w,d0
-                btst    #2,d1
-                beq.s   .NoLeftPress
-                subq.w  #1,d0
-                bcc.s   .NoLeftPress
-                moveq   #$4F,d0 
+.DoSndTest:                               
+        cmpi.w  #19,zoneselItem.w ; If not selection 19, exit
+        bne.s   .Exit
 
-.NoLeftPress:                          
-                btst    #3,d1
-                beq.s   .NoRightPress
-                addq.w  #1,d0
-                cmpi.w  #$50,d0 
-                bcs.s   .NoRightPress
-                moveq   #0,d0
+        move.b  joypadPress.w,d1
 
-.NoRightPress:                         
-                move.w  d0,(zoneselSnd).w
-                bsr.w   _zoneselTextLoad
+        andi.b  #%1100,d1         ; If right or left not pressed, exit
+        beq.s   .Exit
+
+        move.w  zoneselSnd.w,d0
+        btst    #2,d1             ; Left pressed?
+        beq.s   .ChkRight
+        subq.w  #1,d0
+        bcc.s   .ChkRight
+        moveq   #$4F,d0 
+
+.ChkRight:                          
+        btst    #3,d1             ; Right pressed?
+        beq.s   .UpdateSndSel
+        addq.w  #1,d0
+        cmpi.w  #$50,d0 
+        bcs.s   .UpdateSndSel
+        moveq   #0,d0
+
+.UpdateSndSel:                         
+        move.w  d0,zoneselSnd.w
+        bsr.w   _zoneselTextLoad
 
 .Exit:                                 
-                rts
+        rts
 
-; =============== S U B R O U T I N E =======================================
-
+; ---------------------------------------------------------------------------
 
 _zoneselTextLoad:                     
-
-TEXTPOS=  $62100003
-
-                lea     (StageSelectText).l,a1
-                lea     (VDPDATA).l,a6
-                move.l  #TEXTPOS,d4 ; DO_WRITE_TO_VRAM_AT_$E210_ADDR
-                                        ; DO_OPERATION_WITHOUT_DMA
-                move.w  #$E680,d3
-                moveq   #$13,d1
+        lea     ZoneSelText,a1
+        lea     VDPDATA.l,a6
+        VDPCMD  move.l,TEXTADDR,VRAM,WRITE,d4   ; Set VRAM write address
+        move.w  #$E680,d3
+        moveq   #19,d1
 
 .DrawLoop:                             
-                move.l  d4,4(a6)
-                bsr.w   .HighlightText
-                addi.l  #$800000,d4
-                dbf     d1,.DrawLoop
-                moveq   #0,d0
-                move.w  (zoneselItem).w,d0
-                move.w  d0,d1
-                move.l  #$62100003,d4
-                lsl.w   #7,d0
-                swap    d0
-                add.l   d0,d4
-                lea     (StageSelectText).l,a1
-                lsl.w   #3,d1
-                move.w  d1,d0
-                add.w   d1,d1
-                add.w   d0,d1
-                adda.w  d1,a1
-                move.w  #$C680,d3
-                move.l  d4,4(a6)
-                bsr.w   .HighlightText
-                move.w  #$E680,d3
-                cmpi.w  #$13,(zoneselItem).w
-                bne.s   .DrawSoundTest
-                move.w  #$C680,d3
+        move.l  d4,VDPCTRL-VDPDATA(a6)
+        bsr.w   _textHighlight
+        addi.l  #TILEROW,d4
+        dbf     d1,.DrawLoop
+        moveq   #0,d0
+        move.w  zoneselItem.w,d0
+        move.w  d0,d1
+        VDPCMD  move.l,TEXTADDR,VRAM,WRITE,d4   ; Set VRAM write address
+        lsl.w   #7,d0
+        swap    d0
+        add.l   d0,d4
+        lea     ZoneSelText,a1
+        lsl.w   #3,d1
+        move.w  d1,d0
+        add.w   d1,d1
+        add.w   d0,d1
+        adda.w  d1,a1
+        move.w  #$C680,d3
+        move.l  d4,4(a6)
+        bsr.w   _textHighlight
+        move.w  #$E680,d3
+        cmpi.w  #19,zoneselItem.w
+        bne.s   .DrawSoundTest
+        move.w  #$C680,d3
 
 .DrawSoundTest:                        
-                move.l  #$6BB00003,(VDPCTRL).l ; DO_WRITE_TO_VRAM_AT_$EBB0_ADDR
-                                        ; DO_OPERATION_WITHOUT_DMA
-                move.w  (zoneselSnd).w,d0
-                addi.w  #$80,d0
-                move.b  d0,d2
-                lsr.b   #4,d0
-                bsr.w   .NybbleToTxtCode
-                move.b  d2,d0
-                bsr.w   .NybbleToTxtCode
-                rts
+        VDPCMD  move.l,SNDTILEADDR,VRAM,WRITE,d4
+        move.w  zoneselSnd.w,d0
+        addi.w  #$80,d0
+        move.b  d0,d2
+        lsr.b   #4,d0
+        bsr.w   _textNybbleToTile
+        move.b  d2,d0
+        bsr.w   _textNybbleToTile
+        rts
 
-.NybbleToTxtCode:                      
-                andi.w  #$F,d0
-                cmpi.b  #$A,d0
-                bcs.s   .Is1Thru9
-                addi.b  #7,d0           ; skip over 7 characters in art data
+; ---------------------------------------------------------------------------
+
+_textNybbleToTile:                      
+        andi.w  #$F,d0
+        cmpi.b  #$A,d0
+        bcs.s   .Is1Thru9
+        addi.b  #7,d0           ; skip over 7 characters in art data
 
 .Is1Thru9:                             
-                add.w   d3,d0
-                move.w  d0,(a6)
-                rts
+        add.w   d3,d0
+        move.w  d0,(a6)
+        rts
+
 ; ---------------------------------------------------------------------------
 
-.HighlightText:                        
-                moveq   #24-1,d2
+_textHighlight:                        
+        moveq   #24-1,d2        ; Size of row to highlight
 
 .Loop:                                 
-                moveq   #0,d0
-                move.b  (a1)+,d0
-                bpl.s   .NotSpace
-                move.w  #0,(a6)
-                dbf     d2,.Loop
-                rts
-; ---------------------------------------------------------------------------
+        moveq   #0,d0
+        move.b  (a1)+,d0
+        bpl.s   .NotSpace
+        move.w  #0,(a6)
+        dbf     d2,.Loop
+        rts
 
 .NotSpace:                             
-                add.w   d3,d0
-                move.w  d0,(a6)
-                dbf     d2,.Loop
-                rts
+        add.w   d3,d0
+        move.w  d0,(a6)
+        dbf     d2,.Loop
+        rts
 
 ; ---------------------------------------------------------------------------
-; Special stage onscreen text mapping data
+; Level Select onscreen text mapping data
 ; this sucks
 ; ---------------------------------------------------------------------------
 
-StageSelectText:
+ZoneSelText:
         dc.b _G,_R,_E,_E,_N,__,_H,_I,_L,_L,__,_Z,_O,_N,_E,__,_S,_T,_A,_G,_E,__,_1,__
         dc.b __,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,_S,_T,_A,_G,_E,__,_2,__
         dc.b __,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,_S,_T,_A,_G,_E,__,_3,__
