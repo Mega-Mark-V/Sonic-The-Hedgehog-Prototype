@@ -69,10 +69,10 @@ GM_TITLE:
         ; so that they can be used for the background here
 
         VDPCMD  move.l,$0000,VRAM,WRITE,VDPCTRL
-        lea     ArtNem_GreenHill1,a0            ; Load GHZ tileset #1
+        lea     ArtNem_GreenHill1,a0    ; Load GHZ tileset #1
         bsr.w   NemDec
 
-        lea     MapBlks_GreenHill,a0            ; Load GHZ blocks
+        lea     MapBlks_GreenHill,a0    ; Load GHZ blocks
         lea     levelBlocks.w,a4
         move.w  #$5FF,d0
 
@@ -80,25 +80,29 @@ GM_TITLE:
         move.l  (a0)+,(a4)+
         dbf     d0,.LoadBlks
 
-        lea     MapChnks_GHZ,a0                 ; Load GHZ chunks
-        lea     levelChunks,a1
+        lea     MapChnks_GHZ,a0         ; Load GHZ chunks to chunk mem.
+        lea     levelChunks,a1          
         bsr.w   KosDec
 
-        bsr.w   InitLevelLayout
-        lea     VDPCTRL,a5
+        bsr.w   InitZoneLayout          ; Load zone layout info
+
+        ; Set parameters for ONLY base cam. B chunk drawing
+        ; _titleDrawCams is called in VBLANK
+
+        lea     VDPCTRL,a5               
         lea     VDPDATA,a6
-        lea     cameraBPosX.w,a3
-        lea     levelLayout+$40.w,a4
+        lea     cameraBPosX.w,a3      
+        lea     layoutB.w,a4
         move.w  #$6000,d2
         bsr.w   DrawChunks
 
-        moveq   #1,d0
+        moveq   #PALNO.TITLE,d0         ; Load palette
         bsr.w   PalQueueForFade
 
-        move.b  #BGMNO.Title,d0
+        move.b  #BGMNO.Title,d0         ; Play BGM
         bsr.w   QueueSoundB
 
-        move.b  #0,debug.w
+        move.b  #0,debug.w              ; Clear debug flag
         move.w  #376,genericTimer.w
 
         move.b  #OBJNO.TITLESONIC,memTitleSonic.w ; Set Title Sonic obj.
@@ -109,8 +113,8 @@ GM_TITLE:
         moveq   #0,d0
         bsr.w   InitArtList
 
-        move.w  displayMode.w,d0        ; Enable display
-        ori.b   #$40,d0
+        move.w  displayMode.w,d0        
+        ori.b   #%01000000,d0           ; Enable display
         move.w  d0,VDPCTRL 
 
         bsr.w   PalFadeIn               ; Fade palette in
@@ -406,8 +410,6 @@ _zoneselCtrl:
         bsr.w   _zoneselTextLoad
         rts
 
-; ---------------------------------------------------------------------------
-
 .DoSndTest:                               
         cmpi.w  #19,zoneselItem.w ; If not selection 19, exit
         bne.s   .Exit
@@ -475,7 +477,7 @@ _zoneselTextLoad:
         move.w  #$C680,d3
 
 .DrawSoundTest:                        
-        VDPCMD  move.l,SNDTILEADDR,VRAM,WRITE,d4
+        VDPCMD  move.l,SNDTILEADDR,VRAM,WRITE,VDPCTRL
         move.w  zoneselSnd.w,d0
         addi.w  #$80,d0
         move.b  d0,d2

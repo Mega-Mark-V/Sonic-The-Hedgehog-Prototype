@@ -6,7 +6,7 @@
 ; Process level header, loading the chunks, blocks, layout, and art list
 ; ---------------------------------------------------------------------------
 
-ProcessLevelHeader:                     
+ProcessZoneHeader:                     
         moveq   #0,d0
         move.b  zone.w,d0
         lsl.w   #4,d0
@@ -24,7 +24,7 @@ ProcessLevelHeader:
         movea.l (a2)+,a0
         lea     levelChunks,a1
         bsr.w   KosDec
-        bsr.w   InitLevelLayout
+        bsr.w   InitZoneLayout
         move.w  (a2)+,d0
         move.w  (a2),d0
         andi.w  #$FF,d0
@@ -90,7 +90,7 @@ DrawLivesWindow:
 ; In RAM they are merged to an alternating pattern of A,B,A,B every 64 bytes
 ; ---------------------------------------------------------------------------
 
-InitLevelLayout:                        
+InitZoneLayout:                        
         lea     layoutA.w,a3
         move.w  #512-1,d1
         moveq   #0,d0
