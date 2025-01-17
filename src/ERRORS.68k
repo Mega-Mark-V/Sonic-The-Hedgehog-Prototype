@@ -172,6 +172,7 @@ DrawErrorValue:
         andi.w  #$F,d1
         cmpi.w  #$A,d1			; Are we at a hex value nybble?					
         bcs.s   .Numbers		; If not, branch forward
+        
         addq.w  #7,d1			; Otherwise, skip over 7 symbol tiles
 
 .Numbers:                      

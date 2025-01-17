@@ -276,27 +276,31 @@ PalFadeIn:
         moveq   #0,d0
         lea     palette.w,a0
         lea     fadingPalette.w,a1
-        move.b  palFadeArgs.w,d0
-        adda.w  d0,a0
+
+        move.b  palFadeArgs.w,d0       ; Get and set user offset into pal.
+        adda.w  d0,a0                  
         adda.w  d0,a1
-        move.b  palFadeSize.w,d0
+
+        move.b  palFadeSize.w,d0       ; Get amount of colors to change
 
 .DoRequestedSize:                      
         bsr.s   .CalcColor 		
-        dbf     d0,.DoRequestedSize    ; Loop for the size provided
+        dbf     d0,.DoRequestedSize    ; Loop for size provided
         rts
 
 ; ---------------------------------------------------------------------------
 
 .CalcColor:                            
-        move.w  (a1)+,d2
-        move.w  (a0),d3
-        cmp.w   d2,d3
+        move.w  (a1)+,d2        ; d2 = fadingPalette (fade buffer)
+        move.w  (a0),d3         ; d3 = palette (original)
+
+        cmp.w   d2,d3           ; If colors are the same, move to next
         beq.s   .NextColor
+
 .AddBlue:
-        move.w  d3,d1
-        addi.w  #$200,d1
-        cmp.w   d2,d1
+        move.w  d3,d1           
+        addi.w  #$200,d1        ; Increment blue channel 
+        cmp.w   d2,d1           
         bhi.s   .AddGreen
         move.w  d1,(a0)+
         rts

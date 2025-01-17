@@ -26,7 +26,7 @@ _physFootCollision:
         rts
 
 .NotOnPlatform:                             
-        moveq   #3,d0                   ;   ...flag foot sensors?
+        moveq   #3,d0                   ; Set flag for angle stack
         move.b  d0,angleFront.w
         move.b  d0,angleBack.w
 
@@ -56,7 +56,7 @@ _physWalkFloor:
         move.b  obj.XRad(a0),d0         ; Get right edge of the object's radius
         ext.w   d0                      ; and also set as x input for branch
         add.w   d0,d3
-        lea     angleFront.w,a4     ; Set angle output location in a4
+        lea     angleFront.w,a4         ; Set angle output location in a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Set Checking top solidity

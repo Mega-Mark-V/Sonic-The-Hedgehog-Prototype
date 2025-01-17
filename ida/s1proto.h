@@ -23,7 +23,7 @@ enum system
 struct __attribute__((packed)) __attribute__((aligned(1))) obj
 {
   char ID;
-  char RenderFlags;
+  char Render;
   __int16 Tile;
   int Map;
   __int16 X;
@@ -40,18 +40,17 @@ struct __attribute__((packed)) __attribute__((aligned(1))) obj
   char Frame;
   char AnimFrame;
   char Anim;
-  char AnimPrevious;
+  char LastAnim;
   char FrameTimer;
-  char field_1F;
+  char FrameMirr;
   char Collision;
-  char ColProp;
+  char ColliCnt;
   char Status;
   char Respawn;
   char Action;
   char SubAction;
-  char Angle;
-  char field_27;
-  char Argument;
+  __int16 Angle;
+  char Args;
   char field_29;
   char field_2A;
   char field_2B;
@@ -79,7 +78,7 @@ struct __attribute__((packed)) __attribute__((aligned(1))) obj
 };
 
 /* 4 */
-enum sound
+enum SOUND
 {
   musID_GHZ = 0x81,
   musID_LZ = 0x82,
@@ -103,7 +102,7 @@ enum sound
   __sfxID_A2 = 0xA2,
   sfxID_Death = 0xA3,
   sfxID_Skid = 0xA4,
-  sfxID_MissileExplode = 0xA5,
+  sfxID_MissileHit = 0xA5,
   sfxID_Spikes = 0xA6,
   sfxID_Push = 0xA7,
   sfxID_Vanish = 0xA8,
@@ -184,7 +183,7 @@ enum gm
 };
 
 /* 8 */
-struct sonic
+struct phys
 {
   _BYTE gap0[20];
   __int16 Momentum;
@@ -214,11 +213,11 @@ struct sonic
   char field_2D;
   char field_2E;
   char field_2F;
-  __int16 Invulnerable;
+  __int16 Timeout;
   __int16 Invincible;
   __int16 Speedup;
-  char SensorFront;
-  char SensorBack;
+  char FootFront;
+  char FootBack;
   char Convex;
   char field_39;
   char LocalTimer;
@@ -361,24 +360,17 @@ enum SYSTEM
   HBLANK_VBLANK_ENABLE = 0x2300,
 };
 
-/* 17 */
-enum SOUND
-{
-  sfxCMD_E1 = 0x0,
-};
-
 /* 20 */
 enum OBJSTAT
 {
-  STAT_XBIT = 0x0,
-  STAT_YBIT = 0x1,
-  STAT_SONICSPIN = 0x2,
-  STAT_SONICSTAND = 0x3,
-  STAT_SONICJUMP = 0x4,
-  STAT_SONICPUSH = 0x5,
-  SONICSTAT_PUSHING = 0x5,
-  STAT_SONICWATR = 0x6,
-  STAT_UNKBIT7 = 0x7,
+  STAT_XDIR = 0x0,
+  STAT_YDIR = 0x1,
+  STAT_UNK2 = 0x2,
+  STAT_PLAYSTAND = 0x3,
+  STAT_UNK4 = 0x4,
+  STAT_PLAYPUSH = 0x5,
+  STAT_UNK6 = 0x6,
+  STAT_FLAG = 0x7,
 };
 
 /* 21 */
@@ -386,42 +378,131 @@ enum OBJREND
 {
   REND_XMIRR = 0x0,
   REND_YMIRR = 0x1,
-  REND_BACKGR = 0x2,
-  REND_FOREGR = 0x3,
+  REND_CAMOFF = 0x2,
+  REND_CAMOFF2 = 0x3,
   REND_HEIGHT = 0x4,
   REND_SPTYPE = 0x5,
-  REND_UNKBIT6 = 0x6,
+  REND_BEHIND = 0x6,
   REND_ONSCREEN = 0x7,
 };
 
 /* 22 */
-struct snd
+struct __attribute__((packed)) __attribute__((aligned(1))) snd
 {
   char Priority;
   char DelayCnt;
   char Tempo;
-  char Timing;
+  char Pause;
+  char Fadeout;
   char FadeoutCnt;
-  char field_5;
-  char field_6;
-  char field_7;
+  char FadeoutTime;
+  char UserFlag;
+  char Rythm;
+  char CurrentSnd;
+  char QueueA;
+  char QueueB;
+  char QueueC;
+  char SndFlag;
+  char SndMode;
+  __int16 Detune1;
+  __int16 Detune2;
+  __int16 Detune3;
+  __int16 Detune4;
+  int MusVoicePtr;
+  int SndVoicePtr;
+  int SpecialVoicePtr;
+  char FadeIn;
+  char FadeinCnt;
+  char FadeinTime;
+  char SndImportant;
+  char TempoChg;
+  char TempoSpeedup;
+  char TempoSpeedupf;
+  char field_2A;
+  char field_2B;
+  char field_2C;
+  char field_2D;
+  char field_2E;
+  char field_2F;
+  char field_30;
+  char field_31;
+  char field_32;
+  char field_33;
+  char field_34;
+  char field_35;
+  char field_36;
+  char field_37;
+  char field_38;
+  char field_39;
+  char field_3A;
+  char field_3B;
+  char field_3C;
+  char field_3D;
+  char field_3E;
+  char field_3F;
+  char Track;
+};
+
+/* 23 */
+struct __attribute__((packed)) __attribute__((aligned(1))) objentr
+{
+  __int16 X;
+  __int16 Y;
+  char ID;
+  char Argument;
+  char Save;
+  char Size;
   char field_8;
-  char field_9;
-  char field_A;
-  char field_B;
-  char field_C;
-  char field_D;
-  char field_E;
-  char field_F;
-  char field_10;
-  char field_11;
-  char field_12;
-  char field_13;
-  char field_14;
-  char field_15;
-  char field_16;
-  char field_17;
-  char field_18;
+};
+
+/* 24 */
+struct channel
+{
+  char Rythm;
+  char MusFM1;
+  char MusFM2;
+  char MusFM3;
+  char MusFM4;
+  char MusFM5;
+  char MusFM6;
+  char MusPSG1;
+  char MusPSG2;
+  char MusPSG3;
+  char SfxFM3;
+  char SfxFM4;
+  char SfxFM5;
+  char SfxPSG1;
+  char SfxPSG2;
+  char SfxPSG3;
+  char SpcFM4;
+  char SpcPSG3;
+  char SfxImportant;
+};
+
+/* 25 */
+struct __attribute__((packed)) __attribute__((aligned(1))) track
+{
+  char PlaybackCtrl;
+  char VoiceCtrl;
+  __int16 TempoDivider;
+  int VoicePointer;
+  char Transpose;
+  char Volume;
+  char AMSFMSPan;
+  char VoiceIndex;
+  char PSGEnvIndex;
+  char StackPtr;
+  char DurationTimeout;
+  char SavedDuration;
+  char SavedPCM;
+  char Freq;
+  char NoteTimeout;
+  char MasterTimeout;
+  char ModulationPtr;
+  char ModulationWait;
+  char ModulationSpeed;
+  char ModulationDelta;
+  char ModulationSteps;
   char field_19;
   char field_1A;
   char field_1B;
@@ -439,27 +520,24 @@ struct snd
   char field_27;
   char field_28;
   char field_29;
-  char field_2A;
-  char field_2B;
+  __int16 field_2A;
   char field_2C;
   char field_2D;
   char field_2E;
   char field_2F;
-  char field_30;
-  char field_31;
-  char field_32;
-  char field_33;
+  char SIZE;
 };
 
-/* 23 */
-struct __attribute__((packed)) __attribute__((aligned(1))) objtbl
+/* 26 */
+enum PHYSSTAT
 {
-  __int16 X;
-  __int16 Y;
-  char ID;
-  char Argument;
-  char Save;
-  char Size;
-  char field_8;
+  PHYS_DIR = 0x0,
+  PHYS_AIRBORNE = 0x1,
+  PHYS_ROLLING = 0x2,
+  PHYS_HOISTED = 0x3,
+  PHYS_ROLLJUMP = 0x4,
+  PHYS_PUSH = 0x5,
+  PHYS_WATER = 0x6,
+  PHYS_FLAG = 0x7,
 };
 

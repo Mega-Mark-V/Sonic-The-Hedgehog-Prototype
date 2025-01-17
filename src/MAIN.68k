@@ -40,7 +40,7 @@ HEADER:
         dc.l HBLANK             ; IRQ4 (Horizontal blanking interrupt)
         dc.l UINT               ; IRQ5
         dc.l VBLANK             ; IRQ6 (Vertical blanking interrupt)
-        dc.l UINT
+        dc.l UINT               ; IRQ7 
 
         dc.l UINT,UINT,UINT,UINT        ; TRAP Exceptions
         dc.l UINT,UINT,UINT,UINT        ; (Unused)
@@ -62,18 +62,16 @@ GAME_ID:
                 dc.b '                        '
                 dc.b '                        '
                 dc.b 'GM 00000000-00'
-CHECKSUM:       dc.w     0              
+CHECKSUM:       dc.w $0000              
 PERIPHERALS:    dc.b 'J               '
 GAMESTART:      dc.l CARTRIDGE
-GAMEEND:        dc.l CARTRIDGEE-1
+GAMESZ:         dc.l CARTRIDGESZ
 RAMSTART:       dc.l WORKRAM
-RAMEND:         dc.l WORKRAME-1
-                dc.b '    '
-                dc.b '    '
-                dc.b '    '
-                dc.b '            '
-                dc.b '                        '
-                dc.b 'JU              '
+RAMSZ:          dc.l WORKRAMSZ 
+CONFIG:         dc.b '                '
+INFO:           dc.b '                                                '
+REGION:         dc.b 'JU              '
+
 HEADEREND:
 
 ; ---------------------------------------------------------------------------
