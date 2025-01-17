@@ -26,7 +26,7 @@ Scroll_GreenHill:
         sub.w   d4,d1                   ; Subtract how far upwards we are
         move.w  cameraAPosX.w,d0
 
-        cmpi.b  #GmID.TITLE,gamemode.w
+        cmpi.b  #GMNO.TITLE,gamemode.w
         bne.s   .NotAutoScroll
 
         moveq   #0,d0

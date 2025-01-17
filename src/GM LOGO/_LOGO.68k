@@ -39,7 +39,7 @@ GM_LOGO:
         moveq   #4-1,d2 		     ; Set Height
         bsr.w   DrawTileMap 		     ; Draw Tilemap to location
 
-        moveq   #0,d0 		             ; !!! Make ID	     
+        moveq   #PALNO.LOGO,d0 		     ; Load palette     
         bsr.w   PalLoad
 
         move.w  #40,palCycStep.w 	     ; Set palette cycle info
@@ -51,7 +51,7 @@ GM_LOGO:
         move.w  d0,VDPCTRL		     ; Enable display when ready
 
 .MainLoop:                                 
-        move.b  #vbID_LOGO,vblankCmd.w
+        move.b  #VBCMD.LOGO,vblankCmd.w
         bsr.w   VSync
         bsr.w   _logoCycPal 		     ; see: Libraries/lib Palette.asm
         
@@ -62,5 +62,5 @@ GM_LOGO:
         beq.s   .MainLoop 			  
 
 .Exit:                                 
-        move.b  #GmID.TITLE,gamemode.w
+        move.b  #GMNO.TITLE,gamemode.w
         rts

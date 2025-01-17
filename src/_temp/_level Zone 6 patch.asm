@@ -14,7 +14,7 @@
 ; ---------------------------------------------------------------------------
 
 UnknownZoneRoutine:
-        cmpi.b  #zoneID_Unk,zone.w
+        cmpi.b  #ZONE.UNK,zone.w
         bne.s   .Exit
         bsr.w   _patchSolids
         lea     levelChunks+$900,a1

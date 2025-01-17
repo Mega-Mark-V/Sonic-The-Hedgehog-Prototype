@@ -22,13 +22,13 @@ CyclePalettes:
 
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w CycPal_GreenHill-.Index
-                dc.w CycPal_Labyrinth-.Index
-                dc.w CycPal_Marble-.Index
-                dc.w CycPal_Starlight-.Index
-                dc.w CycPal_Sparkling-.Index
-                dc.w CycPal_ClockWork-.Index
-                dc.w CycPal_Unknown-.Index
+        dc.w CycPal_GreenHill-.Index
+        dc.w CycPal_Labyrinth-.Index
+        dc.w CycPal_Marble-.Index
+        dc.w CycPal_Starlight-.Index
+        dc.w CycPal_Sparkling-.Index
+        dc.w CycPal_ClockWork-.Index
+        dc.w CycPal_Unknown-.Index
 ; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ CycPal_ClockWork:
         rts
 
 ; ---------------------------------------------------------------------------
-; A cycle routine dummy for what would likely be the ending sequence
+; Unknown cycle dummy
 ; ---------------------------------------------------------------------------
 
 CycPal_Unknown:                         
@@ -232,11 +232,13 @@ PalCycData_StarLight:
         dc.w $66,$220, $A,$AA
         dc.w $660,  6,$EE,$AA0
         dc.w   2,$AA
+
 PalCycData_Sparkling1:
 	dc.w $EE,$AA,$66,$22 
         dc.w $AA,$66,$22,$EE
         dc.w $66,$22,$EE,$AA
         dc.w $22,$EE,$AA,$66
+
 PalCycData_Sparkling2:
 	dc.w  $E,$EEE,$E88,$66E 
         dc.w $E88,$E22,$EEE,$C00
@@ -245,7 +247,6 @@ PalCycData_Sparkling2:
 ; ---------------------------------------------------------------------------
 ; Function to fade the palette in from black 
 ; ---------------------------------------------------------------------------
-; !!! palFadeArgs represents word location of 2 arguments; document
 
 PalFadeIn:                              
         move.w  #64-1,palFadeArgs.w 	; Set full size fade
@@ -264,7 +265,7 @@ PalFadeIn:
         move.w  #21-1,d4 	        ; Time in frames	
 
 .Loop:                                 
-        move.b  #vbID_PALFUNC,vblankCmd.w
+        move.b  #VBCMD.PALETTE,vblankCmd.w      ; Do VSync
         bsr.w   VSync
 
         bsr.s   .DoFadeCalc
@@ -299,7 +300,7 @@ PalFadeIn:
 
 .AddBlue:
         move.w  d3,d1           
-        addi.w  #$200,d1        ; Increment blue channel 
+        addi.w  #$200,d1
         cmp.w   d2,d1           
         bhi.s   .AddGreen
         move.w  d1,(a0)+
@@ -330,21 +331,20 @@ PalFadeOut:
         move.w  #21-1,d4
 
 .Loop:                                 
-        move.b  #vbID_PALFUNC,(vblankCmd).w
+        move.b  #VBCMD.PALETTE,vblankCmd.w
         bsr.w   VSync
 
         bsr.s   .DoFadeCalc
         bsr.w   ProcessArtLoading
         dbf     d4,.Loop
         rts
-
-; !!! note: _levelDoFadeCalc equals PalFadeOut.DoFadeCalc                    
+              
 .DoFadeCalc:
         moveq   #0,d0
         lea     palette.w,a0
         move.b  palFadeArgs.w,d0
         adda.w  d0,a0
-        move.b  (palFadeSize).w,d0
+        move.b  palFadeSize.w,d0
 
 .DoRequestedSize:                               
         bsr.s   .CalcColor
@@ -355,7 +355,8 @@ PalFadeOut:
 
 .CalcColor:                               
         move.w  (a0),d2
-        beq.s   .NextColor
+        beq.s   .NextColor      ; If color is already black, move to next
+
 .DecRed:
         move.w  d2,d1
         andi.w  #$00E,d1
@@ -407,6 +408,7 @@ _logoCycPal:
 
 ; ---------------------------------------------------------------------------
 ; !!! split
+
 PalCyc_LOGO: 	
 	dc.w $EC0               
         dc.w $EA0
@@ -449,10 +451,10 @@ PalQueueForFade:
         lea     PaletteIndex,a1
         lsl.w   #3,d0
         adda.w  d0,a1
-        movea.l (a1)+,a2 	; Get palette data address
-        movea.w (a1)+,a3 	; Get target address
-        adda.w  #fadingPalette-palette,a3  ; Move into fade buffer
-        move.w  (a1)+,d7 	; Get size
+        movea.l (a1)+,a2 	              ; Get palette data address
+        movea.w (a1)+,a3 	              ; Get target address
+        adda.w  #fadingPalette-palette,a3     ; Move into fade buffer
+        move.w  (a1)+,d7 	              ; Get size
 
 .LoadToQueue:                          
         move.l  (a2)+,(a3)+
@@ -480,29 +482,34 @@ PalLoad:
 ; ---------------------------------------------------------------------------
 ; Macro for defining these easier (see "_include/Macros.i" for "dclww")
 
-palentr	macro	dataddr, off, size
+palentr	macro	dataddr, off, size, noname
 	dclww   \dataddr, palette+(\off)*2, ((\size)/2)-1
+        \noname: rs.b 1
 	endm
 
 ; ---------------------------------------------------------------------------
-; Palette ID entries
+; Palette entries
 ; ---------------------------------------------------------------------------
 
 PaletteIndex:	      
-; 	         Data       Color num.	       Size
-	palentr  Pal_LOGO,	0,		64
-        palentr  Pal_TITLE,	0,		64
-        palentr  Pal_SELECT,	0,		64
-        palentr  Pal_Sonic,	0,		16
-        palentr  Pal_GHZ,	16,		48
-        palentr  Pal_LZ,	16,		48
-        palentr  Pal_MZ,	16,		48
-        palentr  Pal_SLZ,	16,		48
-        palentr  Pal_SZ,	16,		48
-        palentr  Pal_CWZ,	16,		48
-        palentr  Pal_SPECIAL,	0,		64
-        palentr  Pal_Unk,	0,		64
+
+ 	;        Data         Addr.    Size      No. Name
+        
+	palentr  Pal_LOGO,	0,	64,      PALNO.LOGO
+        palentr  Pal_TITLE,	0,	64,      PALNO.TITLE
+        palentr  Pal_SELECT,	0,	64,      PALNO.SELECT
+        palentr  Pal_Sonic,	0,	16,      PALNO.SONIC
+        palentr  Pal_GHZ,	16,	48,      PALNO.GHZ
+        palentr  Pal_LZ,	16,	48,      PALNO.LZ
+        palentr  Pal_MZ,	16,	48,      PALNO.MZ
+        palentr  Pal_SLZ,	16,	48,      PALNO.SLZ
+        palentr  Pal_SZ,	16,	48,      PALNO.SZ
+        palentr  Pal_CWZ,	16,	48,      PALNO.CWZ
+        palentr  Pal_SPECIAL,	0,	64,      PALNO.SPECIAL
+        palentr  Pal_Unk,	0,	64,      PALNO.UNK
+
 ; !!! split
+
 Pal_LOGO:       dc.w   0,$EEE,$EC0,$EA0,$E80,$E60,$E40,$E20 
                 dc.w $E00,$C00,$A00,$800,$600,  0,  0,  0
                 dc.w   0,  0,  0,  0,  0,  0,  0,  0
@@ -511,6 +518,7 @@ Pal_LOGO:       dc.w   0,$EEE,$EC0,$EA0,$E80,$E60,$E40,$E20
                 dc.w   0,  0,  0,  0,  0,  0,  0,  0
                 dc.w   0,  0,  0,  0,  0,  0,  0,  0
                 dc.w   0,  0,  0,  0,  0,  0,  0,  0
+
 Pal_TITLE:      dc.b  $A,$20,  6,  0, $C,  0, $E,$44 
                 dc.b  $E,$66, $E,$88, $E,$EE,  0,$AE
                 dc.b   0,$6A,  0,$26,  0,$EE, $E,$AA
@@ -527,6 +535,7 @@ Pal_TITLE:      dc.b  $A,$20,  6,  0, $C,  0, $E,$44
                 dc.b  $E,$CA, $E,$EC, $E,$EE, $E,$AC
                 dc.b  $E,$8A, $E,$68,  0,$E8,  0,$A4
                 dc.b   0,  2,  0,$26,  0,$6C,  0,$CE
+
 Pal_SELECT:     dc.b   0,  0,  0,  0,  0,  2,  0,  2 
                 dc.b   2,$24,  2,$24,  4,$46,  4,$46
                 dc.b   2,$24,  2,$24,  4,$46,  6,$68
@@ -543,10 +552,12 @@ Pal_SELECT:     dc.b   0,  0,  0,  0,  0,  2,  0,  2
                 dc.b   0,  0,  0,  0, $E,$EC,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
+
 Pal_Sonic:      dc.b   0,  0,  0,  0,  8,$22, $A,$44 
                 dc.b  $C,$66, $E,$88, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44,  8,$AE,  4,$6A
                 dc.b   0, $E,  0,  8,  0,  4,  0,$EE
+
 Pal_GHZ:        dc.b   8,  0,  0,  0,  6,  8,  8,$2A 
                 dc.b  $A,$4C, $C,$6E, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44, $A,$E4,  6,$A2
@@ -559,6 +570,7 @@ Pal_GHZ:        dc.b   8,  0,  0,  0,  6,  8,  8,$2A
                 dc.b  $E,$CA, $E,$EC, $E,$EE, $E,$AC
                 dc.b  $E,$8A, $E,$68,  0,$E8,  0,$A4
                 dc.b   0,  2,  0,$26,  0,$6C,  0,$CE
+
 Pal_LZ:         dc.b   0,  0,  0,  0,  0,  0,  0,  0 
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
@@ -571,6 +583,7 @@ Pal_LZ:         dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,$46,  8,$22, $A,$66, $E,$AA
                 dc.b   6,$4A,  8,$6C, $A,$8E,  0,$26
                 dc.b   0,$48,  0,$6A,  0,$68, $E,$EE
+
 Pal_Unk:        dc.b   4,  0,  0,  0,  4,  0,  6,  0 
                 dc.b   8,$22, $C,$44, $C,$CC,  6,$66
                 dc.b   4,$44,  0,  0,  4,$6C,  0,$26
@@ -587,6 +600,7 @@ Pal_Unk:        dc.b   4,  0,  0,  0,  4,  0,  6,  0
                 dc.b  $C,$86, $C,$C8, $C,$CC, $C,$48
                 dc.b   6,  4,  2,  0,  0,  6,  4,$2C
                 dc.b   8,$6C,  0,  0,  0,  0,  0,  0
+
 Pal_MZ:         dc.b   8,  0,  0,  0,  6,  8,  8,$2A 
                 dc.b  $A,$4C, $C,$6E, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44, $A,$E4,  6,$A2
@@ -599,6 +613,7 @@ Pal_MZ:         dc.b   8,  0,  0,  0,  6,  8,  8,$2A
                 dc.b   0,  8,  0, $E,  0,$8E,  0,$EE
                 dc.b   8,$20, $A,$60, $C,$80, $E,$A0
                 dc.b   0,$A4,  0,$E8, $E,$C0,  6,$24
+
 Pal_SLZ:        dc.b   8,  0,  0,  0,  6,  8,  8,$2A 
                 dc.b  $A,$4C, $C,$6E, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44, $A,$E4,  6,$A2
@@ -611,6 +626,7 @@ Pal_SLZ:        dc.b   8,  0,  0,  0,  6,  8,  8,$2A
                 dc.b   0,  0,  0,  0,  0,$22,  6,  2
                 dc.b   4,  0, $A,$22, $A,$44, $A,$66
                 dc.b   0,  0,  0,$24,  0,$44,  0,  0
+
 Pal_SZ:         dc.b   0,$C0,  0,  0,  4,$24,  8,$48 
                 dc.b  $A,$6A, $E,$8E, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44, $A,$E4,  6,$A2
@@ -623,6 +639,7 @@ Pal_SZ:         dc.b   0,$C0,  0,  0,  4,$24,  8,$48
                 dc.b   8,$4A, $A,$6C,  0,  0,  0,$EE
                 dc.b   0,$AA,  0,$66,  0,$22,  0, $E
                 dc.b  $A,$60, $E,$EE, $E,$88, $C,  0
+
 Pal_CWZ:        dc.b   0,  0,  0,  0,  0,  0,  0,  0 
                 dc.b   0,  0,  0,  0, $E,$EE,  0,  0
                 dc.b   8,$88,  4,$44,  0,  0,  0,  0
@@ -635,6 +652,7 @@ Pal_CWZ:        dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
                 dc.b   0,  0,  0,  0,  0,  0,  0,  0
+
 Pal_SPECIAL:    dc.b   4,  0,  0,  0,  8,$22, $A,$44 
                 dc.b  $C,$66, $E,$88, $E,$EE, $A,$AA
                 dc.b   8,$88,  4,$44,  8,$AE,  4,$6A

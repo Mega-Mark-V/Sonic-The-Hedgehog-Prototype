@@ -1,6 +1,12 @@
 ; ---------------------------------------------------------------------------
 ; TITLE Screen (And level select) Main Program 
 ; ---------------------------------------------------------------------------
+; Local allocations for each object loaded here
+
+memPlayer:           = objSlot00
+memTitleSonic:       = objSlot01 
+memTitlePSB:         = objSlot02
+memTitleMask:        = objSlot03
 
 GM_TITLE:                               
         bsr.w   ClearArtListQueue
@@ -12,7 +18,7 @@ GM_TITLE:
         move.w  #$9001,(a6)                     ; Set 512x256 plane res.
         move.w  #$9200,(a6)                     ; Clear Window Y-pos
         move.w  #$8B03,(a6)                     ; Set HScroll to per-line
-        move.w  #$8720,(a6)                    
+        move.w  #$8720,(a6)                     ; Set BG color
         move.w  displayMode.w,d0
         andi.b  #%10111111,d0
         move.w  d0,VDPCTRL
@@ -92,153 +98,210 @@ GM_TITLE:
         move.b  #0,debug.w
         move.w  #376,genericTimer.w
 
-        move.b  #OBJID.TITLESONIC,objSlot01.w   ; Set Title Sonic obj.
-        move.b  #OBJID.TITLEMISC,objSlot02.w    ; Set "PRESS START BUTTON" obj.
-        move.b  #OBJID.TITLEMISC,objSlot03.w    ; Set same object
-        move.b  #2,objSlot03+obj.Frame.w        ; Set as sprite mask for Sonic
+        move.b  #OBJNO.TITLESONIC,memTitleSonic.w ; Set Title Sonic obj.
+        move.b  #OBJNO.TITLEMISC,memTitlePSB.w    ; Set PSB obj.
+        move.b  #OBJNO.TITLEMISC,memTitleMask.w   ; Set misc objno.
+        move.b  #2,objSlot03+obj.Frame.w          ; Set as masking sprite
         
         moveq   #0,d0
         bsr.w   InitArtList
 
-        move.w  displayMode.w,d0                ; Enable display
+        move.w  displayMode.w,d0        ; Enable display
         ori.b   #$40,d0
         move.w  d0,VDPCTRL 
 
-        bsr.w   PalFadeIn                       ; Fade palette in
+        bsr.w   PalFadeIn               ; Fade palette in
 
 .MainLoop:                      
-        move.b  #vbID_TITLE,vblankCmd.w
+        move.b  #VBCMD.TITLE,vblankCmd.w
         bsr.w   VSync
         bsr.w   RunObjects
         bsr.w   CameraScroll
         bsr.w   DrawObjects
         bsr.w   _titleDoPalCyc
         bsr.w   ProcessArtLoading
-        move.w  (objSlot00+8).w,d0
+        move.w  (memPlayer+obj.X).w,d0   ; Update "player" position for cams.
         addq.w  #2,d0
-        move.w  d0,(objSlot00+8).w
-        cmpi.w  #$1C00,d0
+        move.w  d0,(memPlayer+obj.X).w
+        cmpi.w  #$1C00,d0               
         bcs.s   .NotDone
-        move.b  #0,(gamemode).w
+
+        move.b  #GMNO.SEGA,gamemode.w            ; If endpoint reached, leave (unused?)
         rts
-; ---------------------------------------------------------------------------
 
 .NotDone:                              
-                tst.w   genericTimer.w
-                beq.w   _titleAdvanceCam
-                andi.b  #%10000000,(joypadPress).w
-                beq.w   .MainLoop
-                btst    #6,joypad.w
-                beq.w   _titleStartGame
-                moveq   #2,d0
-                bsr.w   PalLoad
-                lea     hscrollTable.w,a1
-                moveq   #0,d0
-                move.w  #224-1,d1
+        tst.w   genericTimer.w
+        beq.w   _titleAdvanceCam
+
+        andi.b  #%10000000,joypadPress.w ; If start not pressed, 
+        beq.w   .MainLoop                ; then loop.
+
+        btst    #6,joypad.w              ; If A is not held, 
+        beq.w   _titleStartGame          ; then start the game.
+
+        ; | Otherwise, initialize the zone select. 
+        ; V   
+
+        moveq   #2,d0 
+        bsr.w   PalLoad
+        lea     hscrollTable.w,a1
+        moveq   #0,d0
+        move.w  #224-1,d1
 
 .ClearHScroll:                         
-                move.l  d0,(a1)+
-                dbf     d1,.ClearHScroll
-                move.l  d0,(vdpPlaneAPosY).w
-                move    #$2700,sr
-                lea     (VDPDATA).l,a6
-                move.l  #$60000003,(VDPCTRL).l ; DO_WRITE_TO_VRAM_AT_$E000_ADDR
-                                        ; DO_OPERATION_WITHOUT_DMA
-                move.w  #$3FF,d1
+        move.l  d0,(a1)+                ; Clear hscroll info
+        dbf     d1,.ClearHScroll
+
+        move.l  d0,vdpPlaneAPosY.w      ; Clear Y plane A pos.
+
+        move    #$2700,sr
+
+        lea     VDPDATA,a6
+        VDPCMD  move.l,$E000,VRAM,WRITE,VDPCTRL
+        move.w  #$3FF,d1
 
 .ClearBG:                              
-                move.l  d0,(a6)
-                dbf     d1,.ClearBG
-                bsr.w   _lvlselectTextLoad
+        move.l  d0,(a6)
+        dbf     d1,.ClearBG
+        bsr.w   _lvlselectTextLoad
+        ; Fall into main zone select program
 
+; ---------------------------------------------------------------------------
+; Zone Select Main Program
+; This code is very messy due to being programmed within the title directly.
+; ---------------------------------------------------------------------------
 
-; =============== S U B R O U T I N E =======================================
+ZoneSelect:                            
+        move.b  #VBCMD.TITLE,vblankCmd.w
+        bsr.w   VSync
 
+        bsr.w   _lvlselectControl
+        bsr.w   ProcessArtLoading
 
-LevelSelect:                            
-                move.b  #vbID_TITLE,(vblankCmd).w
-                bsr.w   VSync
-                bsr.w   _lvlselectControl
-                bsr.w   ProcessArtLoading
-                tst.l   (decompQueue).w
-                bne.s   LevelSelect
-                andi.b  #%11110000,(joypadPress).w
-                beq.s   LevelSelect
-                move.w  (lvlselCurItem).w,d0
-                cmpi.w  #$13,d0
-                bne.s   .ProcessCurrentSelection
-                move.w  (lvlselCurSound).w,d0
-                addi.w  #$80,d0
-                cmpi.w  #$93,d0
-                bcs.s   .Skip
-                cmpi.w  #$A0,d0
-                bcs.s   LevelSelect
+        tst.l   decompQueue.w
+        bne.s   ZoneSelect
+
+        andi.b  #%11110000,joypadPress.w ; If S, A, C, or B not pressed,
+        beq.s   ZoneSelect               ; then loop.
+
+        move.w  lvlselCurItem.w,d0       ; Get current item
+
+        cmpi.w  #19,d0                   ; If not selection 19,
+        bne.s   .ProcCurrentSel          ; then not level select.
+
+        move.w  lvlselCurSound.w,d0
+        addi.w  #$80,d0
+        cmpi.w  #$93,d0
+        bcs.s   .Skip
+        cmpi.w  #$A0,d0
+        bcs.s   ZoneSelect
 
 .Skip:                                 
-                bsr.w   QueueSoundB
-                bra.s   LevelSelect
-; ---------------------------------------------------------------------------
+        bsr.w   QueueSoundB
+        bra.s   ZoneSelect
 
-.ProcessCurrentSelection:              
-                add.w   d0,d0
-                move.w  .LevelIDs(pc,d0.w),d0
-                bmi.s   LevelSelect
-                cmpi.w  #$700,d0
-                bne.s   .IsLevel
-                move.b  #GmID.SPECIAL,(gamemode).w
-                rts
-; ---------------------------------------------------------------------------
+.ProcCurrentSel:              
+        add.w   d0,d0
+        move.w  .LevelIDs(pc,d0.w),d0
+        bmi.s   ZoneSelect
+
+        cmpi.w  #$700,d0
+        bne.s   .IsLevel
+
+        move.b  #GMNO.SPECIAL,gamemode.w
+        rts
 
 .IsLevel:                              
-                andi.w  #$3FFF,d0
-                btst    #4,(joypad).w
-                beq.s   .DoSelectedAct
-                move.w  #act4,d0        ; Set to act 4 if A is held
+        andi.w  #$3FFF,d0
+
+        ; I think this is an early version of the ending selection code.
+        ; Similar to that in REV01. I don't know why else this would be here.
+        ; This means GHZ act 4 would be the ending screen,
+        ; Leaving zone 6 open for...    *something*
+
+        btst    #4,joypad.w             ; If B not pressed,
+        beq.s   .DoSelectedAct          ; then do selection.
+        move.w  #ZONE.GHZ+ACT4,d0       ; Otherwise, set GHZ act 4
 
 .DoSelectedAct:                        
-                move.w  d0,(zone).w
+        move.w  d0,zone.w
 
 _titleStartGame:                        
-                move.b  #GmID.LEVEL,(gamemode).w
-                move.b  #3,(lives).w
-                moveq   #0,d0
-                move.w  d0,(rings).w
-                move.l  d0,(time).w
-                move.l  d0,(score).w
-                move.b  #sndCMD_Stop,d0
-                bsr.w   QueueSoundB
-                rts
+        move.b  #GMNO.LEVEL,gamemode.w
+
+        move.b  #3,lives.w              ; Set 3 lives
+
+        moveq   #0,d0                   ; Clear game vars.
+        move.w  d0,rings.w
+        move.l  d0,time.w
+        move.l  d0,score.w
+
+        move.b  #sndCMD_Stop,d0 
+        bsr.w   QueueSoundB
+        rts
+
 ; ---------------------------------------------------------------------------
+; Selection list lookup
+; ---------------------------------------------------------------------------
+; local enums
+
+LOCKSEL = $8000
+SPECIAL = $700
+
+; ZONE enums ----> ../include/Constants.i
+
 .LevelIDs:
-                dc.w   0,  1,  2
-                dc.w $100,$101,$102
-                dc.w $200,$201,$202
-                dc.w $300,$301,$302
-                dc.w $400,$401,$402
-                dc.w $500,$501,$8500
-                dc.w $700,$700,$8000
+        dc.w ZONE.GHZ+ACT1
+        dc.w ZONE.GHZ+ACT2
+        dc.w ZONE.GHZ+ACT3
+
+        dc.w ZONE.LZ+ACT1
+        dc.w ZONE.LZ+ACT2
+        dc.w ZONE.LZ+ACT3
+
+        dc.w ZONE.MZ+ACT1
+        dc.w ZONE.MZ+ACT2
+        dc.w ZONE.MZ+ACT3
+
+        dc.w ZONE.SLZ+ACT1
+        dc.w ZONE.SLZ+ACT2
+        dc.w ZONE.SLZ+ACT3
+
+        dc.w ZONE.SZ+ACT1
+        dc.w ZONE.SZ+ACT2
+        dc.w ZONE.SZ+ACT3
+
+        dc.w ZONE.CWZ+ACT1
+        dc.w ZONE.CWZ+ACT2
+        dc.w ZONE.CWZ+ACT1+LOCKSEL
+
+        dc.w SPECIAL
+        dc.w SPECIAL
+        dc.w 0+LOCKSEL
+
 ; ---------------------------------------------------------------------------
 
 _titleAdvanceCam:                       
-                move.w  #30,(genericTimer).w
+        move.w  #30,genericTimer.w
 
 .CheckIfReady:                         
-                move.b  #vbID_TITLE,(vblankCmd).w
-                bsr.w   VSync
-                bsr.w   Parallax
-                bsr.w   CyclePalettes
-                bsr.w   ProcessArtLoading
-                move.w  (objSlot00+obj.X).w,d0
-                addq.w  #2,d0
-                move.w  d0,(objSlot00+obj.X).w
-                cmpi.w  #$1C00,d0
-                bcs.s   .StartDemo
-                move.b  #GmID.LOGO,(gamemode).w
-                rts
+        move.b  #VBCMD.TITLE,vblankCmd.w
+        bsr.w   VSync
+
+        bsr.w   Parallax
+        bsr.w   CyclePalettes
+        bsr.w   ProcessArtLoading
+        move.w  (memPlayer+obj.X).w,d0   ; Update "player" position for cams.
+        addq.w  #2,d0
+        move.w  d0,(memPlayer+obj.X).w   ; If not at 
+        cmpi.w  #$1C00,d0              
+        bcs.s   .StartDemo
+        move.b  #GMNO.LOGO,(gamemode).w
+        rts
 ; ---------------------------------------------------------------------------
 
 .StartDemo:                            
-                tst.w   (genericTimer).w
+                tst.w   genericTimer.w
                 bne.w   .CheckIfReady
                 move.b  #sndCMD_Stop,d0
                 bsr.w   QueueSoundB
@@ -254,10 +317,10 @@ _titleAdvanceCam:
 
 .DoLevelDemo:                          
                 move.w  #1,(demo).w
-                move.b  #GmID.DEMO,(gamemode).w
+                move.b  #GMNO.DEMO,(gamemode).w
                 cmpi.w  #$600,d0
                 bne.s   .ClearLevelVars
-                move.b  #GmID.SPECIAL,(gamemode).w
+                move.b  #GMNO.SPECIAL,(gamemode).w
 
 .ClearLevelVars:                       
                 move.b  #3,(lives).w
@@ -266,24 +329,24 @@ _titleAdvanceCam:
                 move.l  d0,(time).w
                 move.l  d0,(score).w
                 rts
-; End of function LevelSelect
 
 ; ---------------------------------------------------------------------------
-Demo_LevelOrder:
-                dc.w $000
-                dc.w $600
-                dc.w $200
-                dc.w $600
-                dc.w $400
-                dc.w $600
-                dc.w $300
-                dc.w $600
-                dc.w $200
-                dc.w $600
-                dc.w $400
-                dc.w $600
 
-; =============== S U B R O U T I N E =======================================
+Demo_LevelOrder:
+        dc.w $000
+        dc.w $600
+        dc.w $200
+        dc.w $600
+        dc.w $400
+        dc.w $600
+        dc.w $300
+        dc.w $600
+        dc.w $200
+        dc.w $600
+        dc.w $400
+        dc.w $600
+
+; ---------------------------------------------------------------------------
 
 
 _lvlselectControl:                      
@@ -400,7 +463,6 @@ lvlselectTEXTPOS=  $62100003
                 move.b  d2,d0
                 bsr.w   .NybbleToTxtCode
                 rts
-; ---------------------------------------------------------------------------
 
 .NybbleToTxtCode:                      
                 andi.w  #$F,d0
@@ -432,6 +494,9 @@ lvlselectTEXTPOS=  $62100003
                 dbf     d2,.Loop
                 rts
 
+; ---------------------------------------------------------------------------
+; Special stage onscreen text mapping data
+; this sucks
 ; ---------------------------------------------------------------------------
 
 StageSelectText:

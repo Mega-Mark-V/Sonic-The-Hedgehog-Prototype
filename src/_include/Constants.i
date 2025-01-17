@@ -2,18 +2,18 @@
 ; Game equates
 ; ---------------------------------------------------------------------------
 
-act1        EQU         $0
-act2        EQU         $1
-act3        EQU         $2
-act4        EQU         $3
+ACT1        EQU         $0
+ACT2        EQU         $1
+ACT3        EQU         $2
+ACT4        EQU         $3
 
-zoneID_GHZ              EQU         $0
-zoneID_LZ               EQU         $1
-zoneID_MZ               EQU         $2
-zoneID_SLZ              EQU         $3
-zoneID_SZ               EQU         $4
-zoneID_CWZ              EQU         $5
-zoneID_Unk              EQU         $6
+ZONE.GHZ              EQU         $0000
+ZONE.LZ               EQU         $0100
+ZONE.MZ               EQU         $0200
+ZONE.SLZ              EQU         $0300
+ZONE.SZ               EQU         $0400
+ZONE.CWZ              EQU         $0500
+ZONE.UNK              EQU         $0600
 
 ; ---------------------------------------------------------------------------
 ; Text code format equate table
