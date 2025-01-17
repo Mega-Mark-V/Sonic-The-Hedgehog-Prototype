@@ -245,39 +245,39 @@ _titleStartGame:
 ; ---------------------------------------------------------------------------
 ; local enums
 
-LOCKSEL = $8000
-SPECIAL = $700
+.LOCKSEL = $80   ; Zone selection lock number
+.SPECIAL = $7    ; Special stage num, not used elsewhere
 
 ; ZONE enums ----> ../include/Constants.i
 
 .LevelIDs:
-        dc.w ZONE.GHZ,ACT1
-        dc.w ZONE.GHZ,ACT2
-        dc.w ZONE.GHZ,ACT3
+        dc.b ZONE.GHZ,ACT1
+        dc.b ZONE.GHZ,ACT2
+        dc.b ZONE.GHZ,ACT3
 
-        dc.w ZONE.LZ,ACT1
-        dc.w ZONE.LZ,ACT2
-        dc.w ZONE.LZ,ACT3
+        dc.b ZONE.LZ,ACT1
+        dc.b ZONE.LZ,ACT2
+        dc.b ZONE.LZ,ACT3
 
-        dc.w ZONE.MZ,ACT1
-        dc.w ZONE.MZ,ACT2
-        dc.w ZONE.MZ,ACT3
+        dc.b ZONE.MZ,ACT1
+        dc.b ZONE.MZ,ACT2
+        dc.b ZONE.MZ,ACT3
 
-        dc.w ZONE.SLZ,ACT1
-        dc.w ZONE.SLZ,ACT2
-        dc.w ZONE.SLZ,ACT3
+        dc.b ZONE.SLZ,ACT1
+        dc.b ZONE.SLZ,ACT2
+        dc.b ZONE.SLZ,ACT3
 
-        dc.w ZONE.SZ,ACT1
-        dc.w ZONE.SZ,ACT2
-        dc.w ZONE.SZ,ACT3
+        dc.b ZONE.SZ,ACT1
+        dc.b ZONE.SZ,ACT2
+        dc.b ZONE.SZ,ACT3
 
-        dc.w ZONE.CWZ,ACT1
-        dc.w ZONE.CWZ,ACT2
-        dc.w LOCKSEL+ZONE.CWZ,ACT1
+        dc.b ZONE.CWZ,ACT1
+        dc.b ZONE.CWZ,ACT2
+        dc.b .LOCKSEL+ZONE.CWZ,ACT1
 
-        dc.w SPECIAL
-        dc.w SPECIAL
-        dc.w LOCKSEL+0
+        dc.b .SPECIAL,0
+        dc.b .SPECIAL,0
+        dc.b .LOCKSEL+0,0
 
 ; ---------------------------------------------------------------------------
 
