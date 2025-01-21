@@ -15,7 +15,7 @@ This disassembly targets Naoto's vasm Psi-X module. You can find that here : htt
 - The special stage should also be compiled separately, as it has its own RAM layout, which is why RAM is currently split into two files ("Variables.i" and "RAM.i")
 - Assembly files (.68K and .Z80) should be read with a tab width of 8.
 - "src/_temp" contains disorganized unusual or notable code I've documented that doesn't really fit into any files right now.
-- "ida" contains database files, and temporary full assembly output. It should be used as context for current progress.
+- "db" contains database files, and temporary full assembly output. It should be used as context for current progress.
 - "doc" contains context for functions, libraries, and unused code that would require more context.   
 
 ## Notice
