@@ -26,7 +26,7 @@ CameraScroll:
         bsr.w   _cameraASetY
 
 .ReturnY:                         
-       ; bsr.w   LevelEvents
+        bsr.w   LevelEvents
 
 .SetBGScroll:                          
         move.w  cameraAPosX.w,mainAPosX.w
@@ -648,7 +648,6 @@ _drawCamB:
 ; Check draw flags in camera C and draw tiles if set
 ; ---------------------------------------------------------------------------
 
-
 _drawCamC:                              
         tst.b   (a2)
         beq.w   .Exit
@@ -709,7 +708,6 @@ _drawCamC:
 ; It also uses a lower nametable address at $A000
 ; See INTERRUPTS.68k --> UNUSED_HBLANK2
 ; ---------------------------------------------------------------------------
-
 
 _drawCamZ:
         tst.b   (a2)
@@ -878,7 +876,6 @@ _drawBlock:
 ; This may have been used with the above function to see if block orientation
 ; is being read correctly. Ignores flipping bits
 ; ---------------------------------------------------------------------------
-
 
 _drawHighlight:
         rts

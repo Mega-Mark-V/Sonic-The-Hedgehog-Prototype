@@ -28,15 +28,16 @@ BGMNO.StaffRoll       	EQU     $91
 ; ---------------------------------------------------------------------------
 
 ; enum	sfxID
-SFXNO.Jump              EQU         $A0
-SFXNO.Death             EQU         $A3
-SFXNO.MissileExplode    EQU         $A5
-SFXNO.Spikes            EQU         $A6
-SFXNO.Shield            EQU         $AF
-SFXNO.Bumper            EQU         $B4
-SFXNO.RingCollect       EQU         $B5
-SFXNO.Spin              EQU         $BE
-SFXNO.Pop               EQU         $C1
+SFXNO.Jump              EQU         	$A0
+SFXNO.Death             EQU         	$A3
+SFXNO.Skid:      	EQU 		$A4 
+SFXNO.MissileExplode    EQU         	$A5
+SFXNO.Spikes            EQU         	$A6
+SFXNO.Shield            EQU         	$AF
+SFXNO.Bumper            EQU         	$B4
+SFXNO.RingCollect       EQU         	$B5
+SFXNO.Spin              EQU         	$BE
+SFXNO.Pop               EQU         	$C1
 
 ; ---------------------------------------------------------------------------
 ; Sound Command IDs
