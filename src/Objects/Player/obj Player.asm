@@ -82,13 +82,15 @@ Player_Main:
 ; Handle powerup state tracking, music, and drawing
 ; ---------------------------------------------------------------------------
 
-@ReturnBGM:
-                dc.b musID_GHZ         
-                dc.b musID_LZ
-                dc.b musID_MZ
-                dc.b musID_SLZ
-                dc.b musID_SZ
-                dc.b musID_CWZ
+ReturnBGM:
+        dc.b musID_GHZ         
+        dc.b musID_LZ
+        dc.b musID_MZ
+        dc.b musID_SLZ
+        dc.b musID_SZ
+        dc.b musID_CWZ
+                
+; --------------------------------------
 
 _playTrackPowerups:
         move.w  play.Timeout(a0),d0     ; Skip if timeout is over
@@ -114,7 +116,7 @@ _playTrackPowerups:
 
         moveq   #0,d0
         move.b  zone.w,d0       ; Get and play BGM based on current zone
-        lea     @ReturnBGM,a1
+        lea     ReturnBGM,a1
         move.b  (a1,d0.w),d0
         jsr     QueueSoundA
 
@@ -497,7 +499,7 @@ _playRoll:
         bsr.w   _playRollLeft
 
 .CheckRight:                           
-        btst    #3,(joypadMirr).w
+        btst    #3,joypadMirr.w
         beq.s   .Settle
 
         bsr.w   _playRollRight
@@ -658,11 +660,9 @@ _playAirCtrl:
 .Exit:                                 
         rts
 
-
 ; ---------------------------------------------------------------------------
 ; Unused function, known as "hedcolchk" in source code
 ; ---------------------------------------------------------------------------
-
 
 _playHeadChk:
         move.b  obj.Angle(a0),d0

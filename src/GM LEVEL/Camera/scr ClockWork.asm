@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; Sparkling Zone scrolling/parallax (placeholder)
+; Clock Work Zone scrolling/parallax (placeholder)
 ; ---------------------------------------------------------------------------
 
 Scroll_ClockWork:                     

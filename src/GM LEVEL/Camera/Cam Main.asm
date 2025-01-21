@@ -404,7 +404,7 @@ _cameraBMoveDrawY:
 
 ; ---------------------------------------------------------------------------
 ; Replaces camera-B Y position with user calculated input.
-; Checks old value for block redraw
+; Checks with old value for block redraw
 ;
 ; INPUTS:
 ;       d0.w    New camera-B Y pos. 
@@ -479,7 +479,6 @@ cam.Y           =       4       ; 4(a3)
 ; ---------------------------------------------------------------------------      
 ; Only draw cameras B and C for the titlescreen
 ; ---------------------------------------------------------------------------
-
 
 _titleDrawCams:          
 
@@ -653,7 +652,7 @@ _drawCamC:
         beq.w   .Exit
         bclr    #2,(a2)
         beq.s   .SkipRedraw
-        cmpi.w  #$10,cam.X(a3)
+        cmpi.w  #16,cam.X(a3)
         bcs.s   .SkipRedraw
         move.w  camASizeY.w,d4
         move.w  cam.Y(a3),d1
@@ -784,7 +783,6 @@ _drawRow:
         addi.w  #16,d5
         dbf     d6,.Loop
         rts
-
 
 ; ---------------------------------------------------------------------------
 ; Function to draw 16x16 blocks column-wise to the screen
