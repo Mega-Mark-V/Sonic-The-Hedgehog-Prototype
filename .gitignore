@@ -1,8 +1,7 @@
 
 src/lst .lst
 /src/_built
-ida/s1proto.id0
-ida/s1proto.id1
-ida/s1proto.nam
-ida/s1proto.til
-ida/ida-20241214-001516-672.dmp
+db/s1proto.id0
+db/s1proto.id1
+db/s1proto.nam
+db/s1proto.til
