@@ -6,12 +6,13 @@
 ; SEGA R&D 2 in Feburary of 1990
 ; ---------------------------------------------------------------------------
 
-dev.FrameTimer	EQU  $1E
+dev.Timer	EQU  $1E
 
 TILE.DEV1	EQU  $4F0+$6000
 TILE.DEV2	EQU  $680+$2000
 TILE.DIGIT1	EQU  $4F0+$8000
 TILE.DIGIT2	EQU  $470+$8000
+
 ; ---------------------------------------------------------------------------
 ; Development Object 1 - seems to test sprite rendering with _objectDraw
 ; ---------------------------------------------------------------------------
@@ -24,10 +25,10 @@ TILE.DIGIT2	EQU  $470+$8000
 
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Dev1_Init-.Index
-                dc.w Dev1_Main-.Index
-                dc.w Dev1_Exit-.Index
-                dc.w Dev1_Exit-.Index
+        dc.w Dev1_Init-.Index
+        dc.w Dev1_Main-.Index
+        dc.w Dev1_Exit-.Index
+        dc.w Dev1_Exit-.Index
 ; ---------------------------------------------------------------------------
 
 Dev1_Init:                            
@@ -36,7 +37,7 @@ Dev1_Init:
         move.w  #$60,obj.Y(a0)
 
         move.l  #MapSpr_DevTest,obj.Map(a0)
-        move.w  #TILE.DEV1,obj.Tile(a0) 	; Render on line 4
+        move.w  #TILE.DEV1,obj.Tile(a0) 
 
         move.b  #4,obj.Render(a0) 	; Render with CamA
         move.b  #1,obj.ColProp(a0) 	; ???
@@ -44,10 +45,10 @@ Dev1_Init:
 
 Dev1_Main:                            
         bsr.w   _objectDraw
-        subq.b  #1,dev.FrameTimer(a0)	; Wait timer depleted
+        subq.b  #1,dev.Timer(a0)	; Wait timer depleted
         bpl.s   .Wait
 
-        move.b  #16,dev.FrameTimer(a0)  ; Reset it
+        move.b  #16,dev.Timer(a0)       ; Reset it
 
         move.b  obj.Frame(a0),d0
         addq.b  #1,d0  			; Increment frame
@@ -82,10 +83,10 @@ objDev2:
         jmp     .Index(pc,d1.w)
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Dev2_Init-*
-                dc.w Dev2_Main-.Index
-                dc.w Dev2_Delete-.Index
-                dc.w Dev2_Delete-.Index
+        dc.w Dev2_Init-.Index
+        dc.w Dev2_Main-.Index
+        dc.w Dev2_Delete-.Index
+        dc.w Dev2_Delete-.Index
 ; ---------------------------------------------------------------------------
 
 Dev2_Init:                            
@@ -101,9 +102,9 @@ Dev2_Init:
 
 Dev2_Main:                            
         bsr.w   _objectDraw
-        subq.b  #1,dev.FrameTimer(a0) 		; Uses the same timer
+        subq.b  #1,dev.Timer(a0) 		; Uses the same timer
         bpl.s   .Exit 				; But doesn't change frame
-        move.b  #16,dev.FrameTimer(a0)
+        move.b  #16,dev.Timer(a0)
 
 .Exit:                                 
         rts
@@ -126,10 +127,10 @@ objDev3:
         jmp     .Index(pc,d1.w)
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Dev3_Init-*
-                dc.w Dev3_Main-.Index
-                dc.w Dev3_Exit-.Index
-                dc.w Dev3_Exit-.Index
+        dc.w Dev3_Init-.Index
+        dc.w Dev3_Main-.Index
+        dc.w Dev3_Exit-.Index
+        dc.w Dev3_Exit-.Index
 ; ---------------------------------------------------------------------------
 
 Dev3_Init:                            
@@ -144,10 +145,10 @@ Dev3_Init:
 
 Dev3_Main:                            
         bsr.w   _objectDraw
-        subq.b  #1,dev.FrameTimer(a0)
+        subq.b  #1,dev.Timer(a0)
         bpl.s   .Wait
 
-        move.b  #20,dev.FrameTimer(a0)
+        move.b  #20,dev.Timer(a0)
         move.b  obj.Frame(a0),d0 
         addq.b  #1,d0 			; ...adjust frame number?
         cmpi.b  #4,d0 			; Check if frame 3+1
@@ -214,34 +215,34 @@ Test05_Exit:
 
 
 objDevDigits2:                                
-                moveq   #0,d0
-                move.b  obj.Action(a0),d0
-                move.w  .Index(pc,d0.w),d1
-                jmp     .Index(pc,d1.w)
+        moveq   #0,d0
+        move.b  obj.Action(a0),d0
+        move.w  .Index(pc,d0.w),d1
+        jmp     .Index(pc,d1.w)
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w DevDigits2_Init-.Index
-                dc.w DevDigits2_Main-.Index
-                dc.w DevDigits2_Exit-.Index
-                dc.w DevDigits2_Exit-.Index
+        dc.w DevDigits2_Init-.Index
+        dc.w DevDigits2_Main-.Index
+        dc.w DevDigits2_Exit-.Index
+        dc.w DevDigits2_Exit-.Index
 ; ---------------------------------------------------------------------------
 
 DevDigits2_Init:                            
-                addq.b  #2,obj.Action(a0)
-                move.w  #$A0,obj.YScr(a0)
-                move.l  #MapSpr_Digits,obj.Map(a0)
-                move.w  #TILE.DIGIT2,obj.Tile(a0)
-                move.b  #0,obj.Render(a0)
-                move.b  #7,obj.Priority(a0)
+        addq.b  #2,obj.Action(a0)
+        move.w  #$A0,obj.YScr(a0)
+        move.l  #MapSpr_Digits,obj.Map(a0)
+        move.w  #TILE.DIGIT2,obj.Tile(a0)
+        move.b  #0,obj.Render(a0)
+        move.b  #7,obj.Priority(a0)
 
 DevDigits2_Main:                            
-                bsr.w   _objectDraw
-                rts
+        bsr.w   _objectDraw
+        rts
 ; ---------------------------------------------------------------------------
 
 DevDigits2_Exit:                            
-                bsr.w   _objectDelete
-                rts
+        bsr.w   _objectDelete
+        rts
 
 
 ; ---------------------------------------------------------------------------
@@ -253,27 +254,27 @@ DevDigits2_Exit:
 
 
 objDev6:                                
-                moveq   #0,d0
-                move.b  obj.Action(a0),d0
-                move.w  .Index(pc,d0.w),d1
-                jmp     .Index(pc,d1.w)
+        moveq   #0,d0
+        move.b  obj.Action(a0),d0
+        move.w  .Index(pc,d0.w),d1
+        jmp     .Index(pc,d1.w)
 
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Dev6_Init-.Index
-                dc.w Dev6_Main-.Index
-                dc.w Dev6_Exit-.Index
-                dc.w Dev6_Exit-.Index
+        dc.w Dev6_Init-.Index
+        dc.w Dev6_Main-.Index
+        dc.w Dev6_Exit-.Index
+        dc.w Dev6_Exit-.Index
 ; ---------------------------------------------------------------------------
 
 Dev6_Init:                            
-                addq.b  #2,obj.Action(a0)
+        addq.b  #2,obj.Action(a0)
 
 Dev6_Main:                            
-                rts
+        rts
 
 ; ---------------------------------------------------------------------------
 
 Dev6_Exit:                            
-                bsr.w   _objectDelete
-                rts
+        bsr.w   _objectDelete
+        rts

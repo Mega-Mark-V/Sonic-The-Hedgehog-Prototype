@@ -440,7 +440,7 @@ _playMoveLeft:
         blt.s   .Exit
         move.b  #$D,obj.Anim(a0)
         bclr    #0,obj.Status(a0)
-        move.w  #SFXNO_Skid,d0
+        move.w  #SFXNO_SKID,d0
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -484,7 +484,7 @@ _playMoveRight:
         bgt.s   .Exit
         move.b  #$D,obj.Anim(a0)
         bset    #0,obj.Status(a0)
-        move.w  #SFXNO_Skid,d0
+        move.w  #SFXNO_SKID,d0
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -760,7 +760,7 @@ _playRollSet:
         move.b  #7,obj.XRad(a0)
         move.b  #2,obj.Anim(a0)
         addq.w  #5,obj.Y(a0)
-        move.w  #SFXNO_Spin,d0
+        move.w  #SFXNO_SPIN,d0
         jsr     QueueSoundB
         tst.w   obj.Momentum(a0)
         bne.s   .Exit
@@ -801,7 +801,7 @@ _playJumpChk:
         bclr    #PHYS.PUSH,obj.Status(a0)
         addq.l  #4,sp
         move.b  #1,phys.Jump(a0)
-        move.w  #SFXNO_Jump,d0
+        move.w  #SFXNO_JUMP,d0
         jsr     QueueSoundB
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
