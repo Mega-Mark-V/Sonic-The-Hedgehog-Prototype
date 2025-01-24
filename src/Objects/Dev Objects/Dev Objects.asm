@@ -238,7 +238,6 @@ DevDigits2_Init:
 DevDigits2_Main:                            
         bsr.w   _objectDraw
         rts
-; ---------------------------------------------------------------------------
 
 DevDigits2_Exit:                            
         bsr.w   _objectDelete
@@ -272,8 +271,6 @@ Dev6_Init:
 
 Dev6_Main:                            
         rts
-
-; ---------------------------------------------------------------------------
 
 Dev6_Exit:                            
         bsr.w   _objectDelete

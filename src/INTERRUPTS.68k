@@ -53,7 +53,7 @@ VBLANKCMD macro   addr, id
 ; ---------------------------------------------------------------------------
 
 .Index:                                
-        VBLANKCMD .NULL,                VBCMD_EMPTY
+        VBLANKCMD .NULL,                VBCMD_NULL
         VBLANKCMD VBLANK_LOGO,          VBCMD_LOGO
         VBLANKCMD VBLANK_TITLE,         VBCMD_TITLE
         VBLANKCMD VBLANK_UNK,           VBCMD_UNK
@@ -105,7 +105,7 @@ VBLANK_UNK:
 ; ---------------------------------------------------------------------------
 
 VBLANK_PAUSE:                               
-        cmpi.b  #GAMEMD.SPECIAL,gamemode.w
+        cmpi.b  #GAMEMD_SPECIAL,gamemode.w
         beq.w   VBLANK_SPECIAL
 
 ; ---------------------------------------------------------------------------

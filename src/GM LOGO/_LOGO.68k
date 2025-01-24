@@ -62,5 +62,5 @@ GM_LOGO:
         beq.s   .MainLoop 			  
 
 .Exit:                                 
-        move.b  #GAMEMD.TITLE,gamemode.w
+        move.b  #GAMEMD_TITLE,gamemode.w
         rts

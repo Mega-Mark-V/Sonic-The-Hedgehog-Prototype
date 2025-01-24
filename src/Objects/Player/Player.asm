@@ -59,8 +59,8 @@ Player_Main:
         bsr.s   _playTrackPowerups    ; Handle powerup states and drawing
         bsr.w   _playRecordPos        ; Record previous positions
 
-        move.b  angleFront.w,play.FootFront(a0) 
-        move.b  angleBack.w,play.FootBack(a0)
+        move.b  angleRight.w,play.FootRight(a0) 
+        move.b  angleLeft.w,play.FootLeft(a0)
 
         bsr.w   _playAnimate            ; Handle Sonic's animation
         bsr.w   _playObjInteract        ; Handle player/object interactions           
@@ -162,7 +162,7 @@ _playRecordPos:
 Player_MainCtrl:                                 ; Status unset
         bsr.w   _playJump
         bsr.w   _playUpSlope
-        bsr.w   _playMove
+        bsr.w   _playInputChk
         bsr.w   _playCheckRoll
         bsr.w   _playLevelLimits
         bsr.w   _objectSetSpeed
@@ -204,13 +204,13 @@ Player_AirRollCtrl:                              ; Both statuses set
 ; Note that this is a pretty large subroutine with a lot of locals. 
 ; ---------------------------------------------------------------------------
 
-_playMove:                              
+_playInputChk:                              
         move.w  playerMaxSpeed.w,d6     ; Set deltas to d4,d5,d6  
         move.w  playerAccel.w,d5
         move.w  playerDecel.w,d4
 
         tst.w   play.Locked(a0)         ; If ctrl. locked, skip all this
-        bne.w   .LookChk
+        bne.w   .LookUp
 
         btst    #2,joypadMirr.w         ; Skip if left input not pressed
         beq.s   .NotLeft
@@ -244,7 +244,7 @@ _playMove:
         lea     (a1,d0.w),a1            ; a1 = Interacting obj.
 
         tst.b   obj.Status(a1)          ; Test bit 7 (MSB) (STAT.KILLED)
-        bmi.s   .LookChk                ; If set, object is killed,
+        bmi.s   .LookUp                 ; If set, object is killed,
                                         ; so skip ahead
         moveq   #0,d1
         move.b  obj.XDraw(a1),d1        ; Get its X-draw radius
@@ -258,7 +258,7 @@ _playMove:
         blt.s   .ChkBalanceLeft
         cmp.w   d2,d1                   ; ...or right edge
         bge.s   .BalanceRight           ; then balance
-        bra.s   .LookChk         
+        bra.s   .LookUp         
 
         ; ---- Check for balancing normally
         ; NOTE: The above balancing checks branch into this 
@@ -266,87 +266,102 @@ _playMove:
 .NotLifted:                           
         jsr     _objectFindFloor        ; Get floor distance
         cmpi.w  #12,d1                  ; Skip if 12pix drop ahead
-        blt.s   .LookChk                
+        blt.s   .LookUp                
 
-        cmpi.b  #3,play.FootFront(a0)   ; If on platform, skip
-        bne.s   .ChkBalanceLeft
+.ChkBalanceRight:
+        cmpi.b  #PHYS_LIFTFLAG,play.FootRight(a0)
+        bne.s   .ChkBalanceLeft             ; Skip if being lifted
 
 .BalanceRight:                         
-        bclr    #PHYS.DIR,obj.Status(a0)
+        bclr    #PHYS.DIR,obj.Status(a0)    ; Set facing right
         bra.s   .SetBalanceAnim
 
 .ChkBalanceLeft:                       
-        cmpi.b  #3,play.FootBack(a0)
-        bne.s   .LookChk
+        cmpi.b  #PHYS_LIFTFLAG,play.FootLeft(a0)
+        bne.s   .LookUp
 
 .BalanceLeft:                          
-        bset    #PHYS.DIR,obj.Status(a0)
+        bset    #PHYS.DIR,obj.Status(a0)    ; Set facing left
 
 .SetBalanceAnim:                              
         move.b  #6,obj.Anim(a0)
-        bra.s   .CameraReset
+        bra.s   .CameraReset        ; Skip, can't look while balancing
 
-        ; ---- Check for looking up or ducking
+        ; ---- Check for looking up
 
-.LookChk:                           
-        btst    #0,joypadMirr.w
+.LookUp:                           
+        btst    #0,joypadMirr.w     ; If up not pressed, skip
         beq.s   .Duck
-        move.b  #7,obj.Anim(a0)
-        cmpi.w  #200,camACenterY.w
-        beq.s   .ScreenIsSet
-        addq.w  #2,camACenterY.w
-        bra.s   .ScreenIsSet
 
+        move.b  #7,obj.Anim(a0)     ; Set look anim., shift cam. up
+        cmpi.w  #200,camACenterY.w
+        beq.s   .SetMoveSpeed
+        addq.w  #2,camACenterY.w
+        bra.s   .SetMoveSpeed
+
+        ; ---- Check for ducking
 .Duck:                                 
-        btst    #1,joypadMirr.w
-        beq.s   .CameraReset
-        move.b  #8,obj.Anim(a0)
+        btst    #1,joypadMirr.w     ; If down not pressed, reset cam. 
+        beq.s   .CameraReset        
+
+        move.b  #8,obj.Anim(a0)     ; Set duck anim., shift cam. down      
         cmpi.w  #8,camACenterY.w
-        beq.s   .ScreenIsSet
+        beq.s   .SetMoveSpeed
+
         subq.w  #2,camACenterY.w
-        bra.s   .ScreenIsSet
+        bra.s   .SetMoveSpeed
+
+        ; ---- Check if camera centered, and set if not
 
 .CameraReset:                          
-        cmpi.w  #96,camACenterY.w
-        beq.s   .ScreenIsSet
-        bcc.s   .ScreenHigh
-        addq.w  #4,camACenterY.w
+        cmpi.w  #96,camACenterY.w   ; Skip if camera is already centered
+        beq.s   .SetMoveSpeed
 
+        bhs.s   .ScreenHigh
+        addq.w  #4,camACenterY.w    ; Move screen 4 pix up...
+                                    ; See below line - making it 2 pix    
 .ScreenHigh:                           
-        subq.w  #2,camACenterY.w
+        subq.w  #2,camACenterY.w    ; Subtract 2
 
-.ScreenIsSet:                          
+        ; ---- Get player's momentum and calc. X and Y speeds
+
+.SetMoveSpeed:                          
         move.b  joypadMirr.w,d0
-        andi.b  #$C,d0
-        bne.s   .GetSpeed
-        move.w  obj.Momentum(a0),d0
-        beq.s   .GetSpeed
-        bmi.s   .MomentumNeg
+        andi.b  #%1100,d0           ; Skip if left or right pressed...
+        bne.s   .CalcSpeed
+
+        move.w  obj.Momentum(a0),d0     ; ...or if not moving
+        beq.s   .CalcSpeed
+
+        bmi.s   .MomentumNeg        ; Skip if negative momentum
         sub.w   d5,d0
-        bcc.s   .StillMvPos
+        bcc.s   .StillMvPos         ; If it overflows down, clear
         move.w  #0,d0
 
 .StillMvPos:                           
-        move.w  d0,obj.Momentum(a0)
-        bra.s   .GetSpeed
+        move.w  d0,obj.Momentum(a0) ; Return new + momentum value
+        bra.s   .CalcSpeed          ; Go set X+Y speeds based on this
 
 .MomentumNeg:                          
         add.w   d5,d0
-        bcc.s   .StillMvNeg
+        bcc.s   .StillMvNeg         ; If it overflows up, clear   
         move.w  #0,d0
 
 .StillMvNeg:                           
-        move.w  d0,obj.Momentum(a0)
+        move.w  d0,obj.Momentum(a0) ; Return new - momentum value
 
-.GetSpeed:                             
-        move.b  obj.Angle(a0),d0
-        jsr     CalcSinCos
-        muls.w  obj.Momentum(a0),d1
-        asr.l   #8,d1
+.CalcSpeed:                             
+        move.b  obj.Angle(a0),d0    ; Get player angle input
+        jsr     CalcSinCos          ; d0 = sin , d1 = cos
+
+        muls.w  obj.Momentum(a0),d1 ; (momentum*cos) for X speed      
+        asr.l   #8,d1               ; Divide by 100 (drop lowest byte)
         move.w  d1,obj.XSpeed(a0)
-        muls.w  obj.Momentum(a0),d0
-        asr.l   #8,d0
+
+        muls.w  obj.Momentum(a0),d0 ; (momentum*sin) for Y speed 
+        asr.l   #8,d0                
         move.w  d0,obj.YSpeed(a0)
+
         ; fall into _playHitWall
 
 ; ---------------------------------------------------------------------------
@@ -354,7 +369,7 @@ _playMove:
 ; ---------------------------------------------------------------------------
 
 _playHitWall:                           
-        move.b  #$40,d1
+        move.b  #$40,d1             ; d1 = 90 degree push for calcs.
         tst.w   obj.Momentum(a0)
         beq.s   .Exit
         bmi.s   .IsMvLeft
@@ -369,7 +384,7 @@ _playHitWall:
         tst.w   d1
         bpl.s   .Exit
         move.w  #0,obj.Momentum(a0)
-        bset    #5,obj.Status(a0)
+        bset    #PHYS.PUSH,obj.Status(a0)
         asl.w   #8,d1
         addi.b  #$20,d0
         andi.b  #$C0,d0

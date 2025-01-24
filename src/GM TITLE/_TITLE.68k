@@ -138,7 +138,7 @@ GM_TITLE:
         ; Even if this is restored, the cam. Y limit changes at $1800,
         ; so the banner breaks. 
 
-        move.b  #GAMEMD.LOGO,gamemode.w  
+        move.b  #GAMEMD_LOGO,gamemode.w  
         rts
 
 .NotDone:                              
@@ -233,7 +233,7 @@ _zoneselProcSel:
         cmpi.w  #(SPESEL<<8),d0
         bne.s   .IsLevel
 
-        move.b  #GAMEMD.SPECIAL,gamemode.w
+        move.b  #GAMEMD_SPECIAL,gamemode.w
         rts
 
 .IsLevel:                              
@@ -252,7 +252,7 @@ _zoneselProcSel:
         move.w  d0,zone.w
 
 _titleStartGame:                        
-        move.b  #GAMEMD.LEVEL,gamemode.w
+        move.b  #GAMEMD_LEVEL,gamemode.w
 
         move.b  #3,lives.w              ; Set 3 lives
 
@@ -319,7 +319,7 @@ _titleAdvanceCam:
 
         ; Also unreachable. (See --> GM_TITLE.MainLoop)
 
-        move.b  #GAMEMD.LOGO,gamemode.w
+        move.b  #GAMEMD_LOGO,gamemode.w
         rts
 
 .DoDemo:                            
@@ -342,12 +342,12 @@ _titleAdvanceCam:
 
 .DoLevelDemo:                          
         move.w  #1,demo.w
-        move.b  #GAMEMD.DEMO,gamemode.w
+        move.b  #GAMEMD_DEMO,gamemode.w
 
         cmpi.w  #(SPEDEMO<<8),d0           ; If not special, skip
         bne.s   .NotSpecStg                
 
-        move.b  #GAMEMD.SPECIAL,gamemode.w ; Otherwise, set mode to special
+        move.b  #GAMEMD_SPECIAL,gamemode.w ; Otherwise, set mode to special
 
 .NotSpecStg:                       
         move.b  #3,lives.w

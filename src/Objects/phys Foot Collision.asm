@@ -9,6 +9,7 @@
 PHYS_UPMAX      EQU     14              ; Max distances to register on floor
 PHYS_DOWNMAX    EQU     -14             
 PHYS_GRAVITY    EQU     56              ; Gravity delta
+PHYS_LIFTFLAG   EQU     3               ; "Lifted" numerical flag
 
 BLK.XFLIP       EQU     $B              ; Collision Bit flags in chunk data
 BLK.YFLIP       EQU     $C
@@ -21,14 +22,14 @@ _physFootCollision:
         btst    #PHYS.PLATFORM,obj.Status(a0)
         beq.s   .NotOnPlatform
         moveq   #0,d0                   ; Clear sensor angle information
-        move.b  d0,angleFront.w
-        move.b  d0,angleBack.w
+        move.b  d0,angleRight.w
+        move.b  d0,angleLeft.w
         rts
 
 .NotOnPlatform:                             
-        moveq   #3,d0                   ; Set flag for angle stack
-        move.b  d0,angleFront.w
-        move.b  d0,angleBack.w
+        moveq   #PHYS_LIFTFLAG,d0       ; Set flag for angle stack
+        move.b  d0,angleRight.w
+        move.b  d0,angleLeft.w
 
         move.b  obj.Angle(a0),d0
         addi.b  #$20,d0                 ; Rotate unit circle 45 degrees
@@ -56,7 +57,7 @@ _physWalkFloor:
         move.b  obj.XRad(a0),d0         ; Get right edge of the object's radius
         ext.w   d0                      ; and also set as x input for branch
         add.w   d0,d3
-        lea     angleFront.w,a4         ; Set angle output location in a4
+        lea     angleRight.w,a4         ; Set angle output location in a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Set Checking top solidity
@@ -76,7 +77,7 @@ _physWalkFloor:
         ext.w   d0
         neg.w   d0                      ; Except get left edge of radius this time
         add.w   d0,d3                   ; X
-        lea     angleBack.w,a4
+        lea     angleLeft.w,a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -170,10 +171,10 @@ _physUnkSetSpeed
 ; ---------------------------------------------------------------------------
 
 _physPickFoot:                          
-        move.b  angleBack.w,d2      ; Set to use back sensor
+        move.b  angleLeft.w,d2      ; Set to use back sensor
         cmp.w   d0,d1                   ; Check against front 
         ble.s   .BackFootHigher         ; Skip over if higher    
-        move.b  angleFront.w,d2
+        move.b  angleRight.w,d2
         move.w  d0,d1
 
 .BackFootHigher:                               
@@ -208,7 +209,7 @@ _physWalkWallRight:
         move.b  obj.YRad(a0),d0         ; ..and X from YRad
         ext.w   d0
         add.w   d0,d3                   ; for X position input
-        lea     angleFront.w,a4     ; Same inputs as before:
+        lea     angleRight.w,a4     ; Same inputs as before:
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -227,7 +228,7 @@ _physWalkWallRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleBack.w,a4          ; Angle output
+        lea     angleLeft.w,a4          ; Angle output
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -279,7 +280,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleFront.w,a4         ; Angle output
+        lea     angleRight.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -299,7 +300,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3                   ; X
-        lea     angleFront.w,a4         ; Angle output
+        lea     angleRight.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -354,7 +355,7 @@ _physWalkWallLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     angleFront.w,a4     ; Angle output loc
+        lea     angleRight.w,a4     ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity
@@ -374,7 +375,7 @@ _physWalkWallLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     angleBack.w,a4      ; Angle output loc
+        lea     angleLeft.w,a4      ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity

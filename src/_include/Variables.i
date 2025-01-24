@@ -111,8 +111,8 @@ playerAccel:    	ds.b 2
 playerDecel:    	ds.b 2                  
 playerFrame:    	ds.b 1                  
 playerDrawFlag: 	ds.b 1                  
-angleFront: 		ds.b 2                  
-angleBack:  		ds.b 2                  
+angleRight: 		ds.b 2                  
+angleLeft:  		ds.b 2                  
 getobjsMode:    	ds.b 2                  
 camAChunkX:      	ds.b 2                  
 objtblEntrRight:	ds.b 4                  
