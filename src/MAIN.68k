@@ -562,7 +562,7 @@ PauseGame:
         move.w  #-1,paused.w            ; Assert that the game is paused
 
 .Loop:                               
-        move.b  #VBCMD.PAUSE,vblankCmd.w ; Set VBLANK to PAUSE cmd
+        move.b  #VBCMD_PAUSE,vblankCmd.w ; Set VBLANK to PAUSE cmd
         bsr.w   VSync
 
         btst    #6,joypadPress.w        ; If A button pressed while paused...

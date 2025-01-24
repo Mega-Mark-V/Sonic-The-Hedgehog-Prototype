@@ -6,32 +6,34 @@ objPlayerTest:
 ; ---------------------------------------------------------------------------
 .Index:                                
         dc.w PlayTest_Init-.Index
-        dc.w PlayTest_Do-.Index
+        dc.w PlayTest_Main-.Index
         dc.w PlayTest_Delete-.Index
         dc.w PlayTest_Delete-.Index
 ; ---------------------------------------------------------------------------
 
 PlayTest_Init:                         
         addq.b  #2,obj.Action(a0)
-        move.b  #18,obj.YRad(a0)
+        move.b  #18,obj.YRad(a0)                ; Early player Y radius?
         move.b  #9,obj.XRad(a0)
-        move.l  #MapSpr_Player,obj.Map(a0)
+        move.l  #MapSpr_Player,obj.Map(a0)      ; Use player sprites
         move.w  #$780,obj.Tile(a0)
-        move.b  #4,obj.Render(a0)
+        move.b  #4,obj.Render(a0)               ; Render with cam-A
         move.b  #2,obj.Priority(a0)
-        move.b  #1,obj.Frame
+        move.b  #1,obj.Frame(a0)
 
-PlayTest_Do:                           
-        bsr.w   _objectJoypadCtrl
-        bsr.w   _playDynamicGFX
+PlayTest_Main:                           
+        bsr.w   _playtstCtrl              
+        bsr.w   _playDynamicGFX                 ; Use player GFX routine
         jmp     _objectDraw
+
 ; ---------------------------------------------------------------------------
 
-_objectJoypadCtrl:                      
-        move.b  joypadMirr.w,d4
-        move.w  obj.Y(a0),d2
-        move.w  obj.X(a0),d3
-        moveq   #1,d1
+_playtstCtrl:                      
+        move.b  joypadMirr.w,d4       ; d4 = joypad (SACBRLDU)
+        move.w  obj.Y(a0),d2          ; d2 = Y-pos
+        move.w  obj.X(a0),d3          ; d3 = X-pos
+        moveq   #1,d1                 ; Movement vector
+
         btst    #0,d4
         beq.s   .NoUp
         sub.w   d1,d2
@@ -52,11 +54,11 @@ _objectJoypadCtrl:
         add.w   d1,d3
 
 .NoRight:                              
-        move.w  d2,obj.Y(a0)
+        move.w  d2,obj.Y(a0)            
         move.w  d3,obj.X(a0)
         btst    #4,joypadPressMirr.w
         beq.s   .NoB
-        move.b  obj.Render(a0),d0
+        move.b  obj.Render(a0),d0       ; Update rendering flags
         move.b  d0,d1
         addq.b  #1,d0
         andi.b  #3,d0
@@ -73,10 +75,11 @@ _objectJoypadCtrl:
         move.b  #0,obj.Anim(a0)
 
 .NoC:                                  
-        jsr     _playAnimate
+        jsr     _playAnimate            ; Use player animation routines
         rts
 
 ; ---------------------------------------------------------------------------
+; unused - part of the base object code
 
 PlayTest_Delete:                     
         jmp     _objectDelete 

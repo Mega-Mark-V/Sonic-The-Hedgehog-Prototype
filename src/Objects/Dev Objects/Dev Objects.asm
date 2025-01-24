@@ -61,7 +61,6 @@ Dev1_Main:
 
 .Wait:                                 
         rts
-; ---------------------------------------------------------------------------
 
 Dev1_Exit:                            
         bsr.w   _objectDelete
@@ -108,7 +107,6 @@ Dev2_Main:
 
 .Exit:                                 
         rts
-; ---------------------------------------------------------------------------
 
 Dev2_Delete:                          
         bsr.w   _objectDelete
@@ -128,13 +126,13 @@ objDev3:
         jmp     .Index(pc,d1.w)
 ; ---------------------------------------------------------------------------
 .Index:                                
-                dc.w Test04_Init-*
-                dc.w Test04_Main-.Index
-                dc.w Test04_Exit-.Index
-                dc.w Test04_Exit-.Index
+                dc.w Dev3_Init-*
+                dc.w Dev3_Main-.Index
+                dc.w Dev3_Exit-.Index
+                dc.w Dev3_Exit-.Index
 ; ---------------------------------------------------------------------------
 
-Test04_Init:                            
+Dev3_Init:                            
         addq.b  #2,obj.Action(a0)
         move.w  #$40,obj.Y(a0) 			; Set fixed Y
         move.l  #MapSpr_DevTest,obj.Map(a0)
@@ -144,7 +142,7 @@ Test04_Init:
         move.b  #2,obj.Frame(a0)
         move.b  #3,obj.Priority(a0)
 
-Test04_Main:                            
+Dev3_Main:                            
         bsr.w   _objectDraw
         subq.b  #1,dev.FrameTimer(a0)
         bpl.s   .Wait
@@ -162,9 +160,7 @@ Test04_Main:
 .Wait:                                 
         rts
 
-; ---------------------------------------------------------------------------
-
-Test04_Exit:                            
+Dev3_Exit:                            
         bsr.w   _objectDelete
         rts
 

@@ -2,14 +2,14 @@
 ; Main Objects handling and function libraries
 ; ---------------------------------------------------------------------------
 ; enums
-OBJ.GRAVITY    EQU     56              ; Gravity delta
+OBJ_GRAVITY     EQU     56              ; Gravity delta
 
 ; ---------------------------------------------------------------------------
 ; Object structs
 ; ---------------------------------------------------------------------------
 
 obj             struct
-ID:             dc.b 1                  
+No:             dc.b 1                  
 Render:         dc.b 1                  
 Tile:           dc.w 1                  
 Map:            dc.l 1                  
@@ -40,6 +40,26 @@ Angle:          dc.w 1
 Arg:            dc.b 1                   
                 ends
 
+STAT.XDIR:       equ 0
+STAT.YDIR:       equ 1                  
+STAT.UNK2:       equ 2
+STAT.LIFTING:    equ 3                  
+STAT.UNK4:       equ 4
+STAT.PUSHED:     equ 5                  
+STAT.UNK6:       equ 6
+STAT.KILLED:     equ 7
+
+PHYS.DIR:        equ 0                  
+PHYS.AIRBORNE:   equ 1                  
+PHYS.ROLLING:    equ 2                  
+PHYS.LIFTED:     equ 3                  
+PHYS.ROLLJUMP:   equ 4                  
+PHYS.PUSH:       equ 5                
+PHYS.WATER:      equ 6
+PHYS.KILLED:     equ 7
+
+; ---------------------------------------------------------------------------
+; Function to run all objects loaded into memory
 ; ---------------------------------------------------------------------------
 
 RunObjects:                             
@@ -50,7 +70,7 @@ RunObjects:
         bcc.s   .Paused
 
 .RunObjLoop:                       
-        move.b  obj.ID(a0),d0
+        move.b  obj.No(a0),d0
         beq.s   .EmptySlot
         add.w   d0,d0
         add.w   d0,d0
@@ -70,7 +90,7 @@ RunObjects:
 
 .PauseObjLoop:                         
         moveq   #0,d0
-        move.b  obj.ID(a0),d0
+        move.b  obj.No(a0),d0
         beq.s   .SkipDisplay
         tst.b   obj.Render(a0)
         bpl.s   .SkipDisplay
@@ -96,100 +116,100 @@ ObjectIndex:
         rsreset   
         rs.b    1               ; IDs do not start from 0, they start from 1
 
-        OBJDEF  objPlayer,                 OBJNO.PLAYER         
-        OBJDEF  objDev1,                   OBJNO.DEV1    
-        OBJDEF  objDev2,                   OBJNO.DEV2
-        OBJDEF  objDev3,                   OBJNO.DEV3
-        OBJDEF  objDev4,                   OBJNO.DEV4
-        OBJDEF  objDev5,                   OBJNO.DEV5
-        OBJDEF  objDev6,                   OBJNO.DEV6
+        OBJDEF  ObjPlayer,                 OBJNO_PLAYER         
+        OBJDEF  ObjDev1,                   OBJNO_DEV1    
+        OBJDEF  ObjDev2,                   OBJNO_DEV2
+        OBJDEF  ObjDev3,                   OBJNO_DEV3
+        OBJDEF  ObjDev4,                   OBJNO_DEV4
+        OBJDEF  ObjDev5,                   OBJNO_DEV5
+        OBJDEF  ObjDev6,                   OBJNO_DEV6
         OBJDEF  .Null
-        OBJDEF  objPlayerSpecial,          OBJNO.PLAYSPECIAL
+        OBJDEF  ObjPlayerSpecial,          OBJNO_PLAYSPECIAL
         OBJDEF  .Null
         OBJDEF  .Null
         OBJDEF  .Null
-        OBJDEF  objGoal,                   OBJNO.GOAL
-        OBJDEF  objTitleSonic,             OBJNO.TITLESONIC
-        OBJDEF  objTitleMisc,              OBJNO.TITLEMISC
-        OBJDEF  objPlayerTest,             OBJNO.PLAYTEST
-        OBJDEF  objBridge,                 OBJNO.BRIDGE       
-        OBJDEF  objSceneryLamp,            OBJNO.SCENERYLAMP
-        OBJDEF  objFireShooter,            OBJNO.FIRESHOOTER
-        OBJDEF  objFireBall,               OBJNO.FIREBALL
-        OBJDEF  objSwingPlatform,          OBJNO.SWINGPLAT
+        OBJDEF  ObjGoal,                   OBJNO_GOAL
+        OBJDEF  ObjTitleSonic,             OBJNO_TITLESONIC
+        OBJDEF  ObjTitleMisc,              OBJNO_TITLEMISC
+        OBJDEF  ObjPlayerTest,             OBJNO_PLAYTEST
+        OBJDEF  ObjBridge,                 OBJNO_BRIDGE       
+        OBJDEF  ObjSceneryLamp,            OBJNO_SCENERYLAMP
+        OBJDEF  ObjFireShooter,            OBJNO_FIRESHOOTER
+        OBJDEF  ObjFireBall,               OBJNO_FIREBALL
+        OBJDEF  ObjSwingPlatform,          OBJNO_SWINGPLAT
         OBJDEF  .Null
-        OBJDEF  objSpikeBridge,            OBJNO.SPIKEBRIDGE             
-        OBJDEF  objPlatform,               OBJNO.PLATFORM
-        OBJDEF  objRollingBall,            OBJNO.ROLLINGBALL
-        OBJDEF  objCollapsingLedge,        OBJNO.COLLAPSLEDGE
-        OBJDEF  objUnkPlatform,            OBJNO.UNKPLATFORM
-        OBJDEF  objLevelScenery,           OBJNO.LVLSCENERY
-        OBJDEF  objHiddenSwitch,           OBJNO.HIDDENSWITCH
-        OBJDEF  objEnemyPig,               OBJNO.ENEMYPIG
-        OBJDEF  objEnemyCrab,              OBJNO.ENEMYCRAB
-        OBJDEF  objBallBomb,               OBJNO.BALLBOMB
-        OBJDEF  objHUD,                    OBJNO.HUD
-        OBJDEF  objEnemyBee,               OBJNO.ENEMYBEE
-        OBJDEF  objMissile,                OBJNO.MISSILE
-        OBJDEF  objMissileHit,             OBJNO.MISSILEHIT
-        OBJDEF  objRing,                   OBJNO.RING
-        OBJDEF  objMonitor,                OBJNO.MONITOR
-        OBJDEF  objLightExpl,              OBJNO.LIGHTEXPL
-        OBJDEF  objFriends,                OBJNO.FRIENDS
-        OBJDEF  objPoints,                 OBJNO.POINTS
-        OBJDEF  objTunnelDoor,             OBJNO.TUNNELDOOR
-        OBJDEF  objEnemyFish,              OBJNO.ENEMYFISH
-        OBJDEF  objEnemyFish2,             OBJNO.ENEMYFISH2
-        OBJDEF  objEnemyMole,              OBJNO.ENEMYMOLE
-        OBJDEF  objMonitorItem,            OBJNO.MONITORITEM
-        OBJDEF  objShiftingFloor,          OBJNO.SHIFTFLOOR
-        OBJDEF  objGlassBlock,             OBJNO.GLASSBLOCK
-        OBJDEF  objSpikeCrusherV,          OBJNO.SPIKECRUSHV
-        OBJDEF  objButton,                 OBJNO.BUTTON
-        OBJDEF  objPushable,               OBJNO.PUSHABLE
-        OBJDEF  objTitleCards,             OBJNO.TITLECARD
-        OBJDEF  objSpreadingFire,          OBJNO.SPREADFIRE
-        OBJDEF  objSpikes,                 OBJNO.SPIKES
-        OBJDEF  objRingLoss,               OBJNO.RINGLOSS
-        OBJDEF  objShield,                 OBJNO.SHIELD
-        OBJDEF  objGameOver,               OBJNO.GAMEOVER
-        OBJDEF  objActClear,               OBJNO.ACTCLEAR
-        OBJDEF  objRock,                   OBJNO.ROCK
-        OBJDEF  objBreakable,              OBJNO.BREAKABLE
-        OBJDEF  objBoss,                   OBJNO.BOSS
-        OBJDEF  objEggCapsule,             OBJNO.EGGCAPSULE
-        OBJDEF  objHeavyExpl,              OBJNO.HEAVYEXPL
-        OBJDEF  objEnemyBug,               OBJNO.ENEMYBUG
-        OBJDEF  objSpring,                 OBJNO.SPRING
-        OBJDEF  objEnemyChameleon,         OBJNO.ENEMYCHAMELEON
-        OBJDEF  objEnemyArmadillo,         OBJNO.ENEMYARMADILLO
-        OBJDEF  objEdgeWalls,              OBJNO.EDGEWALLS
-        OBJDEF  objSpikeCrusherH,          OBJNO.SPIKECRUSHH
-        OBJDEF  objBlock,                  OBJNO.BLOCK
-        OBJDEF  objBumper,                 OBJNO.BUMPER
-        OBJDEF  objBossWeapons,            OBJNO.BOSSWEAPONS
-        OBJDEF  objWaterfallSFX,           OBJNO.WTRFALLSFX
-        OBJDEF  objWarp,                   OBJNO.WARP
-        OBJDEF  objBigRing,                OBJNO.BIGRING
-        OBJDEF  objGeyserSpawn,            OBJNO.GEYSERSPAWN
-        OBJDEF  objGeyser,                 OBJNO.GEYSER
-        OBJDEF  objLavaChase,              OBJNO.LAVACHASE
-        OBJDEF  objEnemyRabbit,            OBJNO.ENEMYRABBIT
-        OBJDEF  objEnemySnail,             OBJNO.ENEMYSNAIL
-        OBJDEF  objSmashBlock,             OBJNO.SMASHBLOCK
-        OBJDEF  objMovingPlatform,         OBJNO.MOVINGPLAT
-        OBJDEF  objCollapsingFloor,        OBJNO.COLLAPSFLOOR
-        OBJDEF  objDamageTag,              OBJNO.DAMAGETAG
-        OBJDEF  objEnemyBat,               OBJNO.ENEMYBAT
-        OBJDEF  objBobbingBlocks,          OBJNO.BOBBLOCK
-        OBJDEF  objSpikeBall,              OBJNO.SPIKEBALL
-        OBJDEF  objBigSpikedBall,          OBJNO.BIGSPIKEBALL
-        OBJDEF  objAdvPlatform,            OBJNO.ADVPLATFORM
-        OBJDEF  objCirclingGirder,         OBJNO.CIRCLEGIRDER
-        OBJDEF  objStairBlocks,            OBJNO.STAIRBLOCKS
-        OBJDEF  objGirder,                 OBJNO.GIRDER
-        OBJDEF  objFan,                    OBJNO.FAN
-        OBJDEF  objSeeSaw,                 OBJNO.SEESAW
+        OBJDEF  ObjSpikeBridge,            OBJNO_SPIKEBRIDGE             
+        OBJDEF  ObjPlatform,               OBJNO_PLATFORM
+        OBJDEF  ObjRollingBall,            OBJNO_ROLLINGBALL
+        OBJDEF  ObjCollapsingLedge,        OBJNO_COLLAPSLEDGE
+        OBJDEF  ObjUnkPlatform,            OBJNO_UNKPLATFORM
+        OBJDEF  ObjLevelScenery,           OBJNO_LVLSCENERY
+        OBJDEF  ObjHiddenSwitch,           OBJNO_HIDDENSWITCH
+        OBJDEF  ObjEnemyPig,               OBJNO_ENEMYPIG
+        OBJDEF  ObjEnemyCrab,              OBJNO_ENEMYCRAB
+        OBJDEF  ObjBallBomb,               OBJNO_BALLBOMB
+        OBJDEF  ObjHUD,                    OBJNO_HUD
+        OBJDEF  ObjEnemyBee,               OBJNO_ENEMYBEE
+        OBJDEF  ObjMissile,                OBJNO_MISSILE
+        OBJDEF  ObjMissileHit,             OBJNO_MISSILEHIT
+        OBJDEF  ObjRing,                   OBJNO_RING
+        OBJDEF  ObjMonitor,                OBJNO_MONITOR
+        OBJDEF  ObjLightExpl,              OBJNO_LIGHTEXPL
+        OBJDEF  ObjFriends,                OBJNO_FRIENDS
+        OBJDEF  ObjPoints,                 OBJNO_POINTS
+        OBJDEF  ObjTunnelDoor,             OBJNO_TUNNELDOOR
+        OBJDEF  ObjEnemyFish,              OBJNO_ENEMYFISH
+        OBJDEF  ObjEnemyFish2,             OBJNO_ENEMYFISH2
+        OBJDEF  ObjEnemyMole,              OBJNO_ENEMYMOLE
+        OBJDEF  ObjMonitorItem,            OBJNO_MONITORITEM
+        OBJDEF  ObjShiftingFloor,          OBJNO_SHIFTFLOOR
+        OBJDEF  ObjGlassBlock,             OBJNO_GLASSBLOCK
+        OBJDEF  ObjSpikeCrusherV,          OBJNO_SPIKECRUSHV
+        OBJDEF  ObjButton,                 OBJNO_BUTTON
+        OBJDEF  ObjPushable,               OBJNO_PUSHABLE
+        OBJDEF  ObjTitleCards,             OBJNO_TITLECARD
+        OBJDEF  ObjSpreadingFire,          OBJNO_SPREADFIRE
+        OBJDEF  ObjSpikes,                 OBJNO_SPIKES
+        OBJDEF  ObjRingLoss,               OBJNO_RINGLOSS
+        OBJDEF  ObjShield,                 OBJNO_SHIELD
+        OBJDEF  ObjGameOver,               OBJNO_GAMEOVER
+        OBJDEF  ObjActClear,               OBJNO_ACTCLEAR
+        OBJDEF  ObjRock,                   OBJNO_ROCK
+        OBJDEF  ObjBreakable,              OBJNO_BREAKABLE
+        OBJDEF  ObjBoss,                   OBJNO_BOSS
+        OBJDEF  ObjEggCapsule,             OBJNO_EGGCAPSULE
+        OBJDEF  ObjHeavyExpl,              OBJNO_HEAVYEXPL
+        OBJDEF  ObjEnemyBug,               OBJNO_ENEMYBUG
+        OBJDEF  ObjSpring,                 OBJNO_SPRING
+        OBJDEF  ObjEnemyChameleon,         OBJNO_ENEMYCHAMELEON
+        OBJDEF  ObjEnemyArmadillo,         OBJNO_ENEMYARMADILLO
+        OBJDEF  ObjEdgeWalls,              OBJNO_EDGEWALLS
+        OBJDEF  ObjSpikeCrusherH,          OBJNO_SPIKECRUSHH
+        OBJDEF  ObjBlock,                  OBJNO_BLOCK
+        OBJDEF  ObjBumper,                 OBJNO_BUMPER
+        OBJDEF  ObjBossWeapons,            OBJNO_BOSSWEAPONS
+        OBJDEF  ObjWaterfallSFX,           OBJNO_WTRFALLSFX
+        OBJDEF  ObjWarp,                   OBJNO_WARP
+        OBJDEF  ObjBigRing,                OBJNO_BIGRING
+        OBJDEF  ObjGeyserSpawn,            OBJNO_GEYSERSPAWN
+        OBJDEF  ObjGeyser,                 OBJNO_GEYSER
+        OBJDEF  ObjLavaChase,              OBJNO_LAVACHASE
+        OBJDEF  ObjEnemyRabbit,            OBJNO_ENEMYRABBIT
+        OBJDEF  ObjEnemySnail,             OBJNO_ENEMYSNAIL
+        OBJDEF  ObjSmashBlock,             OBJNO_SMASHBLOCK
+        OBJDEF  ObjMovingPlatform,         OBJNO_MOVINGPLAT
+        OBJDEF  ObjCollapsingFloor,        OBJNO_COLLAPSFLOOR
+        OBJDEF  ObjDamageTag,              OBJNO_DAMAGETAG
+        OBJDEF  ObjEnemyBat,               OBJNO_ENEMYBAT
+        OBJDEF  ObjBobbingBlocks,          OBJNO_BOBBLOCK
+        OBJDEF  ObjSpikeBall,              OBJNO_SPIKEBALL
+        OBJDEF  ObjBigSpikedBall,          OBJNO_BIGSPIKEBALL
+        OBJDEF  ObjAdvPlatform,            OBJNO_ADVPLATFORM
+        OBJDEF  ObjCirclingGirder,         OBJNO_CIRCLEGIRDER
+        OBJDEF  ObjStairBlocks,            OBJNO_STAIRBLOCKS
+        OBJDEF  ObjGirder,                 OBJNO_GIRDER
+        OBJDEF  ObjFan,                    OBJNO_FAN
+        OBJDEF  ObjSeeSaw,                 OBJNO_SEESAW
 .Null:
 
 ; ---------------------------------------------------------------------------
@@ -312,7 +332,7 @@ DrawObjects:
 
 .Object:                               
         movea.w (a4,d6.w),a0
-        tst.b   obj.ID(a0)
+        tst.b   obj.No(a0)
         beq.w   .SkipObject
         bclr    #7,obj.Render(a0)
         move.b  obj.Render(a0),d0
@@ -815,7 +835,7 @@ _getobjCreate:
         move.b  d2,obj.Respawn(a1)      ; Write respawn info
 
 .NoState:                               
-        move.b  d0,obj.ID(a1)           ; Write ID
+        move.b  d0,obj.No(a1)           ; Write ID
         move.b  (a0)+,obj.Arg(a1)       ; Write argument
         moveq   #0,d0
 
@@ -831,7 +851,7 @@ _objectFindFreeSlot:
         move.w  #96-1,d0
 
 .Loop:                                 
-        tst.b   obj.ID(a1)
+        tst.b   obj.No(a1)
         beq.s   .Found
         lea     OBJSZ(a1),a1
         dbf     d0,.Loop
@@ -852,7 +872,7 @@ _objectFindChildSlot:
         bcs.s   .Found
 
 .Loop:                                 
-        tst.b   obj.ID(a1)
+        tst.b   obj.No(a1)
         beq.s   .Found
         lea     OBJSZ(a1),a1
         dbf     d0,.Loop

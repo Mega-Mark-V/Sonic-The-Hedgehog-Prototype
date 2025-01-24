@@ -265,7 +265,7 @@ PalFadeIn:
         move.w  #21-1,d4 	        ; Time in frames	
 
 .Loop:                                 
-        move.b  #VBCMD.PALETTE,vblankCmd.w      ; Do VSync
+        move.b  #VBCMD_PALETTE,vblankCmd.w      ; Do VSync
         bsr.w   VSync
 
         bsr.s   .DoFadeCalc
@@ -331,7 +331,7 @@ PalFadeOut:
         move.w  #21-1,d4
 
 .Loop:                                 
-        move.b  #VBCMD.PALETTE,vblankCmd.w
+        move.b  #VBCMD_PALETTE,vblankCmd.w
         bsr.w   VSync
 
         bsr.s   .DoFadeCalc
@@ -495,18 +495,18 @@ PaletteIndex:
 
  	;        Data         Addr.    Size      No. Name
         
-	palentr  Pal_LOGO,	0,	64,      PALNO.LOGO
-        palentr  Pal_TITLE,	0,	64,      PALNO.TITLE
-        palentr  Pal_SELECT,	0,	64,      PALNO.SELECT
-        palentr  Pal_Sonic,	0,	16,      PALNO.SONIC
-        palentr  Pal_GHZ,	16,	48,      PALNO.GHZ
-        palentr  Pal_LZ,	16,	48,      PALNO.LZ
-        palentr  Pal_MZ,	16,	48,      PALNO.MZ
-        palentr  Pal_SLZ,	16,	48,      PALNO.SLZ
-        palentr  Pal_SZ,	16,	48,      PALNO.SZ
-        palentr  Pal_CWZ,	16,	48,      PALNO.CWZ
-        palentr  Pal_SPECIAL,	0,	64,      PALNO.SPECIAL
-        palentr  Pal_Unk,	0,	64,      PALNO.UNK
+	palentr  Pal_LOGO,	0,	64,      PALNO_LOGO
+        palentr  Pal_TITLE,	0,	64,      PALNO_TITLE
+        palentr  Pal_SELECT,	0,	64,      PALNO_SELECT
+        palentr  Pal_Sonic,	0,	16,      PALNO_SONIC
+        palentr  Pal_GHZ,	16,	48,      PALNO_GHZ
+        palentr  Pal_LZ,	16,	48,      PALNO_LZ
+        palentr  Pal_MZ,	16,	48,      PALNO_MZ
+        palentr  Pal_SLZ,	16,	48,      PALNO_SLZ
+        palentr  Pal_SZ,	16,	48,      PALNO_SZ
+        palentr  Pal_CWZ,	16,	48,      PALNO_CWZ
+        palentr  Pal_SPECIAL,	0,	64,      PALNO_SPECIAL
+        palentr  Pal_Unk,	0,	64,      PALNO_UNK
 
 ; !!! split
 

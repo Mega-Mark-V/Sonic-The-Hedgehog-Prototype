@@ -96,18 +96,18 @@ GM_TITLE:
         move.w  #$6000,d2
         bsr.w   DrawChunks
 
-        moveq   #PALNO.TITLE,d0         ; Load palette
+        moveq   #PALNO_TITLE,d0         ; Load palette
         bsr.w   PalQueueForFade
 
-        move.b  #BGMNO.Title,d0         ; Play BGM
+        move.b  #BGMNO_TITLE,d0         ; Play BGM
         bsr.w   QueueSoundB
 
         move.b  #0,debug.w              ; Clear debug flag
         move.w  #376,genericTimer.w
 
-        move.b  #OBJNO.TITLESONIC,memTitleSonic.w ; Set Title Sonic obj.
-        move.b  #OBJNO.TITLEMISC,memTitlePSB.w    ; Set PSB obj.
-        move.b  #OBJNO.TITLEMISC,memTitleMask.w   ; Set misc objno.
+        move.b  #OBJNO_TITLESONIC,memTitleSonic.w ; Set Title Sonic obj.
+        move.b  #OBJNO_TITLEMISC,memTitlePSB.w    ; Set PSB obj.
+        move.b  #OBJNO_TITLEMISC,memTitleMask.w   ; Set misc objno.
         move.b  #2,(memTitleMask+obj.Frame).w     ; Set as masking sprite
         
         moveq   #0,d0
@@ -120,7 +120,7 @@ GM_TITLE:
         bsr.w   PalFadeIn               ; Fade palette in
 
 .MainLoop:                      
-        move.b  #VBCMD.TITLE,vblankCmd.w
+        move.b  #VBCMD_TITLE,vblankCmd.w
         bsr.w   VSync
         bsr.w   RunObjects
         bsr.w   CameraScroll
@@ -170,7 +170,7 @@ SNDTILEADDR     =  $EBB0
 ; ---------------------------------------------------------------------------
 
 LevelSelect:
-        moveq   #PALNO.SELECT,d0 
+        moveq   #PALNO_SELECT,d0 
         bsr.w   PalLoad
 
         lea     hscroll.w,a1
@@ -197,7 +197,7 @@ LevelSelect:
 
 
 .ZoneSelLoop:                            
-        move.b  #VBCMD.TITLE,vblankCmd.w
+        move.b  #VBCMD_TITLE,vblankCmd.w
         bsr.w   VSync
 
         bsr.w   _zoneselCtrl
@@ -261,7 +261,7 @@ _titleStartGame:
         move.l  d0,time.w
         move.l  d0,score.w
 
-        move.b  #SNDCMD.Stop,d0 
+        move.b  #SNDCMD_Stop,d0 
         bsr.w   QueueSoundB
         rts
 
@@ -305,7 +305,7 @@ _titleAdvanceCam:
         move.w  #30,genericTimer.w
 
 .CheckIfReady:                         
-        move.b  #VBCMD.TITLE,vblankCmd.w
+        move.b  #VBCMD_TITLE,vblankCmd.w
         bsr.w   VSync
 
         bsr.w   Parallax
@@ -326,7 +326,7 @@ _titleAdvanceCam:
         tst.w   genericTimer.w
         bne.w   .CheckIfReady
 
-        move.b  #SNDCMD.Stop,d0
+        move.b  #SNDCMD_Stop,d0
         bsr.w   QueueSoundB
 
         move.w  demoZone.w,d0

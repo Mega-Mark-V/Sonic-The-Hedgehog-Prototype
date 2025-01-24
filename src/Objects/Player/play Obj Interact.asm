@@ -164,7 +164,7 @@ loc_FCA2:
         bset    #7,obj.Status(a1)
         moveq   #$A,d0
         bsr.w   _hudAddPoints
-        move.b  #$27,obj.ID(a1) ; '''
+        move.b  #$27,obj.No(a1) ; '''
         move.b  #0,obj.Action(a1)
         tst.w   obj.YSpeed(a0)
         bmi.s   loc_FCD0
@@ -207,7 +207,7 @@ loc_FCF4:
         beq.s   loc_FD72
         bsr.w   _objectFindFreeSlot
         bne.s   loc_FD18
-        move.b  #$37,obj.ID(a1) ; '7'
+        move.b  #$37,obj.No(a1) ; '7'
         move.w  obj.X(a0),obj.X(a1)
         move.w  obj.Y(a0),obj.Y(a1)
 

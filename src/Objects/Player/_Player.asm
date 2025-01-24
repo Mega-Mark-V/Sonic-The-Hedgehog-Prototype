@@ -13,14 +13,12 @@ objPlayer:
         jmp     .Index(pc,d1.w)
 
 ; ---------------------------------------------------------------------------
-
-.Index:                                          ; obj.Action:
-                dc.w Player_Init-.Index          ; 0  
-                dc.w Player_Main-.Index          ; 2
-                dc.w Player_Damage-.Index        ; 4
-                dc.w Player_Death-.Index         ; 6
-                dc.w Player_Reset-.Index         ; 8
-
+.Index:                                  ; obj.Action:
+        dc.w Player_Init-       .Index          ; 0  
+        dc.w Player_Main-       .Index          ; 2
+        dc.w Player_Damage-     .Index          ; 4
+        dc.w Player_Death-      .Index          ; 6
+        dc.w Player_Reset-      .Index          ; 8
 ; ---------------------------------------------------------------------------
 
 Player_Init:                             
@@ -43,7 +41,7 @@ Player_Main:
         andi.w  #$7FF,obj.Y(a0)         ; Clamp Y pos. to $800 pix. max        
         andi.w  #$7FF,cameraMainY.w
 
-        tst.w   debug.w                 ; Skip if debug enabled
+        tst.w   debug.w                 ; Skip if debug not enabled
         beq.s   .Skip
         btst    #4,joypadPressMirr.w    ; Turn on editor if B pressed
         beq.s   .Skip
@@ -61,7 +59,7 @@ Player_Main:
         bsr.s   _playTrackPowerups    ; Handle powerup states and drawing
         bsr.w   _playRecordPos        ; Record previous positions
 
-        move.b  angleFront.w,play.FootFront(a0)
+        move.b  angleFront.w,play.FootFront(a0) 
         move.b  angleBack.w,play.FootBack(a0)
 
         bsr.w   _playAnimate            ; Handle Sonic's animation
@@ -73,10 +71,10 @@ Player_Main:
 ; ---------------------------------------------------------------------------
 
 .PhysicsModes:                                
-                dc.w Player_MainCtrl-.PhysicsModes
-                dc.w Player_AirCtrl-.PhysicsModes
-                dc.w Player_RollCtrl-.PhysicsModes    
-                dc.w Player_AirRollCtrl-.PhysicsModes
+        dc.w Player_MainCtrl    -.PhysicsModes
+        dc.w Player_AirCtrl     -.PhysicsModes
+        dc.w Player_RollCtrl    -.PhysicsModes    
+        dc.w Player_AirRollCtrl -.PhysicsModes
 
 ; ---------------------------------------------------------------------------
 ; Handle powerup state tracking, music, and drawing
@@ -137,7 +135,7 @@ _playTrackPowerups:
 
         move.b  #0,speedup.w
 
-        move.w  #sndCMD_Slow,d0         ; Reset music tempo
+        move.w  #SNDCMD_TEMPORES,d0         ; Reset music tempo
         jmp     QueueSoundB
 
 .Spedup:                            
@@ -203,83 +201,94 @@ Player_AirRollCtrl:                              ; Both statuses set
 ; ---------------------------------------------------------------------------
 ; Main player movement function.
 ; Controls moving left and right, looking up and down, and misc.
+; Note that this is a pretty large subroutine with a lot of locals. 
 ; ---------------------------------------------------------------------------
 
 _playMove:                              
-        move.w  playerMaxSpeed.w,d6
+        move.w  playerMaxSpeed.w,d6     ; Set deltas to d4,d5,d6  
         move.w  playerAccel.w,d5
         move.w  playerDecel.w,d4
 
-        tst.w   phys.Locked(a0)
-        bne.w   _playLookChk
+        tst.w   play.Locked(a0)         ; If ctrl. locked, skip all this
+        bne.w   .LookChk
 
-        btst    #2,joypadMirr.w
+        btst    #2,joypadMirr.w         ; Skip if left input not pressed
         beq.s   .NotLeft
         bsr.w   _playMoveLeft
 
 .NotLeft:                              
-        btst    #3,joypadMirr.w
+        btst    #3,joypadMirr.w         ; Skip if right input not pressed
         beq.s   .NotRight
         bsr.w   _playMoveRight
 
 .NotRight:                             
-        move.b  obj.Angle(a0),d0
-        addi.b  #$20,d0
-        andi.b  #$C0,d0
-        bne.w   .CameraReset
-        tst.w   phys.Momentum(a0)
-        bne.w   .CameraReset
-        bclr    #PHYS.PUSH,obj.Status(a0)
-        move.b  #5,obj.Anim(a0)
-        btst    #PHYS.HOISTED,obj.Status(a0)
-        beq.s   .NotHoisted
+        move.b  obj.Angle(a0),d0        ; Get current angle
+        addi.b  #$20,d0                 ; Push as circle over 45 degrees
+        andi.b  #$C0,d0                 ; Get highest 2 bits (direction) 
+        bne.w   .CameraReset            ; If on wall or ceiling,
+        tst.w   obj.Momentum(a0)        ; or if not moving,
+        bne.w   .CameraReset            ; then skip ahead.
+
+        bclr    #PHYS.PUSH,obj.Status(a0)       ; Not pushing
+        move.b  #5,obj.Anim(a0)                 ; Use idle animation
+
+        btst    #PHYS.LIFTED,obj.Status(a0)     ; Is player on platform?
+        beq.s   .NotLifted                      ; If not, skip ahead
+
+        ; ---- Check for balancing on a platform
+
         moveq   #0,d0
-        move.b  phys.OnObject(a0),d0
-        lsl.w   #6,d0
-
+        move.b  play.OnObject(a0),d0    ; Get slot of interacting object 
+        lsl.w   #6,d0                   ; Calculate address from slot
         lea     OBJECTRAM.w,a1
-        lea     (a1,d0.w),a1
-        tst.b   obj.Status(a1)
-        bmi.s   _playLookChk
+        lea     (a1,d0.w),a1            ; a1 = Interacting obj.
 
+        tst.b   obj.Status(a1)          ; Test bit 7 (MSB) (STAT.KILLED)
+        bmi.s   .LookChk                ; If set, object is killed,
+                                        ; so skip ahead
         moveq   #0,d1
-        move.b  obj.XDraw(a1),d1
+        move.b  obj.XDraw(a1),d1        ; Get its X-draw radius
         move.w  d1,d2
-        add.w   d2,d2
+        add.w   d2,d2                   ; XDraw*2
         subq.w  #4,d2
-        add.w   obj.X(a0),d1
-        sub.w   obj.X(a1),d1
-        cmpi.w  #4,d1
-        blt.s   .BalanceLeft
-        cmp.w   d2,d1
-        bge.s   .BalanceRight
-        bra.s   _playLookChk
+        add.w   obj.X(a0),d1            ; Add our X-pos to d1
+        sub.w   obj.X(a1),d1            ; Then subtract the object's
 
-.NotHoisted:                           
-        jsr     _objectFindFloor
-        cmpi.w  #12,d1
-        blt.s   _playLookChk
-        cmpi.b  #3,phys.FootFront(a0)
+        cmpi.w  #4,d1                   ; If in 4 pix of left edge...
+        blt.s   .ChkBalanceLeft
+        cmp.w   d2,d1                   ; ...or right edge
+        bge.s   .BalanceRight           ; then balance
+        bra.s   .LookChk         
+
+        ; ---- Check for balancing normally
+        ; NOTE: The above balancing checks branch into this 
+
+.NotLifted:                           
+        jsr     _objectFindFloor        ; Get floor distance
+        cmpi.w  #12,d1                  ; Skip if 12pix drop ahead
+        blt.s   .LookChk                
+
+        cmpi.b  #3,play.FootFront(a0)   ; If on platform, skip
         bne.s   .ChkBalanceLeft
 
 .BalanceRight:                         
         bclr    #PHYS.DIR,obj.Status(a0)
-        bra.s   .SetAnim
+        bra.s   .SetBalanceAnim
 
 .ChkBalanceLeft:                       
-        cmpi.b  #3,phys.FootBack(a0)
-        bne.s   _playLookChk
+        cmpi.b  #3,play.FootBack(a0)
+        bne.s   .LookChk
 
 .BalanceLeft:                          
         bset    #PHYS.DIR,obj.Status(a0)
 
-.SetAnim:                              
+.SetBalanceAnim:                              
         move.b  #6,obj.Anim(a0)
         bra.s   .CameraReset
 
-; --------------------------------------
+        ; ---- Check for looking up or ducking
 
-_playLookChk:                           
+.LookChk:                           
         btst    #0,joypadMirr.w
         beq.s   .Duck
         move.b  #7,obj.Anim(a0)
@@ -310,7 +319,7 @@ _playLookChk:
         move.b  joypadMirr.w,d0
         andi.b  #$C,d0
         bne.s   .GetSpeed
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         beq.s   .GetSpeed
         bmi.s   .MomentumNeg
         sub.w   d5,d0
@@ -318,7 +327,7 @@ _playLookChk:
         move.w  #0,d0
 
 .StillMvPos:                           
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
         bra.s   .GetSpeed
 
 .MomentumNeg:                          
@@ -327,23 +336,26 @@ _playLookChk:
         move.w  #0,d0
 
 .StillMvNeg:                           
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
 
 .GetSpeed:                             
         move.b  obj.Angle(a0),d0
         jsr     CalcSinCos
-        muls.w  phys.Momentum(a0),d1
+        muls.w  obj.Momentum(a0),d1
         asr.l   #8,d1
         move.w  d1,obj.XSpeed(a0)
-        muls.w  phys.Momentum(a0),d0
+        muls.w  obj.Momentum(a0),d0
         asr.l   #8,d0
         move.w  d0,obj.YSpeed(a0)
+        ; fall into _playHitWall
 
-; --------------------------------------
+; ---------------------------------------------------------------------------
+; Check if the player has hit a wall 
+; ---------------------------------------------------------------------------
 
 _playHitWall:                           
         move.b  #$40,d1
-        tst.w   phys.Momentum(a0)
+        tst.w   obj.Momentum(a0)
         beq.s   .Exit
         bmi.s   .IsMvLeft
         neg.w   d1
@@ -356,7 +368,7 @@ _playHitWall:
         move.w  (sp)+,d0
         tst.w   d1
         bpl.s   .Exit
-        move.w  #0,phys.Momentum(a0)
+        move.w  #0,obj.Momentum(a0)
         bset    #5,obj.Status(a0)
         asl.w   #8,d1
         addi.b  #$20,d0
@@ -390,7 +402,7 @@ _playHitWall:
 ; ---------------------------------------------------------------------------
 
 _playMoveLeft:                          
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         beq.s   .NotMoving
         bpl.s   .Skidding
 
@@ -401,15 +413,15 @@ _playMoveLeft:
         move.b  #1,obj.LastAnim(a0)
 
 .FacingLeft:                           
-        sub.w   d5,d0
-        move.w  d6,d1
-        neg.w   d1
-        cmp.w   d1,d0
+        sub.w   d5,d0           ; Subtract acceleration delta
+        move.w  d6,d1           ; Get negated max speed for leftwards chk.
+        neg.w   d1              
+        cmp.w   d1,d0           ; Check if met speed limit (d6)
         bgt.s   .BelowLimit
-        move.w  d1,d0
+        move.w  d1,d0           ; Force as max speed if so
 
 .BelowLimit:                           
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
         move.b  #0,obj.Anim(a0)
         rts
 
@@ -419,7 +431,7 @@ _playMoveLeft:
         move.w  #-$80,d0
 
 .StillMoving:                          
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
         move.b  obj.Angle(a0),d0
         addi.b  #$20,d0
         andi.b  #$C0,d0
@@ -428,7 +440,7 @@ _playMoveLeft:
         blt.s   .Exit
         move.b  #$D,obj.Anim(a0)
         bclr    #0,obj.Status(a0)
-        move.w  #SFXNO.Skid,d0
+        move.w  #SFXNO_Skid,d0
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -439,7 +451,7 @@ _playMoveLeft:
 ; ---------------------------------------------------------------------------
 
 _playMoveRight:                         
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         bmi.s   .Skidding
         bclr    #PHYS.DIR,obj.Status(a0)
         beq.s   .FacingRight
@@ -447,13 +459,13 @@ _playMoveRight:
         move.b  #1,obj.LastAnim(a0)
 
 .FacingRight:                          
-        add.w   d5,d0
-        cmp.w   d6,d0
+        add.w   d5,d0           ; Add acceleration delta
+        cmp.w   d6,d0           ; Check if met speed limit (d6)
         blt.s   .BelowLimit
-        move.w  d6,d0
+        move.w  d6,d0           ; Force as max speed
 
 .BelowLimit:                           
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)    
         move.b  #0,obj.Anim(a0)
         rts
 
@@ -463,7 +475,7 @@ _playMoveRight:
         move.w  #$80,d0
 
 .StillMoving:                          
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
         move.b  obj.Angle(a0),d0
         addi.b  #$20,d0
         andi.b  #$C0,d0
@@ -472,7 +484,7 @@ _playMoveRight:
         bgt.s   .Exit
         move.b  #$D,obj.Anim(a0)
         bset    #0,obj.Status(a0)
-        move.w  #SFXNO.Skid,d0
+        move.w  #SFXNO_Skid,d0
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -490,7 +502,7 @@ _playRoll:
         move.w  playerDecel.w,d4
         asr.w   #2,d4
 
-        tst.w   phys.Locked(a0)
+        tst.w   play.Locked(a0)
         bne.s   .Settle
 
         btst    #2,joypadMirr.w
@@ -505,7 +517,7 @@ _playRoll:
         bsr.w   _playRollRight
 
 .Settle:                               
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         beq.s   .CheckStop
         bmi.s   .SettleLeft
 
@@ -514,7 +526,7 @@ _playRoll:
         move.w  #0,d0
 
 .SetMomentum:                          
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
         bra.s   .CheckStop
 
 .SettleLeft:                           
@@ -523,10 +535,10 @@ _playRoll:
         move.w  #0,d0
 
 .SetMomentum2:                         
-        move.w  d0,phys.Momentum(a0)
+        move.w  d0,obj.Momentum(a0)
 
 .CheckStop:                            
-        tst.w   phys.Momentum(a0)
+        tst.w   obj.Momentum(a0)
         bne.s   .CalcSpeed
 
         bclr    #2,obj.Status(a0)
@@ -538,10 +550,10 @@ _playRoll:
 .CalcSpeed:                            
         move.b  obj.Angle(a0),d0
         jsr     CalcSinCos
-        muls.w  phys.Momentum(a0),d1
+        muls.w  obj.Momentum(a0),d1
         asr.l   #8,d1
         move.w  d1,obj.XSpeed(a0)
-        muls.w  phys.Momentum(a0),d0
+        muls.w  obj.Momentum(a0),d0
         asr.l   #8,d0
         move.w  d0,obj.YSpeed(a0)
         bra.w   _playHitWall
@@ -575,7 +587,7 @@ _playRollLeft:
 ; ---------------------------------------------------------------------------
 
 _playRollRight:                         
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         bmi.s   .Decelerate
         bclr    #0,obj.Status(a0)
         move.b  #2,obj.Anim(a0)
@@ -672,7 +684,7 @@ _playHeadChk:
         bsr.w   _physNoWallWalk
         tst.w   d1
         bpl.s   .Exit
-        move.w  #0,phys.Momentum(a0)
+        move.w  #0,obj.Momentum(a0)
         move.w  #0,obj.XSpeed(a0)
         move.w  #0,obj.YSpeed(a0)
         move.b  #$B,obj.Anim(a0)
@@ -717,7 +729,7 @@ _playLevelLimits:
 ; ---------------------------------------------------------------------------
 
 _playRollChk:                           
-        move.w  phys.Momentum(a0),d0
+        move.w  obj.Momentum(a0),d0
         bpl.s   .AlreadyPositive
         neg.w   d0
 
@@ -748,7 +760,7 @@ _playRollSet:
         move.b  #7,obj.XRad(a0)
         move.b  #2,obj.Anim(a0)
         addq.w  #5,obj.Y(a0)
-        move.w  #SFXNO.Spin,d0
+        move.w  #SFXNO_Spin,d0
         jsr     QueueSoundB
         tst.w   obj.Momentum(a0)
         bne.s   .Exit
@@ -789,7 +801,7 @@ _playJumpChk:
         bclr    #PHYS.PUSH,obj.Status(a0)
         addq.l  #4,sp
         move.b  #1,phys.Jump(a0)
-        move.w  #SFXNO.Jump,d0
+        move.w  #SFXNO_Jump,d0
         jsr     QueueSoundB
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
@@ -822,7 +834,7 @@ _playJumpChk:
 ; ---------------------------------------------------------------------------
 
 _playJumpHeight:                        
-        tst.b   phys.Jump(a0)
+        tst.b   play.Jump(a0)
         beq.s   .NotJumping
         cmpi.w  #-$400,obj.YSpeed(a0)
         bge.s   .HoldSpeed

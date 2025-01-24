@@ -53,16 +53,16 @@ VBLANKCMD macro   addr, id
 ; ---------------------------------------------------------------------------
 
 .Index:                                
-        VBLANKCMD .NULL,                VBCMD.EMPTY
-        VBLANKCMD VBLANK_LOGO,          VBCMD.LOGO
-        VBLANKCMD VBLANK_TITLE,         VBCMD.TITLE
-        VBLANKCMD VBLANK_UNK,           VBCMD.UNK
-        VBLANKCMD VBLANK_LEVEL,         VBCMD.LEVEL
-        VBLANKCMD VBLANK_SPECIAL,       VBCMD.SPECIAL
-        VBLANKCMD VBLANK_LVLSTART,      VBCMD.LVLSTART
-        VBLANKCMD VBLANK_TIMER,         VBCMD.TIMER
-        VBLANKCMD VBLANK_PAUSE,         VBCMD.PAUSE
-        VBLANKCMD VBLANK_PALETTE,       VBCMD.PALETTE
+        VBLANKCMD .NULL,                VBCMD_EMPTY
+        VBLANKCMD VBLANK_LOGO,          VBCMD_LOGO
+        VBLANKCMD VBLANK_TITLE,         VBCMD_TITLE
+        VBLANKCMD VBLANK_UNK,           VBCMD_UNK
+        VBLANKCMD VBLANK_LEVEL,         VBCMD_LEVEL
+        VBLANKCMD VBLANK_SPECIAL,       VBCMD_SPECIAL
+        VBLANKCMD VBLANK_LVLSTART,      VBCMD_LVLSTART
+        VBLANKCMD VBLANK_TIMER,         VBCMD_TIMER
+        VBLANKCMD VBLANK_PAUSE,         VBCMD_PAUSE
+        VBLANKCMD VBLANK_PALETTE,       VBCMD_PALETTE
 
 ; ---------------------------------------------------------------------------
 ; LOGO / SEGA Screen routine
@@ -233,7 +233,7 @@ VBLANK_TIMER:
         bsr.w   RunObjects
         bsr.w   DrawObjects
         addq.b  #1,vblankUnk1.w
-        move.b  #VBCMD.TIMER,vblankCmd.w
+        move.b  #VBCMD_TIMER,vblankCmd.w
         rts
 
 ; ---------------------------------------------------------------------------

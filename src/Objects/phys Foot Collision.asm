@@ -6,9 +6,9 @@
 ; ---------------------------------------------------------------------------
 ; local enums
 
-PHYS.UPMAX      EQU     14              ; Max distances to register on floor
-PHYS.DOWNMAX    EQU     -14             
-PHYS.GRAVITY    EQU     56              ; Gravity delta
+PHYS_UPMAX      EQU     14              ; Max distances to register on floor
+PHYS_DOWNMAX    EQU     -14             
+PHYS_GRAVITY    EQU     56              ; Gravity delta
 
 BLK.XFLIP       EQU     $B              ; Collision Bit flags in chunk data
 BLK.YFLIP       EQU     $C
@@ -89,7 +89,7 @@ _physWalkFloor:
         beq.s   .OnFloor
         bpl.s   .AboveFloor
 
-        cmpi.w  #PHYS.DOWNMAX,d1        ; Exit if out of downward radius
+        cmpi.w  #PHYS_DOWNMAX,d1        ; Exit if out of downward radius
         blt.s   _physUnkObjectFall
 
         add.w   d1,obj.Y(a0)            ; Otherwise set to floor
@@ -98,7 +98,7 @@ _physWalkFloor:
         rts
 
 .AboveFloor:                               
-        cmpi.w  #PHYS.UPMAX,d1          ; Exit if out of upward radius
+        cmpi.w  #PHYS_UPMAX,d1          ; Exit if out of upward radius
         bgt.s   .InAir
         add.w   d1,obj.Y(a0)
         rts
@@ -126,7 +126,7 @@ _physUnkObjectFall:
         asl.l   #8,d0
         sub.l   d0,d2
         move.l  d2,obj.X(a0)
-        move.w  #PHYS.GRAVITY,d0
+        move.w  #PHYS_GRAVITY,d0
         ext.l   d0
         asl.l   #8,d0
         sub.l   d0,d3
@@ -139,7 +139,7 @@ _physUnkFallReverse:
         rts
         move.l  obj.Y(a0),d3
         move.w  obj.YSpeed(a0),d0
-        subi.w  #PHYS.GRAVITY,d0
+        subi.w  #PHYS_GRAVITY,d0
         move.w  d0,obj.YSpeed(a0)
         ext.l   d0
         asl.l   #8,d0
@@ -227,7 +227,7 @@ _physWalkWallRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleBack.w,a4      ; Angle output
+        lea     angleBack.w,a4          ; Angle output
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -240,7 +240,7 @@ _physWalkWallRight:
         beq.s   .OnFloor
         bpl.s   .AboveFloor
 
-        cmpi.w  #PHYS.DOWNMAX,d1
+        cmpi.w  #PHYS_DOWNMAX,d1
         blt.w   _physUnkFallReverse
 
         add.w   d1,obj.X(a0)
@@ -249,7 +249,7 @@ _physWalkWallRight:
         rts
 
 .AboveFloor:                               
-        cmpi.w  #PHYS.UPMAX,d1
+        cmpi.w  #PHYS_UPMAX,d1
         bgt.s   .InAir
         add.w   d1,obj.X(a0)
         rts
@@ -279,7 +279,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleFront.w,a4     ; Angle output
+        lea     angleFront.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -299,7 +299,7 @@ _physWalkCeiling:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3                   ; X
-        lea     angleFront.w,a4     ; Angle output
+        lea     angleFront.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -312,7 +312,7 @@ _physWalkCeiling:
         beq.s   .OnFloor
         bpl.s   .AboveFloor
 
-        cmpi.w  #PHYS.DOWNMAX,d1
+        cmpi.w  #PHYS_DOWNMAX,d1
         blt.w   _physUnkFallReverse
         
         sub.w   d1,obj.Y(a0)
@@ -324,7 +324,7 @@ _physWalkCeiling:
         rts
 
 .AboveFloor:                  
-        cmpi.w  #PHYS.UPMAX,d1
+        cmpi.w  #PHYS_UPMAX,d1
         bgt.s   .InAir
         sub.w   d1,obj.Y(a0)
         rts
@@ -387,7 +387,7 @@ _physWalkWallLeft:
         beq.s   .OnFloor
         bpl.s   .AboveFloor
 
-        cmpi.w  #PHYS.DOWNMAX,d1
+        cmpi.w  #PHYS_DOWNMAX,d1
         blt.w   _physUnkFallReverse
         
         sub.w   d1,obj.X(a0)
@@ -396,7 +396,7 @@ _physWalkWallLeft:
         rts
 
 .AboveFloor:                              
-        cmpi.w  #PHYS.UPMAX,d1
+        cmpi.w  #PHYS_UPMAX,d1
         bgt.s   .InAir
 
         sub.w   d1,obj.X(a0)
