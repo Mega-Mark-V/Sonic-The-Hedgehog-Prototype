@@ -1,3 +1,9 @@
+; ---------------------------------------------------------------------------
+; Type-02 Player Object code [play02]
+; Test player object code for testing animations? 
+; It's an animation test right now with some basic control.
+; ---------------------------------------------------------------------------
+
 objPlayerTest:                          
         moveq   #0,d0
         move.b  obj.Action(a0),d0
@@ -79,7 +85,7 @@ _playtstCtrl:
         rts
 
 ; ---------------------------------------------------------------------------
-; unused - part of the base object code
+; unused
 
 PlayTest_Delete:                     
         jmp     _objectDelete 

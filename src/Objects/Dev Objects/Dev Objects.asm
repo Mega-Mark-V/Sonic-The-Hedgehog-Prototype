@@ -17,7 +17,7 @@ TILE.DIGIT2	EQU  $470+$8000
 ; Development Object 1 - seems to test sprite rendering with _objectDraw
 ; ---------------------------------------------------------------------------
 
- objDev1:                                
+ ObjDev1:                                
         moveq   #0,d0
         move.b  obj.Action(a0),d0
         move.w  .Index(pc,d0.w),d1
@@ -75,7 +75,7 @@ Dev1_Exit:
 ; Development Object 2 - also looks to test sprite rendering
 ; ---------------------------------------------------------------------------
 
-objDev2:                                
+ObjDev2:                                
 
         moveq   #0,d0
         move.b  obj.Action(a0),d0
@@ -119,7 +119,7 @@ Dev2_Delete:
 ; Maybe used for testing layout reading/loading? Unsure.
 ; ---------------------------------------------------------------------------
 
-objDev3:                                
+ObjDev3:                                
 
         moveq   #0,d0
         move.b  obj.Action(a0),d0
@@ -174,7 +174,7 @@ Dev3_Exit:
 ; It expects its VRAM at tile 0x4F0 to contain characters 1-9 and hex A-F
 ; ---------------------------------------------------------------------------
 
-objDevDigits1:                                
+ObjDev4:                                
         moveq   #0,d0
         move.b  obj.Action(a0),d0
         move.w  .Index(pc,d0.w),d1
@@ -208,13 +208,13 @@ Test05_Exit:
 	include	"Objects/Dev Objects/mapspr Digits.asm"
 
 ; ---------------------------------------------------------------------------
-; Development Object 6 - More developer digits
+; Development Object 5 - More developer digits
 ; Basically the same object as objDevDigits1, but shifted onscreen by $A0
 ; It also uses a different VRAM position
 ; ---------------------------------------------------------------------------
 
 
-objDevDigits2:                                
+ObjDev5:                                
         moveq   #0,d0
         move.b  obj.Action(a0),d0
         move.w  .Index(pc,d0.w),d1
@@ -252,7 +252,7 @@ DevDigits2_Exit:
 ; ---------------------------------------------------------------------------
 
 
-objDev6:                                
+ObjDev6:                                
         moveq   #0,d0
         move.b  obj.Action(a0),d0
         move.w  .Index(pc,d0.w),d1

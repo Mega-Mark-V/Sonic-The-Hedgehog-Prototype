@@ -370,23 +370,28 @@ _playInputChk:
 
 _playHitWall:                           
         move.b  #$40,d1             ; d1 = 90 degree push for calcs.
-        tst.w   obj.Momentum(a0)
-        beq.s   .Exit
+        tst.w   obj.Momentum(a0)    ; Exit if not moving
+        beq.s   .Exit           
+
         bmi.s   .IsMvLeft
         neg.w   d1
 
 .IsMvLeft:                             
-        move.b  obj.Angle(a0),d0
-        add.b   d1,d0
-        move.w  d0,-(sp)
+        move.b  obj.Angle(a0),d0    ; Get angle
+        add.b   d1,d0               ; Push it over 90 degrees
+
+        move.w  d0,-(sp)    
         bsr.w   _physGetWallDist
         move.w  (sp)+,d0
-        tst.w   d1
+
+        tst.w   d1                  ; If dist. is +, we aren't hitting it
         bpl.s   .Exit
-        move.w  #0,obj.Momentum(a0)
-        bset    #PHYS.PUSH,obj.Status(a0)
+
+        move.w  #0,obj.Momentum(a0)         ; Clear momentum 
+        bset    #PHYS.PUSH,obj.Status(a0)   ; Set as pushing against it
+
         asl.w   #8,d1
-        addi.b  #$20,d0
+        addi.b  #$20,d0         ; Push angle 45 degrees for quadrants
         andi.b  #$C0,d0
         beq.s   .HitDwn
         cmpi.b  #$40,d0
@@ -424,8 +429,9 @@ _playMoveLeft:
 .NotMoving:                            
         bset    #PHYS.DIR,obj.Status(a0)
         bne.s   .FacingLeft
+
         bclr    #PHYS.PUSH,obj.Status(a0)
-        move.b  #1,obj.LastAnim(a0)
+        move.b  #1,obj.LastAnim(a0)             ; Set anim update?
 
 .FacingLeft:                           
         sub.w   d5,d0           ; Subtract acceleration delta
@@ -437,7 +443,7 @@ _playMoveLeft:
 
 .BelowLimit:                           
         move.w  d0,obj.Momentum(a0)
-        move.b  #0,obj.Anim(a0)
+        move.b  #0,obj.Anim(a0)         ; Set walking anim.
         rts
 
 .Skidding:                             
@@ -446,16 +452,17 @@ _playMoveLeft:
         move.w  #-$80,d0
 
 .StillMoving:                          
-        move.w  d0,obj.Momentum(a0)
-        move.b  obj.Angle(a0),d0
-        addi.b  #$20,d0
+        move.w  d0,obj.Momentum(a0)     ; Get momentum w/ parity 
+        move.b  obj.Angle(a0),d0        ; Combine with angle for direc.
+        addi.b  #$20,d0                 ; Push 45 deg. for quadrant
         andi.b  #$C0,d0
         bne.s   .Exit
-        cmpi.w  #1024,d0
+        cmpi.w  #$400,d0                ; If too slow, don't skid
         blt.s   .Exit
-        move.b  #$D,obj.Anim(a0)
-        bclr    #0,obj.Status(a0)
-        move.w  #SFXNO_SKID,d0
+
+        move.b  #$D,obj.Anim(a0)                ; Set skidding anim.
+        bclr    #PHYS.DIR,obj.Status(a0)        ; Set facing right
+        move.w  #SFXNO_SKID,d0                  ; Play Skidding SFX
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -468,8 +475,10 @@ _playMoveLeft:
 _playMoveRight:                         
         move.w  obj.Momentum(a0),d0
         bmi.s   .Skidding
+
         bclr    #PHYS.DIR,obj.Status(a0)
         beq.s   .FacingRight
+
         bclr    #PHYS.PUSH,obj.Status(a0)
         move.b  #1,obj.LastAnim(a0)
 
@@ -490,16 +499,17 @@ _playMoveRight:
         move.w  #$80,d0
 
 .StillMoving:                          
-        move.w  d0,obj.Momentum(a0)
-        move.b  obj.Angle(a0),d0
-        addi.b  #$20,d0
+        move.w  d0,obj.Momentum(a0)     ; Get momentum w/ parity 
+        move.b  obj.Angle(a0),d0        ; Combine with angle for direc.
+        addi.b  #$20,d0                 ; Push 45 deg. for quadrant
         andi.b  #$C0,d0
         bne.s   .Exit
-        cmpi.w  #-$400,d0
+        cmpi.w  #-$400,d0               ; If too slow, don't skid
         bgt.s   .Exit
-        move.b  #$D,obj.Anim(a0)
-        bset    #0,obj.Status(a0)
-        move.w  #SFXNO_SKID,d0
+
+        move.b  #$D,obj.Anim(a0)                ; Set skidding anim.
+        bset    #PHYS.DIR,obj.Status(a0)        ; Set facing left
+        move.w  #SFXNO_SKID,d0                  ; Play Skidding SFX
         jsr     QueueSoundB
 
 .Exit:                                 
@@ -511,13 +521,13 @@ _playMoveRight:
 
 _playRoll:                          
         move.w  playerMaxSpeed.w,d6
-        asl.w   #1,d6
+        asl.w   #1,d6                   ; d6 = maxspeed/2
         move.w  playerAccel.w,d5
-        asr.w   #1,d5
+        asr.w   #1,d5                   ; d5 = acceleration/2
         move.w  playerDecel.w,d4
-        asr.w   #2,d4
+        asr.w   #2,d4                   ; d4 = deceleration/4
 
-        tst.w   play.Locked(a0)
+        tst.w   play.Locked(a0)         ; If ctrl. locked, skip ctrl. code
         bne.s   .Settle
 
         btst    #2,joypadMirr.w
@@ -556,8 +566,8 @@ _playRoll:
         tst.w   obj.Momentum(a0)
         bne.s   .CalcSpeed
 
-        bclr    #2,obj.Status(a0)
-        move.b  #$13,obj.YRad(a0)
+        bclr    #PHYS.ROLLING,obj.Status(a0)
+        move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
         move.b  #5,obj.Anim(a0)
         subq.w  #5,obj.Y(a0)
@@ -576,7 +586,6 @@ _playRoll:
 ; ---------------------------------------------------------------------------
 ; Player Roll Left
 ; ---------------------------------------------------------------------------
-
 
 _playRollLeft:                          
         move.w  obj.Momentum(a0),d0
@@ -722,15 +731,17 @@ _playLevelLimits:
         addi.w  #16,d0
         cmp.w   d1,d0
         bhi.s   .Reset
+
         move.w  limitARight.w,d0
         addi.w  #$128,d0
         cmp.w   d1,d0
         bls.s   .Reset
+
         move.w  limitADown.w,d0
         addi.w  #224,d0
-        cmp.w   obj.Y(a0),d0
-        bcs.w   loc_FD78
-        rts
+        cmp.w   obj.Y(a0),d0            ; !!!
+        bcs.w   loc_FD78                ; If bottom lim hit, then die
+        rts                             ; (_playObjCol) wip
 
 .Reset:                                
         move.w  d0,obj.X(a0)
@@ -770,16 +781,22 @@ _playRollSet:
         rts
 
 .DoRoll:                               
-        bset    #2,obj.Status(a0)
-        move.b  #$E,obj.YRad(a0)
+        bset    #PHYS.ROLLING,obj.Status(a0)    
+
+        move.b  #14,obj.YRad(a0)        ; New radiuses for rolling
         move.b  #7,obj.XRad(a0)
-        move.b  #2,obj.Anim(a0)
-        addq.w  #5,obj.Y(a0)
-        move.w  #SFXNO_SPIN,d0
+
+        move.b  #2,obj.Anim(a0)         ; Use rolling animation
+
+        addq.w  #5,obj.Y(a0)            ; Nudge position upwards (bugfix?)
+
+        move.w  #SFXNO_SPIN,d0          ; Play spin sound
         jsr     QueueSoundB
-        tst.w   obj.Momentum(a0)
-        bne.s   .Exit
-        move.w  #$200,obj.Momentum(a0)
+
+        tst.w   obj.Momentum(a0)        ; If momentum not 0, exit
+        bne.s   .Exit                   
+
+        move.w  #$200,obj.Momentum(a0)  ; Otherwise, nudge forward?
 
 .Exit:                                 
         rts
@@ -792,7 +809,7 @@ _playRollSet:
 _playJumpChk:                           
         move.b  joypadPressMirr.w,d0
         andi.b  #%1110000,d0
-        beq.w   .NotPressed
+        beq.w   .Exit
 
         moveq   #0,d0
         move.b  obj.Angle(a0),d0
@@ -800,7 +817,7 @@ _playJumpChk:
         bsr.w   _physGetCeilingDist
 
         cmpi.w  #6,d1
-        blt.w   .NotPressed
+        blt.w   .Exit
 
         moveq   #0,d0
         move.b  obj.Angle(a0),d0
@@ -812,20 +829,23 @@ _playJumpChk:
         muls.w  #$680,d0
         asr.l   #8,d0
         add.w   d0,obj.YSpeed(a0)
-        bset    #PHYS.AIRBORNE,obj.Status(a0)
-        bclr    #PHYS.PUSH,obj.Status(a0)
-        addq.l  #4,sp
+
+        bset    #PHYS.AIRBORNE,obj.Status(a0)   ; Set as airbourne,
+        bclr    #PHYS.PUSH,obj.Status(a0)       ; not pushing
+
+        addq.l  #4,sp                           
+
         move.b  #1,phys.Jump(a0)
         move.w  #SFXNO_JUMP,d0
         jsr     QueueSoundB
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
 
-        tst.b   objSlot18.w
+        tst.b   objSlot18.w                     ; !!! objmemZoneClear?
         bne.s   .VictoryAnim
 
-        btst    #PHYS.ROLLING,obj.Status(a0)
-        bne.s   .RollJump
+        btst    #PHYS.ROLLING,obj.Status(a0)    ; If rolling already,
+        bne.s   .RollJump                       ; skip to rolljump set
 
         move.b  #14,obj.YRad(a0)
         move.b  #7,obj.XRad(a0)
@@ -833,11 +853,11 @@ _playJumpChk:
         bset    #PHYS.ROLLING,obj.Status(a0)
         addq.w  #5,obj.Y(a0)
 
-.NotPressed:                           
+.Exit:                           
         rts
 
 .VictoryAnim:                          
-        move.b  #$13,obj.Anim(a0)
+        move.b  #$13,obj.Anim(a0)               ; Use victory animation
         rts
 
 .RollJump:                             
