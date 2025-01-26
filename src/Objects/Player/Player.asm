@@ -869,20 +869,22 @@ _playJumpChk:
 ; ---------------------------------------------------------------------------
 
 _playJumpHeight:                        
-        tst.b   play.Jump(a0)
+        tst.b   play.Jump(a0)           ; If not jumping, leave
         beq.s   .NotJumping
-        cmpi.w  #-$400,obj.YSpeed(a0)
+
+        cmpi.w  #-$400,obj.YSpeed(a0)   ; If Y speed already set, hold
         bge.s   .HoldSpeed
-        move.b  joypadMirr.w,d0
-        andi.b  #%1110000,d0
-        bne.s   .HoldSpeed
-        move.w  #-$400,obj.YSpeed(a0)
+
+        move.b  joypadMirr.w,d0         ; Check if A, C, or B held
+        andi.b  #%1110000,d0            ; If so, hold speed
+        bne.s   .HoldSpeed              
+        move.w  #-$400,obj.YSpeed(a0)   ; Otherwise, set a low Y-speed
 
 .HoldSpeed:                            
         rts
 
 .NotJumping:                           
-        cmpi.w  #-$FC0,obj.YSpeed(a0)   ; ???????????
+        cmpi.w  #-$FC0,obj.YSpeed(a0)           ; Cap upwards Y-speed
         bge.s   .Exit
         move.w  #-$FC0,obj.YSpeed(a0)
 
