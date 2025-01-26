@@ -381,7 +381,7 @@ _playHitWall:
         add.b   d1,d0               ; Push it over 90 degrees
 
         move.w  d0,-(sp)    
-        bsr.w   _physGetWallDist
+        bsr.w   _physGetWallAhead
         move.w  (sp)+,d0
 
         tst.w   d1                  ; If dist. is +, we aren't hitting it
@@ -826,6 +826,7 @@ _playJumpChk:
         muls.w  #$680,d1
         asr.l   #8,d1
         add.w   d1,obj.XSpeed(a0)
+        
         muls.w  #$680,d0
         asr.l   #8,d0
         add.w   d0,obj.YSpeed(a0)
