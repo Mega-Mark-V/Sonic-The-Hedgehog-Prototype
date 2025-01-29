@@ -119,6 +119,10 @@ _physFootColDown:
 ; _objectFall, so these appear to be from an earlier physics implementation
 ; ---------------------------------------------------------------------------
 
+; _objectFall but appears to take d3 (obj.YSpeed) as an input?
+; It also subtracts instead of adding to the position, effectively
+; reversing the movement directions
+
 _physUnkObjectFall:                       
         rts
         move.l  obj.X(a0),d2
@@ -135,6 +139,7 @@ _physUnkObjectFall:
         rts
 
 ; Called at _physFootColRight and _physFootColLeft...  huh
+; This only applies Y-speed and it also subtracts
 
 _physUnkFallReverse:                       
         rts
@@ -148,9 +153,9 @@ _physUnkFallReverse:
         move.l  d3,obj.Y(a0)
         rts
 
-; Exactly the same as _objectSetSpeed, but stubbed
+; Same as above, _objectSetSpeed
 
-_physUnkSetSpeed    
+_physUnkSetSpeed:    
         rts
         move.l  obj.X(a0),d2
         move.l  obj.Y(a0),d3
@@ -171,7 +176,7 @@ _physUnkSetSpeed
 ; ---------------------------------------------------------------------------
 
 _physPickFoot:                          
-        move.b  angleLeft.w,d2      ; Set to use back sensor
+        move.b  angleLeft.w,d2          ; Set to use back sensor
         cmp.w   d0,d1                   ; Check against front 
         ble.s   .BackFootHigher         ; Skip over if higher    
         move.b  angleRight.w,d2

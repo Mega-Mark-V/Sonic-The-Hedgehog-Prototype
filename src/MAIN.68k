@@ -661,7 +661,7 @@ CalcRandom:
 
 ; ---------------------------------------------------------------------------
 ; Function to get the sine and cosine from an angle unit
-; There are only 256 degree units, to store that of a full circle, so...
+; There are only 256 degree units... to store that of a full 360 circle
 ;
 ; 45  degrees = $20 units
 ; 90  degrees = $40 units

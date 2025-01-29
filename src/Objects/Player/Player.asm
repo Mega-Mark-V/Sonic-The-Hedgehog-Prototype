@@ -323,7 +323,7 @@ _playInputChk:
 .ScreenHigh:                           
         subq.w  #2,camACenterY.w    ; Subtract 2
 
-        ; ---- Get player's momentum and calc. X and Y speeds
+        ; ---- Get player's X and Y speeds from momentum and angle
 
 .SetMoveSpeed:                          
         move.b  joypadMirr.w,d0
@@ -339,7 +339,7 @@ _playInputChk:
         move.w  #0,d0
 
 .StillMvPos:                           
-        move.w  d0,obj.Momentum(a0) ; Return new + momentum value
+        move.w  d0,obj.Momentum(a0) ; Return new +momentum value
         bra.s   .CalcSpeed          ; Go set X+Y speeds based on this
 
 .MomentumNeg:                          
@@ -348,14 +348,14 @@ _playInputChk:
         move.w  #0,d0
 
 .StillMvNeg:                           
-        move.w  d0,obj.Momentum(a0) ; Return new - momentum value
+        move.w  d0,obj.Momentum(a0) ; Return new -momentum value
 
 .CalcSpeed:                             
         move.b  obj.Angle(a0),d0    ; Get player angle input
         jsr     CalcSinCos          ; d0 = sin , d1 = cos
 
         muls.w  obj.Momentum(a0),d1 ; (momentum*cos) for X speed      
-        asr.l   #8,d1               ; Divide by 100 (drop lowest byte)
+        asr.l   #8,d1               ; Divide by $100 (drop lowest byte)
         move.w  d1,obj.XSpeed(a0)
 
         muls.w  obj.Momentum(a0),d0 ; (momentum*sin) for Y speed 
