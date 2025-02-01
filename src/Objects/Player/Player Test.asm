@@ -38,8 +38,7 @@ _playtstCtrl:
         move.b  joypadMirr.w,d4       ; d4 = joypad (SACBRLDU)
         move.w  obj.Y(a0),d2          ; d2 = Y-pos
         move.w  obj.X(a0),d3          ; d3 = X-pos
-        moveq   #1,d1                 ; Movement vector
-
+        moveq   #1,d1                 ; Movement delta
         btst    #0,d4
         beq.s   .NoUp
         sub.w   d1,d2

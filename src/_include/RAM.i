@@ -2,19 +2,19 @@
 ; Data RAM allocations
 ; ---------------------------------------------------------------------------
 
-	rsset		WORKRAM+$FF000000
+	rsset	WORKRAM+$FF000000
 
-levelChunks:    	rs.b 	$A400
-layoutA:	=		layoutMem+$00        
-layoutB:	=		layoutMem+$40
+levelChunks:    	rs.b   $A400
+layoutA:	=	layoutMem+$00        
+layoutB:	=	layoutMem+$40
 layoutMem:    		rs.b 	$400 
 hscrollWork:		rs.b 	$200
 globalBuffer:   	rs.b 	$200 
-spriteDrawQueue:	rs.b 	$400 
-levelBlocks:    	rs.b 	$1800
-sonicDMABuffer: 	rs.b 	$300 
-sonicPosBuffer: 	rs.b 	$100 
-hscroll:   			rs.b 	$400
+objDrawQueue:		rs.b 	$400 
+levelBlocks:    	rs.b   $1800
+playDMABuffer: 		rs.b 	$300 
+playPosBuffer: 		rs.b 	$100 
+hscroll:   		rs.b 	$400
 
 ; ---------------------------------------------------------------------------
 ; Object/Actor RAM allocation
@@ -22,9 +22,9 @@ hscroll:   			rs.b 	$400
 
 OBJECTRAM       EQU $FFFFD000 
 OBJSZ		EQU 64
-OBJECTRAMSZ		EQU OBJECTRAME-OBJECTRAM    
+OBJECTRAMSZ	EQU OBJECTRAME-OBJECTRAM    
 
-	rsset		$FFFFD000 
+	rsset	$FFFFD000 
 objSlot00:   	rs.b 	OBJSZ
 objSlot01:   	rs.b 	OBJSZ
 objSlot02:   	rs.b 	OBJSZ

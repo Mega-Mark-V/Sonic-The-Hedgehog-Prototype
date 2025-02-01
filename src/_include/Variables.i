@@ -111,8 +111,8 @@ playerAccel:    	ds.b 2
 playerDecel:    	ds.b 2                  
 playerFrame:    	ds.b 1                  
 playerDrawFlag: 	ds.b 1                  
-angleRight: 		ds.b 2                  
-angleLeft:  		ds.b 2                  
+angleFront: 		ds.b 2                  
+angleBack:  		ds.b 2                  
 getobjsMode:    	ds.b 2                  
 camAChunkX:      	ds.b 2                  
 objtblEntrRight:	ds.b 4                  
@@ -156,7 +156,7 @@ switchActive:   	rs.b 2
 unkMarbleVar:   	rs.b 1    
 scrollBlockSize:	rs.b 2    
                 	rs.b $E
-vdpSprites:     	rs.b $280 
+sprites:     		rs.b $280 
 paletteWater:   	rs.b $80
 palette:        	rs.b $80  
 fadingPalette:  	rs.b $80  

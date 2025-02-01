@@ -59,8 +59,8 @@ Player_Main:
         bsr.s   _playTrackPowerups    ; Handle powerup states and drawing
         bsr.w   _playRecordPos        ; Record previous positions
 
-        move.b  angleRight.w,play.FootRight(a0) 
-        move.b  angleLeft.w,play.FootLeft(a0)
+        move.b  angleFront.w,play.FootRight(a0) 
+        move.b  angleBack.w,play.FootLeft(a0)
 
         bsr.w   _playAnimate            ; Handle Sonic's animation
         bsr.w   _playObjInteract        ; Handle player/object interactions           

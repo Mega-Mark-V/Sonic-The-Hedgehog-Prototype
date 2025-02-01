@@ -127,12 +127,12 @@ VBLANK_LEVEL:
         move.w  hblankLine.w,a5
         move.w  mainZPosY.w,vdpUnkPos.w
 
-        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
 
         tst.b   sonicRedrawFlag.w
         beq.s   .NoSonicRedraw
 
-        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+        VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
         move.b  #0,sonicRedrawFlag.w
 
@@ -174,7 +174,7 @@ VBLANK_SPECIAL:
         bne.s   .WaitZ80
 
         VDPDMA  palette,$0000,$80,CRAM,a5     ; Palette DMA
-        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5    ; Hscroll DMA
 
         move.w  #0,Z80BUS
@@ -183,7 +183,7 @@ VBLANK_SPECIAL:
         tst.b   sonicRedrawFlag.w
         beq.s   .NoSonicRedraw
 
-        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
+        VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
         move.b  #0,sonicRedrawFlag.w
 
@@ -208,11 +208,11 @@ VBLANK_LVLSTART:
         btst    #0,Z80BUS
         bne.s   .WaitZ80
         VDPDMA  palette,$0000,$80,CRAM,a5               ; Palette DMA
-        VDPDMA  vdpSprites,$F800,$280,VRAM,a5              ; Sprite DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5              ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5              ; Hscroll DMA
         tst.b   sonicRedrawFlag.w
         beq.s   .NoSonicRedraw
-        VDPDMA  sonicDMABuffer,$F000,$2E0,VRAM,a5       ; Sonic art DMA
+        VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5       ; Sonic art DMA
         move.b  #0,sonicRedrawFlag.w
 
 .NoSonicRedraw:                        
@@ -257,7 +257,7 @@ _vblVDPRefresh:
         bne.s   .WaitZ80
 
         VDPDMA  palette,$0000,$80,CRAM,a5        ; Palette DMA
-        VDPDMA  vdpSprites,$F800,$280,VRAM,a5    ; Sprite DMA
+        VDPDMA  sprites,$F800,$280,VRAM,a5       ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5       ; Hscroll DMA
 
         move.w  #0,Z80BUS
@@ -297,7 +297,7 @@ UNUSED_HBLANK2:
         move.w  #$8405,VDPCTRL
         move.w  #$857C,VDPCTRL
         move.l  #$78000003,VDPCTRL
-        lea     vdpSprites.w,a0
+        lea     sprites.w,a0
         lea     VDPDATA,a5
         move.w  #$A0-1,d0
 

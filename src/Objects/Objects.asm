@@ -40,6 +40,8 @@ Angle:          dc.w 1
 Arg:            dc.b 1                   
                 ends
 
+; "Normal" object status bitfield
+
 STAT.XDIR:       equ 0
 STAT.YDIR:       equ 1                  
 STAT.UNK2:       equ 2
@@ -49,6 +51,8 @@ STAT.PUSHED:     equ 5
 STAT.UNK6:       equ 6
 STAT.KILLED:     equ 7
 
+; "Physics" object status bitfield
+
 PHYS.DIR:        equ 0                  
 PHYS.AIRBORNE:   equ 1                  
 PHYS.ROLLING:    equ 2                  
@@ -57,6 +61,17 @@ PHYS.ROLLJUMP:   equ 4
 PHYS.PUSH:       equ 5                
 PHYS.WATER:      equ 6
 PHYS.KILLED:     equ 7
+
+; Object rendering bitfield
+
+REND.XMIRR:      equ 0
+REND.YMIRR:      equ 1
+REND.CAMOFF:     equ 2
+REND.CAMOFF2:    equ 3
+REND.HEIGHT:     equ 4
+REND.RAW:        equ 5
+REND.BEHIND:     equ 6
+REND.TOGGLE:     equ 7
 
 ; ---------------------------------------------------------------------------
 ; Function to run all objects loaded into memory
@@ -253,37 +268,39 @@ _objectSetSpeed:
         rts
 
 ; ---------------------------------------------------------------------------
-; Function to set an object to render
+; Function to queue an object for rendering
 ; ---------------------------------------------------------------------------
 
 _objectDraw:                            
-        lea     spriteDrawQueue.w,a1
-        move.b  obj.Priority(a0),d0
-        andi.w  #7,d0
-        lsl.w   #7,d0
-        adda.w  d0,a1
-        cmpi.w  #$7E,(a1) 
-        bcc.s   .Exit
-        addq.w  #2,(a1)
-        adda.w  (a1),a1
-        move.w  a0,(a1)
+        lea     objDrawQueue.w,a1    
+        move.b  obj.Priority(a0),d0     ; Get object priority
+        andi.w  #7,d0                   ; Clamp to 7
+        lsl.w   #7,d0                   ; Shift low byte into high byte
+
+        adda.w  d0,a1                   ; Jump to priority level in queue
+        cmpi.w  #$7E,(a1)               ; If it's full, exit
+        bhs.s   .Exit
+
+        addq.w  #2,(a1)                 ; Increment object draw count
+        adda.w  (a1),a1                 ; Jump to free slot 
+        move.w  a0,(a1)                 ; Store object's memory location
 
 .Exit:                                 
         rts
 
 
 ; ---------------------------------------------------------------------------
-; Function to set an object's child (or a1) to render
+; Function to queue an object's child (or obj(a1)) for rendering 
 ; ---------------------------------------------------------------------------
 
-_objectDrawChild:                       
-        lea     spriteDrawQueue.w,a2
+_objectDrawChild:                             
+        lea     objDrawQueue.w,a2
         move.b  obj.Priority(a1),d0
         andi.w  #7,d0
         lsl.w   #7,d0
         adda.w  d0,a2
         cmpi.w  #$7E,(a2)
-        bcc.s   .Exit
+        bhs.s   .Exit
         addq.w  #2,(a2)
         adda.w  (a2),a2
         move.w  a1,(a2)
@@ -300,7 +317,7 @@ _objectDelete:
 
 .Child:                     
         moveq   #0,d1
-        moveq   #$F,d0
+        moveq   #(OBJSZ/4)-1,d0
 
 .Loop:                                 
         move.l  d1,(a1)+
@@ -309,51 +326,72 @@ _objectDelete:
 
 ; ---------------------------------------------------------------------------
 ; Main routine to draw all sprites in the sprite draw queue
+;
+; The draw queue in memory is split into priority sections of 128 bytes
+; The higher the obj.Priority value, the higher its draw priority
+;
+; Each section has a word-sized sprite counter at its start addr.
+; Then there are 63 word entries as memory addrs. for the objs. to draw 
 ; ---------------------------------------------------------------------------
 
 RenderCams:    
-        dc.l 0
-        dc.l cameraAPosX
-        dc.l cameraBPosX
-        dc.l cameraZPosX
+        dc.l 0                  ; Camera no. 0 (unset)
+        dc.l cameraAPosX        ; Camera no. 1 
+        dc.l cameraBPosX        ; Camera no. 2 
+        dc.l cameraZPosX        ; Camera no. 3
 
 ; ---------------------------------------------------------------------------
 
 DrawObjects:                            
-        lea     vdpSprites.w,a2
+        lea     sprites.w,a2            ; Set VDP sprite table buffer = a2 
         moveq   #0,d5
-        lea     spriteDrawQueue.w,a4
-        moveq   #7,d7
+        lea     objDrawQueue.w,a4       ; Set draw queue = a4
 
-.Priority:                             
+        moveq   #8-1,d7                 ; Set 8 priority level loops
+
+.DrawPriorityLvl:                             
         tst.w   (a4)
-        beq.w   .NextPriorityLevel
+        beq.w   .NextPriorityLvl
         moveq   #2,d6
 
-.Object:                               
-        movea.w (a4,d6.w),a0
+.ObjLoop:                               
+        movea.w (a4,d6.w),a0            ; Get object address
         tst.b   obj.No(a0)
         beq.w   .SkipObject
-        bclr    #7,obj.Render(a0)
-        move.b  obj.Render(a0),d0
-        move.b  d0,d4
-        andi.w  #%1100,d0
-        beq.s   .DrawFixed
-        movea.l RenderCams(pc,d0.w),a1
+
+        bclr    #REND.TOGGLE,obj.Render(a0)   ; Clear draw toggle 
+
+        move.b  obj.Render(a0),d0       ; Get render info
+        move.b  d0,d4                   ; Save to d4 for later
+
+        andi.w  #%1100,d0               ; Mask to only camera num
+        beq.s   .DrawFixed              ; If not given, draw as fixed onscr. 
+
+; ---- Drawing relative to camera 
+
+        movea.l RenderCams(pc,d0.w),a1  ; Otherwise, get camera number
         moveq   #0,d0
-        move.b  obj.XDraw(a0),d0
-        move.w  obj.X(a0),d3
-        sub.w   (a1),d3
-        move.w  d3,d1
-        add.w   d0,d1
-        bmi.w   .SkipObject
-        move.w  d3,d1
-        sub.w   d0,d1
-        cmpi.w  #$140,d1
+        move.b  obj.XDraw(a0),d0        ; obj.XDraw = d0
+        move.w  obj.X(a0),d3            ; obj.X     = d3
+
+        sub.w   (a1),d3         ; Subtract for pos. relative to cam.
+
+        move.w  d3,d1           ; Get relative pos. to d1
+        add.w   d0,d1           ; Adjust X draw rad. right
+        bmi.w   .SkipObject     ; Skip drawing if off left side of screen
+
+        move.w  d3,d1           ; Get relative pos. to d1           
+        sub.w   d0,d1           ; Adjust X draw rad. left
+        cmpi.w  #320,d1         ; Skip drawing if off right side of screen
         bge.s   .SkipObject
-        addi.w  #$80,d3
-        btst    #4,d4
-        beq.s   .AssumeHeight
+
+        addi.w  #128,d3         ; Adjust for VDP sprite position
+
+        btst    #REND.HEIGHT,d4 ; If not using user's height, 
+        beq.s   .AssumeHeight   ; assume a generic height
+
+; ---- Draw with user height (obj.YRad)
+
         moveq   #0,d0
         move.b  obj.YRad(a0),d0
         move.w  obj.Y(a0),d2
@@ -368,10 +406,14 @@ DrawObjects:
         addi.w  #$80,d2
         bra.s   .DrawObject
 
+; ---- Drawing to fixed screen position
+
 .DrawFixed:                            
-        move.w  obj.YScr(a0),d2
+        move.w  obj.YScr(a0),d2 ; Use obj.YScr and obj.X
         move.w  obj.X(a0),d3
         bra.s   .DrawObject
+
+; ---- Draw with generic user height value
 
 .AssumeHeight:                         
         move.w  obj.Y(a0),d2
@@ -382,35 +424,39 @@ DrawObjects:
         cmpi.w  #384,d2
         bcc.s   .SkipObject
 
+; ---- Actually draw each object
+
 .DrawObject:                           
-        movea.l obj.Map(a0),a1
+        movea.l obj.Map(a0),a1     ; Get sprite map addr. 
         moveq   #0,d1
-        btst    #5,d4
-        bne.s   .StaticMap
-        move.b  obj.Frame(a0),d1
+        btst    #REND.RAW,d4       ; Skip ahead if this is raw format
+        bne.s   .RawSprite
+
+        move.b  obj.Frame(a0),d1   ; Index map tbl. with frame no.
         add.b   d1,d1
-        adda.w  (a1,d1.w),a1
-        move.b  (a1)+,d1
-        subq.b  #1,d1
-        bmi.s   .SetVisible
+        adda.w  (a1,d1.w),a1 
+        move.b  (a1)+,d1           ; Get mappings entry sprite count
+        subq.b  #1,d1              ; Subtract 1 for dbf
+        bmi.s   .SkipDraw          ; Skip draw if no sprite pieces 
 
-.StaticMap:                            
-        bsr.w   _spriteBuildToBuffer
+.RawSprite:                            
+        bsr.w   _spriteBuildToBuffer    ; Go to actually draw to buffer
 
-.SetVisible:                           
-        bset    #7,obj.Render(a0)
+.SkipDraw:                           
+        bset    #REND.TOGGLE,obj.Render(a0)
 
 .SkipObject:                           
         addq.w  #2,d6
         subq.w  #2,(a4)
-        bne.w   .Object
+        bne.w   .ObjLoop
 
-.NextPriorityLevel:                    
-        lea     $80(a4),a4
-        dbf     d7,.Priority
-        move.b  d5,(spriteCount).w
-        cmpi.b  #80,d5
-        beq.s   .LimitReached
+.NextPriorityLvl:                    
+        lea     128(a4),a4          ; Shift forward to next priority tbl.
+        dbf     d7,.DrawPriorityLvl ; Loop for no. of tables
+
+        move.b  d5,spriteCount.w    ; Report the total number of sprites
+        cmpi.b  #80,d5              ; Has it reached a max of 80 sprites?
+        beq.s   .LimitReached       ; If so, exit
         move.l  #0,(a2)
         rts
 
@@ -464,7 +510,7 @@ _spriteBuildXFlip:
         bne.w   _spriteBuildXYFlip
 
 .Loop:                                 
-        cmpi.b  #$50,d5 ; 'P'
+        cmpi.b  #80,d5
         beq.s   .LimitReached
         move.b  (a1)+,d0
         ext.w   d0
@@ -500,7 +546,7 @@ _spriteBuildXFlip:
         rts
 
 _spriteBuildYFlip:                      
-        cmpi.b  #$50,d5
+        cmpi.b  #80,d5
         beq.s   .LimitReached
         move.b  (a1)+,d0
         move.b  (a1),d4
@@ -536,7 +582,7 @@ _spriteBuildYFlip:
         rts
 
 _spriteBuildXYFlip:                     
-        cmpi.b  #$50,d5
+        cmpi.b  #80,d5
         beq.s   .LimitReached
         move.b  (a1)+,d0
         move.b  (a1),d4

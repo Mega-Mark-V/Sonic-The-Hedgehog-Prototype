@@ -22,14 +22,14 @@ _physFootCollision:
         btst    #PHYS.PLATFORM,obj.Status(a0)
         beq.s   .NotOnPlatform
         moveq   #0,d0                   ; Clear sensor angle information
-        move.b  d0,angleRight.w
-        move.b  d0,angleLeft.w
+        move.b  d0,angleFront.w
+        move.b  d0,angleBack.w
         rts
 
 .NotOnPlatform:                             
         moveq   #PHYS_LIFTFLAG,d0       ; Set flag for angle stack
-        move.b  d0,angleRight.w
-        move.b  d0,angleLeft.w
+        move.b  d0,angleFront.w
+        move.b  d0,angleBack.w
 
         move.b  obj.Angle(a0),d0
         addi.b  #$20,d0                 ; Rotate unit circle 45 degrees
@@ -42,7 +42,11 @@ _physFootCollision:
         cmpi.b  #$C0,d0                 ; $C0 = 270 degrees
         beq.w   _physFootColRight
 
-        ; Otherwise, we're on the floor, so check and apply physics downward:
+        ; Otherwise, we're on the floor, so collide downwards
+
+; ---------------------------------------------------------------------------
+; Function for colliding and walking on tiles downwards
+; ---------------------------------------------------------------------------
 
 _physFootColDown:
 
@@ -57,7 +61,7 @@ _physFootColDown:
         move.b  obj.XRad(a0),d0         ; Get right edge of the object's radius
         ext.w   d0                      ; and also set as x input for branch
         add.w   d0,d3
-        lea     angleRight.w,a4         ; Set angle output location in a4
+        lea     angleFront.w,a4         ; Set angle output location in a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Set Checking top solidity
@@ -77,7 +81,7 @@ _physFootColDown:
         ext.w   d0
         neg.w   d0                      ; Except get left edge of radius this time
         add.w   d0,d3                   ; X
-        lea     angleLeft.w,a4
+        lea     angleBack.w,a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -176,10 +180,10 @@ _physUnkSetSpeed:
 ; ---------------------------------------------------------------------------
 
 _physPickFoot:                          
-        move.b  angleLeft.w,d2          ; Set to use back sensor
+        move.b  angleBack.w,d2          ; Set to use back sensor
         cmp.w   d0,d1                   ; Check against front 
         ble.s   .BackFootHigher         ; Skip over if higher    
-        move.b  angleRight.w,d2
+        move.b  angleFront.w,d2
         move.w  d0,d1
 
 .BackFootHigher:                               
@@ -197,12 +201,12 @@ _physPickFoot:
 
 
 ; ---------------------------------------------------------------------------
-; Function for walking on wall to the right
+; Function for colliding and walking on tiles downwards
 ; ---------------------------------------------------------------------------
 
 _physFootColRight:              
 
-        ; ---- Get right (top) sensor information
+        ; ---- Get front (top) sensor information
 
         move.w  obj.Y(a0),d2            ; Since we're sideways, the inputs are crossed
         move.w  obj.X(a0),d3            
@@ -214,7 +218,7 @@ _physFootColRight:
         move.b  obj.YRad(a0),d0         ; ..and X from YRad
         ext.w   d0
         add.w   d0,d3                   ; for X position input
-        lea     angleRight.w,a4     ; Same inputs as before:
+        lea     angleFront.w,a4     ; Same inputs as before:
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -222,7 +226,7 @@ _physFootColRight:
 
         move.w  d1,-(sp)
 
-        ; ---- Get left (bottom) sensor information
+        ; ---- Get back (bottom) sensor information
 
         move.w  obj.Y(a0),d2
         move.w  obj.X(a0),d3
@@ -233,7 +237,7 @@ _physFootColRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleLeft.w,a4          ; Angle output
+        lea     angleBack.w,a4          ; Angle output
         movea.w #16,a3                  ; Block height
         move.w  #0,d6                   ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -273,7 +277,7 @@ _physFootColRight:
 
 _physFootColUp:      
 
-        ; ---- Get right sensor information
+        ; ---- Get front (left) sensor information
 
         move.w  obj.Y(a0),d2
         move.w  obj.X(a0),d3
@@ -285,7 +289,7 @@ _physFootColUp:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3                   ; X
-        lea     angleRight.w,a4         ; Angle output
+        lea     angleFront.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -293,7 +297,7 @@ _physFootColUp:
 
         move.w  d1,-(sp)
 
-        ; ---- Get left sensor information
+        ; ---- Get back (right) sensor information
 
         move.w  obj.Y(a0),d2
         move.w  obj.X(a0),d3
@@ -305,7 +309,7 @@ _physFootColUp:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3                   ; X
-        lea     angleRight.w,a4         ; Angle output
+        lea     angleFront.w,a4         ; Angle output
         movea.w #-16,a3                 ; Block height
         move.w  #(1<<BLK.YFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -341,7 +345,6 @@ _physFootColUp:
         move.b  #1,obj.AnimPrev(a0)             ; ???
         rts
 
-
 ; ---------------------------------------------------------------------------
 ; Function for walking on wall to the left
 ; ---------------------------------------------------------------------------
@@ -360,7 +363,7 @@ _physFootColLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     angleRight.w,a4     ; Angle output loc
+        lea     angleFront.w,a4         ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity
@@ -380,7 +383,7 @@ _physFootColLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3                  ; Y
-        lea     angleLeft.w,a4          ; Angle output loc
+        lea     angleBack.w,a4          ; Angle output loc
         movea.w #-16,a3                 ; Block Height
         move.w  #(1<<BLK.XFLIP),d6      ; Orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity
@@ -478,10 +481,12 @@ _physFindBlock:
 
         subq.b  #1,d1
         ror.w   #7,d1
+
         move.w  d2,d0
         add.w   d0,d0
         andi.w  #$1E0,d0
         add.w   d0,d1
+
         move.w  d3,d0
         lsr.w   #3,d0
         andi.w  #$1E,d0
@@ -966,8 +971,8 @@ _physGetWallAhead:
         add.l   d1,d2
         swap    d2
         swap    d3
-        move.b  d0,angleRight.w
-        move.b  d0,angleLeft.w
+        move.b  d0,angleFront.w
+        move.b  d0,angleBack.w
         move.b  d0,d1
         addi.b  #$20,d0
         andi.b  #$C0,d0
@@ -994,8 +999,8 @@ _physGetWallAhead:
 ; ---------------------------------------------------------------------------
 
 _physFootChk:                         
-        move.b  d0,angleRight.w 
-        move.b  d0,angleLeft.w
+        move.b  d0,angleFront.w 
+        move.b  d0,angleBack.w
         addi.b  #$20,d0 
         andi.b  #$C0,d0
         cmpi.b  #$40,d0                 ; $40 = 90 degrees
@@ -1009,7 +1014,7 @@ _physFootChk:
 
 _physFootChkDown:            
 
-        ; ---- Get Primary foot sensor information
+        ; ---- Get front (right) foot sensor information
 
         move.w  obj.Y(a0),d2            
         move.w  obj.X(a0),d3
@@ -1020,7 +1025,7 @@ _physFootChkDown:
         move.b  obj.XRad(a0),d0         ; Get right edge of the object's radius
         ext.w   d0                      ; and also set as x input for branch
         add.w   d0,d3
-        lea     angleRight.w,a4         ; Set angle output location in a4
+        lea     angleFront.w,a4         ; Set angle output location in a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Set Checking top solidity
@@ -1028,7 +1033,7 @@ _physFootChkDown:
 
         move.w  d1,-(sp)                ; Push d1 (output distance) to stack
 
-        ; ---- Get Secondary foot sensor information
+        ; ---- Get back (left) foot sensor information
 
         move.w  obj.Y(a0),d2
         move.w  obj.X(a0),d3
@@ -1039,7 +1044,7 @@ _physFootChkDown:
         move.b  obj.XRad(a0),d0         
         ext.w   d0
         sub.w   d0,d3                   ; X
-        lea     angleLeft.w,a4
+        lea     angleBack.w,a4
         movea.w #16,a3                  ; Set block height
         move.w  #0,d6                   ; Set orientation
         moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -1055,10 +1060,10 @@ _physFootChkDown:
 ; ---------------------------------------------------------------------------
 
 _physFootChkPick:                        
-        move.b  angleLeft.w,d3
+        move.b  angleBack.w,d3
         cmp.w   d0,d1
         ble.s   .UseLeft
-        move.b  angleRight.w,d3
+        move.b  angleFront.w,d3
         move.w  d0,d1
 
 .UseLeft:                              
@@ -1080,7 +1085,7 @@ _physChkDown:
 .User:                     
         addi.w  #10,d2                  ; Add 10 from origin Y
 
-        lea     angleRight.w,a4         ; Set angle output location
+        lea     angleFront.w,a4         ; Set angle output location
         movea.w #16,a3                  ; Set block size
         move.w  #0,d6                   ; Set orientation bits
         moveq   #BLK.BTMSOLID,d5        ; Set solidity bit
@@ -1091,7 +1096,7 @@ _physChkDown:
 ; Small function to clear the angle 
 
 _physRoundAngle:                        
-        move.b  angleRight.w,d3 
+        move.b  angleFront.w,d3 
         btst    #0,d3
         beq.s   .Exit
         move.b  d2,d3
@@ -1108,17 +1113,18 @@ _objectColChkDown:
 
 .UserX:                   
         move.w  obj.Y(a0),d2
+        
         moveq   #0,d0
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d2
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         move.b  #0,(a4)
         movea.w #16,a3
         move.w  #0,d6
         moveq   #BLK.TOPSOLID,d5
         bsr.w   _physGetFloorAttr
-        move.b  angleRight.w,d3
+        move.b  angleFront.w,d3
         btst    #0,d3
         beq.s   .Exit
         move.b  #0,d3
@@ -1140,7 +1146,7 @@ _physFootChkRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #16,a3
         move.w  #0,d6
         moveq   #BLK.BTMSOLID ,d5
@@ -1157,7 +1163,7 @@ _physFootChkRight:
         move.b  obj.YRad(a0),d0
         ext.w   d0
         add.w   d0,d3
-        lea     angleLeft.w,a4
+        lea     angleBack.w,a4
         movea.w #16,a3
         move.w  #0,d6
         moveq   #BLK.BTMSOLID ,d5
@@ -1179,7 +1185,7 @@ _physChkRight:
 .User:                 
         addi.w  #10,d3                  ; Add 10 to origin X-pos
 
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #16,a3
         move.w  #0,d6
         moveq   #$E,d5
@@ -1194,13 +1200,13 @@ _physChkRight:
 _objectColChkRight:                   
         add.w   obj.X(a0),d3
         move.w  obj.Y(a0),d2
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         move.b  #0,(a4)
         movea.w #16,a3
         move.w  #0,d6
         moveq   #$E,d5
         bsr.w   _physGetWallAttr
-        move.b  angleRight.w,d3
+        move.b  angleFront.w,d3
         btst    #0,d3
         beq.s   .NoSnap
         move.b  #$C0,d3
@@ -1223,7 +1229,7 @@ _physFootChkUp:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         add.w   d0,d3
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.YFLIP),d6
         moveq   #BLK.BTMSOLID,d5
@@ -1241,7 +1247,7 @@ _physFootChkUp:
         move.b  obj.XRad(a0),d0
         ext.w   d0
         sub.w   d0,d3
-        lea     angleLeft.w,a4
+        lea     angleBack.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.YFLIP),d6
         moveq   #BLK.BTMSOLID,d5
@@ -1264,7 +1270,7 @@ _physChkUp:
         subi.w  #10,d2          ; Subtract 10 from origin Y-pos
         eori.w  #$F,d2          ; Reverse position within block
 
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.YFLIP),d6
         moveq   #BLK.BTMSOLID,d5
@@ -1282,12 +1288,12 @@ _objectColChkUp:
         ext.w   d0
         sub.w   d0,d2
         eori.w  #$F,d2
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.YFLIP),d6
         moveq   #BLK.BTMSOLID,d5
         bsr.w   _physGetFloorAttr
-        move.b  angleRight.w,d3
+        move.b  angleFront.w,d3
         btst    #0,d3
         beq.s   .Exit
         move.b  #$80,d3
@@ -1310,7 +1316,7 @@ _physFootChkLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.XFLIP),d6
         moveq   #BLK.BTMSOLID,d5
@@ -1328,7 +1334,7 @@ _physFootChkLeft:
         ext.w   d0
         sub.w   d0,d3
         eori.w  #$F,d3
-        lea     angleLeft.w,a4
+        lea     angleBack.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.XFLIP),d6
         moveq   #BLK.BTMSOLID,d5
@@ -1352,7 +1358,7 @@ _physChkLeft:
         subi.w  #10,d3          ; Subtract 10 from origin X-pos
         eori.w  #$F,d3          ; Reverse position in block
 
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         movea.w #-16,a3
         move.w  #(1<<BLK.XFLIP),d6
         moveq   #BLK.BTMSOLID ,d5
@@ -1365,13 +1371,13 @@ _physChkLeft:
 _objectColChkLeft:                    
         add.w   obj.X(a0),d3
         move.w  obj.Y(a0),d2
-        lea     angleRight.w,a4
+        lea     angleFront.w,a4
         move.b  #0,(a4)
         movea.w #-16,a3
         move.w  #(1<<BLK.XFLIP),d6
         moveq   #BLK.BTMSOLID,d5
         bsr.w   _physGetWallAttr
-        move.b  angleRight.w,d3
+        move.b  angleFront.w,d3
         btst    #0,d3
         beq.s   .Exit
         move.b  #$40,d3 

@@ -457,7 +457,7 @@ InitScreen:
         move.l  #0,mainAPosY.w
         move.l  #0,mainAPosX.w
 
-        lea     vdpSprites.w,a1
+        lea     sprites.w,a1
         moveq   #0,d0
         move.w  #$A0-1,d1               ; ???
 
