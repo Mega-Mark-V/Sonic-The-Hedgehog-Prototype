@@ -33,7 +33,7 @@ HEADER:
         dc.l ERROR,ERROR,ERROR,ERROR
         dc.l ERROR,ERROR,ERROR,ERROR
         
-        dc.l ERROR              ; Spurious Interrupt
+        dc.l ERROR              ; IRQ0 (Spurious)
         dc.l UINT               ; IRQ1
         dc.l UINT               ; IRQ2 (EXT)
         dc.l UINT               ; IRQ3
@@ -53,10 +53,10 @@ HEADER:
         dc.l UINT,UINT,UINT,UINT
         
 ; ---------------------------------------------------------------------------
-; Game Information (Stock SDK)
+; ROM Information (Stock SDK)
 ; ---------------------------------------------------------------------------
 
-GAME_ID:
+ROM_ID:
                 dc.b 'SEGA MEGA DRIVE '
                 dc.b '(C)SEGA 1989.JAN'
                 dc.b '                        '

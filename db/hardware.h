@@ -1,0 +1,52 @@
+/*
+  MEGADRIVE HARDWARE DEFINITIONS
+*/
+
+#define __int8 char
+#define __int16 short
+#define __int32 int
+#define __int64 long long
+
+enum system
+{
+  CARTRIDGE = 0x0,
+  CARTRIDGESZ = 0x7FFFF,
+  CARTRAM = 0x80000,
+  WORKRAM = 0xFF0000,
+  WORKRAMSZ = 0xFFFFFF,
+};
+
+enum VDPSTAT
+{
+  PAL = 0x0,
+  DMA = 0x1,
+  HBLANKING = 0x2,
+  VBLANKING = 0x3,
+  ODDFRAME = 0x4,
+  SPRITE_COLLIDE = 0x5,
+  SPRITE_OVERFLOW = 0x6,
+  VBLANK_PENDING = 0x7,
+  FIFO_FULL = 0x8,
+  FIFO_EMPTY = 0x9,
+};
+
+/* 15 */
+enum VDPCMD
+{
+  VRAMREAD = 0x0,
+  VSRAMREAD = 0x10,
+  CRAMREAD = 0x20,
+  VRAMCOPY = 0xC0,
+  VRAMWRITE = 0x40000000,
+  VSRAMWRITE = 0x40000010,
+  VRAMDMA = 0x40000080,
+  VSRAMDMA = 0x40000090,
+  CRAMWRITE = 0xC0000000,
+  CRAMDMA = 0xC0000080,
+};
+
+/* 16 */
+enum SYSTEM
+{
+  HBLANK_VBLANK_ENABLE = 0x2300,
+};

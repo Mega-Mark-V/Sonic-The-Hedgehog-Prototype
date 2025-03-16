@@ -78,23 +78,24 @@ REND.TOGGLE:     equ 7
 ; ---------------------------------------------------------------------------
 
 RunObjects:                             
-        lea     OBJECTRAM.w,a0
-        moveq   #96-1,d7
+        lea     OBJECTRAM.w,a0  ; Object memory starting location
+        moveq   #128-1,d7
         moveq   #0,d0
-        cmpi.b  #6,objSlot00 ; Sonic routine counter
+        cmpi.b  #6,objSlot00    ; Sonic routine counter
         bcc.s   .Paused
 
 .RunObjLoop:                       
-        move.b  obj.No(a0),d0
-        beq.s   .EmptySlot
+        move.b  obj.No(a0),d0   ; Check object number
+        beq.s   .EmptySlot      ; If empty, skip over it
         add.w   d0,d0
         add.w   d0,d0
         movea.l ObjectIndex-4(pc,d0.w),a1 ; No zero offset - start at 1
-        jsr     (a1)
+        jsr     (a1)            ; Jump to object's code
+
         moveq   #0,d0
 
 .EmptySlot:                            
-        lea     OBJSZ(a0),a0
+        lea     OBJSZ(a0),a0    ; Move forward to next object slot in RAM
         dbf     d7,.RunObjLoop
         rts
 
@@ -239,7 +240,7 @@ _objectFall:
         asl.l   #8,d0
         add.l   d0,d2
         move.w  obj.YSpeed(a0),d0
-        addi.w  #OBJ.GRAVITY,d0
+        addi.w  #OBJ_GRAVITY,d0
         move.w  d0,obj.YSpeed(a0)
         ext.l   d0
         asl.l   #8,d0
