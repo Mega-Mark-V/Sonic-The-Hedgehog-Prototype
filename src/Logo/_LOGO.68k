@@ -4,7 +4,7 @@
 
 ; Chunk rendering isn't used here, so the location is free
 
-logoMapBuffer	 EQU 	levelChunks      
+logoMapBuffer = $FF0000 
 
 GM_LOGO:                                
         move.b  #sndCMD.Fade,d0
@@ -62,5 +62,5 @@ GM_LOGO:
         beq.s   .MainLoop 			  
 
 .Exit:                                 
-        move.b  #GAMEMD_TITLE,gamemode.w
+        move.b  #GMNO_TITLE,gamemode.w
         rts

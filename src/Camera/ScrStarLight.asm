@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; Star Light Zone scrolling/parallax (basic/placeholder)
+; Star Light Zone scrolling/parallax
 ; ---------------------------------------------------------------------------
 
 Scroll_StarLight:                     

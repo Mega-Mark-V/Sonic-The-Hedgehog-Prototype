@@ -46,7 +46,7 @@ CameraScroll:
 .ScrollIndex:                        
         dc.w Scroll_GreenHill-.ScrollIndex
         dc.w Scroll_Labyrinth-.ScrollIndex
-        dc.w Scroll_Marble   -.ScrollIndex
+        dc.w Scroll_Marble-.ScrollIndex
         dc.w Scroll_StarLight-.ScrollIndex
         dc.w Scroll_Sparkling-.ScrollIndex
         dc.w Scroll_ClockWork-.ScrollIndex
@@ -55,12 +55,12 @@ CameraScroll:
 ; Parallax/Scrolling scripts
 ; ---------------------------------------------------------------------------
 
-        include "GM LEVEL/Camera/scr GreenHill.asm"
-        include "GM LEVEL/Camera/scr Labyrinth.asm"
-        include "GM LEVEL/Camera/scr Marble.asm"
-        include "GM LEVEL/Camera/scr StarLight.asm"        
-        include "GM LEVEL/Camera/scr Sparkling.asm"   
-        include "GM LEVEL/Camera/scr ClockWork.asm"   
+        include "Camera/ScrGreenHill.asm"
+        include "Camera/ScrLabyrinth.asm"
+        include "Camera/ScrMarble.asm"
+        include "Camera/ScrStarLight.asm"        
+        include "Camera/ScrSparkling.asm"   
+        include "Camera/ScrClockWork.asm"   
 
 ; ---------------------------------------------------------------------------
 ; Set camera A X-pos from player position and argument variables
