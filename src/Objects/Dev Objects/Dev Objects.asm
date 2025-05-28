@@ -69,7 +69,8 @@ Dev1_Exit:
 
 ; ---------------------------------------------------------------------------
 
-	include	"Objects/Dev Objects/mapspr DevTest.asm"
+MapSpr_DevTest:
+	include	"Objects/Dev Objects/TEST.PAT"
 
 ; ---------------------------------------------------------------------------
 ; Development Object 2 - also looks to test sprite rendering
@@ -205,7 +206,8 @@ Test05_Exit:
 
 ; ---------------------------------------------------------------------------
 
-	include	"Objects/Dev Objects/mapspr Digits.asm"
+MapSpr_Digits:
+	include	"Objects/Dev Objects/DIGITS.pat"
 
 ; ---------------------------------------------------------------------------
 ; Development Object 5 - More developer digits
