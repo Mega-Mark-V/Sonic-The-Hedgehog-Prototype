@@ -21,7 +21,7 @@ PlayTest_Init:
         addq.b  #2,obj.Action(a0)
         move.b  #18,obj.YRad(a0)                ; Early player Y radius?
         move.b  #9,obj.XRad(a0)
-        move.l  #MapSpr_Player,obj.Map(a0)      ; Use player sprites
+        move.l  #MapSpr_Player,obj.Pat(a0)      ; Use player sprites
         move.w  #$780,obj.Tile(a0)
         move.b  #4,obj.Render(a0)               ; Render with cam-A
         move.b  #2,obj.Priority(a0)

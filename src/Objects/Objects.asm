@@ -12,7 +12,7 @@ obj             struct
 No:             dc.b 1                  
 Render:         dc.b 1                  
 Tile:           dc.w 1                  
-Map:            dc.l 1                  
+Pat:            dc.l 1                  
 X:              dc.w 1                  
 YScr:           dc.w 1                  
 Y:              dc.w 1                  
@@ -428,7 +428,7 @@ DrawObjects:
 ; ---- Actually draw each object
 
 .DrawObject:                           
-        movea.l obj.Map(a0),a1     ; Get sprite map addr. 
+        movea.l obj.Pat(a0),a1     ; Get sprite map addr. 
         moveq   #0,d1
         btst    #REND.RAW,d4       ; Skip ahead if this is raw format
         bne.s   .RawSprite

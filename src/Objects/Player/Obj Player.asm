@@ -26,7 +26,7 @@ Player_Init:
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)         
 
-        move.l  #MapSpr_Player,obj.Map(a0)
+        move.l  #MapSpr_Player,obj.Pat(a0)
         move.w  #$780,obj.Tile(a0)
 
         move.b  #2,obj.Priority(a0)

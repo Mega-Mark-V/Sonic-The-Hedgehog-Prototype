@@ -868,7 +868,7 @@ AngleTable:
 ; ---------------------------------------------------------------------------
 ; Game Modes
 ; ---------------------------------------------------------------------------
-
+; Deprecate these. Use vlink.
 	include         "Logo/_LOGO.68k"
 	include         "Title/_TITLE.68k"
 ;       include         "Level/_LEVEL.68k"
