@@ -1,0 +1,203 @@
+; ---------------------------------------------------------------------------
+; Enemy Chameleons object code (source name "kamere")
+; ---------------------------------------------------------------------------
+; local enums
+
+chameleon.Flag	=	$32
+
+CHAMELEON_TILE1 = $249B		; Palette line 2
+CHAMELEON_TILE2 = $049B		; Palette line 1
+
+; ---------------------------------------------------------------------------
+
+objEnemyChameleon:  
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w	Chameleon_Init-.Index
+	dc.w	Chameleon_Main-.Index
+	dc.w	Chameleon_Done-.Index
+; ---------------------------------------------------------------------------
+
+Chameleon_Init:
+	addq.b	#2,obj.Action(a0)
+	move.l	#SprPat_Chameleon,obj.Pat(a0)	; Set sprite pattern
+	move.w	#CHAMELEON_TILE1,obj.Tile(a0)	; Set VRAM
+	move.b	#4,obj.Render(a0)		; Render on camera A
+	move.b	#4,obj.Priority(a0)		; Set priority
+	move.b	#20,obj.XRender(a0)		; Set render X-size
+	move.b	#16,obj.YRad(a0)		; Y radius
+	move.b	#8,obj.XRad(a0)			; X radius
+
+Chameleon_Main:
+	moveq	#0,d0
+	move.b	obj.SubAction(a0),d0
+	move.w	.Subdex(pc,d0.w),d1
+	jsr	.Subdex(pc,d1.w)
+
+	lea	AniSpr_Chameleon,a1		; Set and run animation
+	bsr.w	_objectAnimate
+
+	bra.w	_objectChkOffscreen		; Kill if offscreen
+
+; ---------------------------------------------------------------------------
+.Subdex:  
+	dc.w	Chameleon_Wait-.Subdex
+	dc.w	Chameleon_MoveSet-.Subdex
+	dc.w	Chameleon_Floor-.Subdex
+	dc.w	Chameleon_Move-.Subdex
+	dc.w	Chameleon_Shoot-.Subdex
+
+; ---------------------------------------------------------------------------
+; Wait for Player to be in range and parse user argument
+; ---------------------------------------------------------------------------
+
+Chameleon_Wait:
+	bset	#0,obj.Status(a0)
+	move.w	(objSlot00+obj.X).w,d0	; player pos X
+	sub.w	obj.X(a0),d0
+	bhs.s	.NotXFlip
+	neg.w	d0
+	bclr	#0,obj.Status(a0)
+
+.NotXFlip:
+	cmpi.w	#128,d0			; Check if player in range
+	bcc.s	.Exit
+	addq.b	#2,obj.SubAction(a0)	; Set next action
+	move.b	#1,obj.Anim(a0)
+
+	tst.b	obj.Args(a0)		; Set to shoot a projectile?
+	beq.s	.Exit
+
+	move.w	#$49B,obj.Tile(a0)	; If so, change palette...
+	move.b	#8,obj.SubAction(a0)	; SubAction...
+	move.b	#4,obj.Anim(a0)		; and Anim.
+
+.Exit:
+	rts
+
+; ---------------------------------------------------------------------------
+; Handle coordination of movement/anim and direction
+; ---------------------------------------------------------------------------
+
+Chameleon_MoveSet:
+	cmpi.b	#4,obj.Frame(a0) 	; Wait until falling frame
+	bcc.s	.StartFall		; to run falling code
+
+	bset	#STAT.XDIR,obj.Status(a0)	; Set Xflip
+	move.w	(objSlot00+obj.X).w,d0		; Check if player in front
+	sub.w	obj.X(a0),d0			
+	bcc.s	.NotXFlip
+	bclr	#STAT.XDIR,obj.Status(a0)
+.NotXFlip:
+	rts
+
+.StartFall:
+	cmpi.b	#1,obj.Frame(a0)	; Check if fully visible idle frame
+	bne.s	.FallToFloor		; If not, run normal code
+	move.b	#$C,obj.Collision(a0)	; Set collision size
+
+.FallToFloor: 
+	bsr.w	_objectFall		; Apply gravity
+	bsr.w	_physBasicChkDown	; Check col. down
+
+	tst.w	d1			; If above floor, exit
+	bpl.s	.Exit
+
+	add.w	d1,obj.Y(a0)		; otherwise, adhere to floor
+	move.w	#0,obj.YSpeed(a0)	; Clear Y speed from falling
+	addq.b	#2,obj.SubAction(a0)	; Set next action and anim
+	move.b	#2,obj.Anim(a0) 
+
+	btst	#5,obj.Tile(a0)		; ...check palette?
+	beq.s	.Unk
+	addq.b	#1,obj.Anim(a0)
+
+.Unk: 
+	move.b	#$D,obj.Collision(a0)	; Set collision size
+	move.w	#$200,obj.XSpeed(a0)	; Set final move speed
+
+	btst	#0,obj.Status(a0)	; Check and apply direction
+	bne.s	.NotMovingLeft
+	neg.w	obj.XSpeed(a0)
+
+.NotMovingLeft:
+	rts
+
+; ---------------------------------------------------------------------------
+; Adhere to floor
+; ---------------------------------------------------------------------------
+
+Chameleon_Floor:
+	bsr.w	_objectSetSpeed
+	bsr.w	_physBasicChkDown
+	cmpi.w	#-8,d1
+	blt.s	.OffFloor
+	cmpi.w	#12,d1
+	bge.s	.OffFloor
+	add.w	d1,obj.Y(a0)
+	rts
+
+.OffFloor:
+	addq.b	#2,obj.SubAction(a0)
+	rts
+
+; ---------------------------------------------------------------------------
+; Move from last set speed
+; ---------------------------------------------------------------------------
+
+Chameleon_Move:
+	bsr.w	_objectSetSpeed
+	rts
+
+; ---------------------------------------------------------------------------
+; Handle Chameleon "shoot" subtype projectile spawn and positioning
+; ---------------------------------------------------------------------------
+
+Chameleon_Shoot:
+	cmpi.b	#1,obj.Frame(a0)	; Wait until frame 1 to set solid
+	bne.s	.NotFrame1
+	move.b	#$C,obj.Collision(a0)	
+
+.NotFrame1:
+	cmpi.b	#2,obj.Frame(a0)	; Wait until frame 2 to spawn missile
+	bne.s	.Exit
+
+	tst.b	chameleon.Flag(a0)	; Check if already spawned
+	bne.s	.Exit			; Exit if so
+
+	move.b	#1,chameleon.Flag(a0)	; Set spawn flag
+
+	bsr.w	_objectFindFreeSlot	; Get memory slot for missile
+	bne.s	.Exit			; If no slot found, exit
+
+	move.b	#OBJNO_MISSILE,obj.No(a1)	; Set missile obj no.
+	move.w	obj.X(a0),obj.X(a1)		; Copy current pos. to it
+	move.w	obj.Y(a0),obj.Y(a1)
+	subq.w	#8,obj.Y(a1)			; Adjust down
+	move.w	#$200,obj.XSpeed(a1)		; Set speed
+
+	move.w	#$14,d0				; Adjust X and direction
+	btst	#0,obj.Status(a0)
+	bne.s	.DontFlip
+	neg.w	d0
+	neg.w	obj.XSpeed(a1)
+
+.DontFlip:
+	add.w	d0,obj.X(a1)
+	move.b	obj.Status(a0),obj.Status(a1)	; Copy object status info
+	move.b	#1,obj.Args(a1)			; Set missile type
+
+.Exit:
+	rts
+
+; ---------------------------------------------------------------------------
+; Delete
+; ---------------------------------------------------------------------------
+
+Chameleon_Done:
+	bra.w	_objectDelete
