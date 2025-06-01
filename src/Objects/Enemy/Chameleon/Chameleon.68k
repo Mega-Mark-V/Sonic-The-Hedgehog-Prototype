@@ -3,14 +3,14 @@
 ; ---------------------------------------------------------------------------
 ; local enums
 
-chameleon.Flag	=	$32
+chameleon.Flag	= $32
 
 CHAMELEON_TILE1 = $249B		; Palette line 2
 CHAMELEON_TILE2 = $049B		; Palette line 1
 
 ; ---------------------------------------------------------------------------
 
-objEnemyChameleon:  
+ObjEnemyChameleon:  
 	moveq	#0,d0
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
