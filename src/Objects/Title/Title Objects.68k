@@ -83,7 +83,7 @@ TitleSonic_Done:
 ; Misc. Title elements object
 ; ---------------------------------------------------------------------------
 
-ObjTitleInfo:
+ObjTitleMisc:
 	moveq	#0,d0
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
