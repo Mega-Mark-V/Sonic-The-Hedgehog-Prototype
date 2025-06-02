@@ -1,0 +1,54 @@
+; ---------------------------------------------------------------------------
+; Enemy Piranha object code (source name "fish")
+; ---------------------------------------------------------------------------
+; local enums
+batabata.YOrigin= $30
+
+objEnemyPiranha:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jsr	.Index(pc,d1.w)
+	bra.w	_objectChkOffscreen
+
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w	Piranha_Init-.Index
+	dc.w	Piranha_Main-.Index
+; ---------------------------------------------------------------------------
+
+Piranha_Init:
+	addq.b	#2,obj.Action(a0)
+	move.l	#SprPat_Piranha,obj.Pat(a0)
+	move.w	#$47B,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#4,obj.Priority(a0)
+	move.b	#9,obj.Collision(a0)
+	move.b	#$10,obj.XRender(a0)
+	move.w	#-$700,obj.YSpeed(a0)
+	move.w	obj.Y(a0),batabata.YOrigin(a0)
+
+Piranha_Main:
+	lea	(AniSpr_Piranha).l,a1
+	bsr.w	_objectAnimate
+	bsr.w	_objectSetSpeed
+	addi.w	#$18,obj.YSpeed(a0)
+	move.w	batabata.YOrigin(a0),d0
+	cmp.w	obj.Y(a0),d0
+	bcc.s	.NoJump
+	move.w	d0,obj.Y(a0)
+	move.w	#-$700,obj.YSpeed(a0)
+
+.NoJump:
+	move.b	#1,obj.Anim(a0)
+	subi.w	#$C0,d0
+	cmp.w	obj.Y(a0),d0
+	bcc.s	.Exit
+	move.b	#0,obj.Anim(a0)
+	tst.w	obj.YSpeed(a0)
+	bmi.s	.Exit
+	move.b	#2,obj.Anim(a0)
+
+.Exit:
+	rts
+; End of function objEnemyPiranha
