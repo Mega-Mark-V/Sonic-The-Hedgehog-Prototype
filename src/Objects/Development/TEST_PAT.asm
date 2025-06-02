@@ -1,7 +1,8 @@
-	dc.w .small1-MapSpr_DevTest
-	dc.w .small2-MapSpr_DevTest
-	dc.w .large1-MapSpr_DevTest
-	dc.w .large2-MapSpr_DevTest
+.pattbl
+	dc.w .small1-.pattbl
+	dc.w .small2-.pattbl
+	dc.w .large1-.pattbl
+	dc.w .large2-.pattbl
 .small1:
 	dc.b   1,$F0, $F,$80,  0,$F0 
 .small2:

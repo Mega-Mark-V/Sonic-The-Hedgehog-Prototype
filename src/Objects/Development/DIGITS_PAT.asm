@@ -1,19 +1,20 @@
-	dc.w digit0-MapSpr_Digits        
-	dc.w digit1-MapSpr_Digits
-	dc.w digit2-MapSpr_Digits
-	dc.w digit3-MapSpr_Digits
-	dc.w digit4-MapSpr_Digits
-	dc.w digit5-MapSpr_Digits
-	dc.w digit6-MapSpr_Digits
-	dc.w digit7-MapSpr_Digits
-	dc.w digit8-MapSpr_Digits
-	dc.w digit9-MapSpr_Digits
-	dc.w digitA-MapSpr_Digits
-	dc.w digitB-MapSpr_Digits
-	dc.w digitC-MapSpr_Digits
-	dc.w digitD-MapSpr_Digits
-	dc.w digitE-MapSpr_Digits
-	dc.w digitF-MapSpr_Digits
+.pattbl
+	dc.w digit0-.pattbl
+	dc.w digit1-.pattbl
+	dc.w digit2-.pattbl
+	dc.w digit3-.pattbl
+	dc.w digit4-.pattbl
+	dc.w digit5-.pattbl
+	dc.w digit6-.pattbl
+	dc.w digit7-.pattbl
+	dc.w digit8-.pattbl
+	dc.w digit9-.pattbl
+	dc.w digitA-.pattbl
+	dc.w digitB-.pattbl
+	dc.w digitC-.pattbl
+	dc.w digitD-.pattbl
+	dc.w digitE-.pattbl
+	dc.w digitF-.pattbl
 	
 digit0:	dc.b   1,  0,  0,  0,  0,  0 
 digit1:	dc.b   1,  0,  0,  0,  1,  0 

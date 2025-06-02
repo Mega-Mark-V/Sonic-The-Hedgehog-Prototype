@@ -1,0 +1,93 @@
+; ---------------------------------------------------------------------------
+; Type-02 Player Object code [play02]
+; Test player object code for testing animations? 
+; It's an animation test right now with some basic control.
+; ---------------------------------------------------------------------------
+
+objPlayerTest:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w	PlayTest_Init-.Index
+	dc.w	PlayTest_Main-.Index
+	dc.w	PlayTest_Delete-.Index
+	dc.w	PlayTest_Delete-.Index
+; ---------------------------------------------------------------------------
+
+PlayTest_Init:
+	addq.b	#2,obj.Action(a0)
+	move.b	#18,obj.YRad(a0)		; Early player Y radius?
+	move.b	#9,obj.XRad(a0)
+	move.l	#SprPat_Player,obj.Pat(a0)      ; Use player sprites
+	move.w	#$780,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)       	; Render with cam-A
+	move.b	#2,obj.Priority(a0)
+	move.b	#1,obj.Frame(a0)
+
+PlayTest_Main:
+	bsr.w	_playtstCtrl      
+	bsr.w	_playDynamicGFX			; Use player GFX routine
+	jmp	_objectDraw
+
+; ---------------------------------------------------------------------------
+; Subroutine for controlling the current object and changing animation
+; It's programmed specific to this object, but is actually globally usable!
+; ---------------------------------------------------------------------------
+
+_playtstCtrl:
+	move.b	joypadMirr.w,d4	; d4 = joypad (SACBRLDU)
+	move.w	obj.Y(a0),d2  	; d2 = Y-pos
+	move.w	obj.X(a0),d3  	; d3 = X-pos
+	moveq	#1,d1		; Movement delta
+	btst	#0,d4
+	beq.s	.NoUp
+	sub.w	d1,d2
+
+.NoUp:
+	btst    #1,d4
+	beq.s   .NoDown
+	add.w   d1,d2
+
+.NoDown:
+	btst    #2,d4
+	beq.s   .NoLeft
+	sub.w   d1,d3
+
+.NoLeft:
+	btst    #3,d4
+	beq.s   .NoRight
+	add.w   d1,d3
+
+.NoRight:
+	move.w	d2,obj.Y(a0)    
+	move.w	d3,obj.X(a0)
+	btst	#4,joypadPressMirr.w
+	beq.s	.NoB
+	move.b	obj.Render(a0),d0	; Update render flags
+	move.b	d0,d1
+	addq.b	#1,d0
+	andi.b	#3,d0
+	andi.b	#$FC,d1
+	or.b	d1,d0
+	move.b	d0,obj.Render(a0)
+
+.NoB:
+	btst	#5,joypadPressMirr.w
+	beq.s	.NoC
+	addq.b	#1,obj.Anim(a0)
+	cmpi.b	#$19,obj.Anim(a0)
+	bcs.s	.NoC
+	move.b	#0,obj.Anim(a0)
+
+.NoC:
+	jsr	_playAnimate    	; Use player animation routines
+	rts
+
+; ---------------------------------------------------------------------------
+; unused
+
+PlayTest_Delete:     
+	jmp     _objectDelete 

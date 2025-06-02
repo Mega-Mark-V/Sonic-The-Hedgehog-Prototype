@@ -1,0 +1,215 @@
+; ---------------------------------------------------------------------------
+; Unused Enemy Pig and the bomb it launches
+; These are not the same object as the final game. They were later redone.
+;
+; This variant was seen in B-Roll footage used in Computer Chronicles
+; ---------------------------------------------------------------------------
+
+pig.Timer	= $30
+pig.Flag	= $32
+
+; ---------------------------------------------------------------------------
+; Pig Object
+; ---------------------------------------------------------------------------
+
+ObjEnemyPig:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+; ---------------------------------------------------------------------------
+.Index:    
+	dc.w	Pig_Init-.Index
+	dc.w	Pig_Main-.Index
+	dc.w	Pig_Show-.Index
+	dc.w	Pig_Done-.Index
+; ---------------------------------------------------------------------------
+
+Pig_Init:   
+	move.b	#19,obj.YRad(a0)
+	move.b	#8,obj.XRad(a0)
+	move.l	#SprPat_Pig,obj.Pat(a0)
+	move.w	#$2400,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#4,obj.Priority(a0)
+	move.b	#5,obj.Collision(a0)
+	move.b	#12,obj.XRender(a0)
+	bsr.w	_objectFall
+	jsr	_physBasicChkDown
+	tst.w	d1
+	bpl.s	.NoFloor
+	add.w	d1,obj.Y(a0)
+	move.w	#0,obj.YSpeed(a0)
+	addq.b	#2,obj.Action(a0)
+
+.NoFloor:  
+	rts
+
+; ---------------------------------------------------------------------------
+; Main loop
+; ---------------------------------------------------------------------------
+
+Pig_Main:   
+	moveq	#0,d0
+	move.b	obj.SubAction(a0),d0
+	move.w	.Subdex(pc,d0.w),d1
+	jsr	.Subdex(pc,d1.w)
+	lea	AniSpr_Pig,a1
+	bsr.w	_objectAnimate
+	bra.w	_objectChkOffscreen
+
+; ---------------------------------------------------------------------------
+.Subdex:   
+	dc.w	PigSub_Walk-.Subdex
+	dc.w	PigSub_Idle-.Subdex
+; ---------------------------------------------------------------------------
+
+; ---------------------------------------------------------------------------
+; Walk to left or right and fire
+; ---------------------------------------------------------------------------
+
+PigSub_Walk: 
+	subq.w	#1,pig.Timer(a0)
+	bpl.s	.WaitTimer
+
+	addq.b	#2,obj.SubAction(a0)	; Increment action
+	move.w	#$FF,pig.Timer(a0)	; Set timer 
+	move.w	#$40,obj.XSpeed(a0)	; Set base XSpeed
+	move.b	#1,obj.Anim(a0)		; Set anim
+
+	bchg	#0,obj.Status(a0)	; Change orientation stat.
+	bne.s	.XFlip			; Skip if XFlip set
+
+	neg.w	obj.XSpeed(a0)		; Flip movement direction if not
+
+.XFlip:
+	move.b	#0,pig.Flag(a0)		; Clear firing flag
+	rts
+
+; --------------------------------------
+
+.WaitTimer:
+	tst.b	pig.Flag(a0)		; Has bomb launched already?
+	bne.s	.FlagSet
+
+	cmpi.b	#2,obj.Frame(a0)	; If on launch frame, create bomb obj.
+	beq.s	.LaunchBomb
+
+.FlagSet:
+	rts
+
+.LaunchBomb:
+	move.b	#1,pig.Flag(a0)			; Set as launched already
+
+	bsr.w	_objectFindFreeSlot		; Find object slot
+	bne.s	.NotFound
+
+	move.b	#OBJNO_BALLBOMB,obj.No(a1)	; Set object info
+	move.w	obj.X(a0),obj.X(a1)
+	move.w	obj.Y(a0),obj.Y(a1)
+	addi.w	#16,obj.Y(a1)			; Adjust down a bit
+
+.NotFound:
+	rts
+
+; ---------------------------------------------------------------------------
+; Wait a little bit before continuing to walk
+; ---------------------------------------------------------------------------
+
+PigSub_Idle:
+	subq.w	#1,pig.Timer(a0)
+	bmi.s	.TimerDepl
+
+	bsr.w	_objectSetSpeed	
+	jsr	_physBasicChkDown
+	add.w	d1,obj.Y(a0)
+	rts
+
+.TimerDepl:
+	subq.b	#2,obj.SubAction(a0)
+	move.w	#59,pig.Timer(a0)
+	move.w	#0,obj.XSpeed(a0)
+	move.b	#0,obj.Anim(a0)
+	tst.b	obj.Render(a0)
+	bpl.s	.Return
+	move.b	#2,obj.Anim(a0)
+
+.Return:
+	rts
+
+; ---------------------------------------------------------------------------
+; Display (unused)
+
+Pig_Show:
+	bsr.w	_objectDraw
+	rts
+
+; Delete (unused)
+
+Pig_Done:   
+	bsr.w	_objectDelete
+	rts
+
+; ---------------------------------------------------------------------------
+; Bomb launched by Enemy Pig
+; ---------------------------------------------------------------------------
+
+ballbomb.Timer	= $30
+
+ObjBallBomb:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w	BallBomb_Init-.Index
+	dc.w	BallBomb_Main-.Index
+	dc.w	BallBomb_Done-.Index
+; ---------------------------------------------------------------------------
+
+BallBomb_Init:
+	addq.b	#2,obj.Action(a0)
+	move.l	#SprPat_BallBomb,obj.Pat(a0)
+	move.w	#$2418,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#3,obj.Priority(a0)
+	move.b	#$87,obj.Collision(a0)
+	move.b	#8,obj.XRender(a0)
+	move.w	#24,ballbomb.Timer(a0)
+
+BallBomb_Main:
+	btst	#STAT.KILLED,obj.Status(a0)	; Check if kill flag set
+	bne.s	.Explode			; If so, explode
+	tst.w	ballbomb.Timer(a0)
+	bne.s	.WaitToCol			; Wait a bit before colliding
+
+	jsr	_physBasicChkDown		; Check if hitting floor
+	tst.w	d1
+	bpl.s	.NoFloorFound
+	add.w	d1,obj.Y(a0)
+
+.Explode:
+	move.b	#OBJNO_BOMBHIT,obj.No(a0)	; Set obj.No to explosion code
+	move.b	#0,obj.Action(a0)		; Clear action counter
+	bra.w	ObjBombHit			; Run initialization for it
+
+
+.WaitToCol:
+	subq.w	#1,ballbomb.Timer(a0)
+
+.NoFloorFound:
+	bsr.w	_objectFall
+	bsr.w	_objectDraw
+	move.w	limitADown.w,d0
+	addi.w	#$E0,d0
+	cmp.w	obj.Y(a0),d0
+	bcs.s	BallBomb_Done
+	rts
+
+; ---------------------------------------------------------------------------
+; Delete (unused)
+
+BallBomb_Done:
+	bsr.w	_objectDelete
+	rts

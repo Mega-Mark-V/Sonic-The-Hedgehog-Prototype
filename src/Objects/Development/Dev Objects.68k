@@ -36,7 +36,7 @@ Dev1_Init:
         move.w  #$200,obj.X(a0) 	; Sets hardcoded positions
         move.w  #$60,obj.Y(a0)
 
-        move.l  #MapSpr_DevTest,obj.Pat(a0)
+        move.l  #SprPat_DevTest,obj.Pat(a0)
         move.w  #TILE.DEV1,obj.Tile(a0) 
 
         move.b  #4,obj.Render(a0) 	; Render with CamA
@@ -69,7 +69,7 @@ Dev1_Exit:
 
 ; ---------------------------------------------------------------------------
 
-MapSpr_DevTest:
+SprPat_DevTest:
 	include	"Objects/Development/TEST_PAT.asm"
 
 ; ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ Dev2_Init:
         addq.b  #2,obj.Action(a0)
         move.w  #$100,obj.X(a0) 	    	; Hardcoded positions
         move.w  #$40,obj.Y(a0)
-        move.l  #MapSpr_DevTest,obj.Pat(a0)
+        move.l  #SprPat_DevTest,obj.Pat(a0)
         move.w  #TILE.DEV1,obj.Tile(a0) 	; Render with palette line 4
         move.b  #4,obj.Render(a0)
         move.b  #1,obj.ColProp(a0)
@@ -137,7 +137,7 @@ ObjDev3:
 Dev3_Init:                            
         addq.b  #2,obj.Action(a0)
         move.w  #$40,obj.Y(a0) 			; Set fixed Y
-        move.l  #MapSpr_DevTest,obj.Pat(a0)
+        move.l  #SprPat_DevTest,obj.Pat(a0)
         move.w  #TILE.DEV2,obj.Tile(a0)
         move.b  #4,obj.Render(a0)
         move.b  #1,obj.ColProp(a0)
@@ -191,7 +191,7 @@ ObjDev4:
 
 Test05_Init:                            
         addq.b  #2,obj.Action(a0)
-        move.l  #MapSpr_Digits,obj.Pat(a0)
+        move.l  #SprPat_Digits,obj.Pat(a0)
         move.w  #TILE.DIGIT1,obj.Tile(a0)
         move.b  #0,obj.Render(a0) 	; Render with constant screen pos.
         move.b  #7,obj.Priority(a0)
@@ -206,7 +206,7 @@ Test05_Exit:
 
 ; ---------------------------------------------------------------------------
 
-MapSpr_Digits:
+SprPat_Digits:
 	include	"Objects/Development/DIGITS_PAT.asm"
 
 ; ---------------------------------------------------------------------------
@@ -232,7 +232,7 @@ ObjDev5:
 DevDigits2_Init:                            
         addq.b  #2,obj.Action(a0)
         move.w  #$A0,obj.YScr(a0)
-        move.l  #MapSpr_Digits,obj.Pat(a0)
+        move.l  #SprPat_Digits,obj.Pat(a0)
         move.w  #TILE.DIGIT2,obj.Tile(a0)
         move.b  #0,obj.Render(a0)
         move.b  #7,obj.Priority(a0)

@@ -3,54 +3,54 @@
 ; KatKurin 2024
 ; ---------------------------------------------------------------------------
 
-	include         "_include/Constants.i"
-	include         "_include/Mega Drive.i"
-	include         "_include/RAM.i"
-	include         "_include/Sound.i"
-	include         "_include/Variables.i"
-	include         "_include/Macros.i"
+	include	"_include/Constants.i"
+	include	"_include/Mega Drive.i"
+	include	"_include/RAM.i"
+	include	"_include/Sound.i"
+	include	"_include/Variables.i"
+	include	"_include/Macros.i"
 
 ; ---------------------------------------------------------------------------   
 ; Header and initial program
 ; ---------------------------------------------------------------------------
 
 HEADER:
-	dc.l STACK              ; Initial SP
-	dc.l ICD_BLK            ; Initial PC
+	dc.l	STACK			; Initial SP
+	dc.l	ICD_BLK			; Initial PC
 		
-	dc.l ERROR_BUS          ; Error vectors
-	dc.l ERROR_ADDRESS
-	dc.l ERROR_ILLEGAL
-	dc.l ERROR_ZERODIV
-	dc.l ERROR_CHKINST
-	dc.l ERROR_TRAPV
-	dc.l ERROR_PRIVILEGE
-	dc.l ERROR_TRACE
-	dc.l ERROR_LINEA
-	dc.l ERROR_LINEF
+	dc.l	ERROR_BUS		; Error vectors
+	dc.l	ERROR_ADDRESS
+	dc.l	ERROR_ILLEGAL
+	dc.l	ERROR_ZERODIV
+	dc.l	ERROR_CHKINST
+	dc.l	ERROR_TRAPV
+	dc.l	ERROR_PRIVILEGE
+	dc.l	ERROR_TRACE
+	dc.l	ERROR_LINEA
+	dc.l	ERROR_LINEF
  
-	dc.l ERROR,ERROR,ERROR,ERROR    ; Reserved (Unused)   
-	dc.l ERROR,ERROR,ERROR,ERROR
-	dc.l ERROR,ERROR,ERROR,ERROR
+	dc.l	ERROR,ERROR,ERROR,ERROR	; Reserved (Unused)   
+	dc.l	ERROR,ERROR,ERROR,ERROR
+	dc.l	ERROR,ERROR,ERROR,ERROR
 	
-	dc.l ERROR              ; IRQ0 (Spurious)
-	dc.l UINT               ; IRQ1
-	dc.l UINT               ; IRQ2 (EXT)
-	dc.l UINT               ; IRQ3
-	dc.l HBLANK             ; IRQ4 (Horizontal blanking interrupt)
-	dc.l UINT               ; IRQ5
-	dc.l VBLANK             ; IRQ6 (Vertical blanking interrupt)
-	dc.l UINT               ; IRQ7 
+	dc.l	ERROR			; IRQ0 (Spurious)
+	dc.l	UINT			; IRQ1
+	dc.l	UINT			; IRQ2 (EXT)
+	dc.l	UINT			; IRQ3
+	dc.l	HBLANK			; IRQ4 (Horizontal blanking interrupt)
+	dc.l	UINT			; IRQ5
+	dc.l	VBLANK			; IRQ6 (Vertical blanking interrupt)
+	dc.l	UINT			; IRQ7 
 
-	dc.l UINT,UINT,UINT,UINT        ; TRAP Exceptions
-	dc.l UINT,UINT,UINT,UINT        ; (Unused)
-	dc.l UINT,UINT,UINT,UINT
-	dc.l UINT,UINT,UINT,UINT
+	dc.l	UINT,UINT,UINT,UINT	; TRAP Exceptions
+	dc.l	UINT,UINT,UINT,UINT	; (Unused)
+	dc.l	UINT,UINT,UINT,UINT
+	dc.l	UINT,UINT,UINT,UINT
 	
-	dc.l UINT,UINT,UINT,UINT        ; Reserved (Unused)
-	dc.l UINT,UINT,UINT,UINT
-	dc.l UINT,UINT,UINT,UINT
-	dc.l UINT,UINT,UINT,UINT
+	dc.l	UINT,UINT,UINT,UINT	; Reserved (Unused)
+	dc.l	UINT,UINT,UINT,UINT
+	dc.l	UINT,UINT,UINT,UINT
+	dc.l	UINT,UINT,UINT,UINT
 	
 ; ---------------------------------------------------------------------------
 ; ROM Information (Stock SDK)
@@ -62,15 +62,15 @@ ROM_ID:
 		dc.b '                        '
 		dc.b '                        '
 		dc.b 'GM 00000000-00'
-CHECKSUM:       dc.w $0000              
-PERIPHERALS:    dc.b 'J               '
-GAMESTART:      dc.l CARTRIDGE
-GAMESZ:         dc.l CARTRIDGESZ
-RAMSTART:       dc.l WORKRAM
-RAMSZ:          dc.l WORKRAMSZ 
-CONFIG:         dc.b '                '
-INFO:           dc.b '                                                '
-REGION:         dc.b 'JU              '
+CHECKSUM:	dc.w $0000              
+PERIPHERALS:	dc.b 'J               '
+GAMESTART:	dc.l CARTRIDGE
+GAMESZ:		dc.l CARTRIDGESZ
+RAMSTART:	dc.l WORKRAM
+RAMSZ:		dc.l WORKRAMSZ 
+CONFIG:		dc.b '                '
+INFO:		dc.b '                                                '
+REGION:		dc.b 'JU              '
 
 HEADEREND:
 
@@ -81,7 +81,7 @@ HEADEREND:
 UINT:
 	nop
 	nop
-	bra.s   UINT
+	bra.s	UINT
 
 ; ---------------------------------------------------------------------------
 ; ICD_BLK SECURITY Block
@@ -90,96 +90,97 @@ UINT:
 ; ---------------------------------------------------------------------------
 
 ICD_BLK:
-	tst.l   IOCTRL1_        ; Test controller 1 and 2 bits
+	tst.l	IOCTRL1_        ; Test controller 1 and 2 bits
 
 .WaitBoot:          
-	bne.w   Start   
-	tst.w   IOCTRL3_
-	bne.s   .WaitBoot
-	lea     SECURITYDATA(pc),a5
-	movem.l (a5)+,d5-d7/a0-a4
+	bne.w	Start   
+	tst.w	IOCTRL3_
+	bne.s	.WaitBoot
+	lea	SECURITYDATA(pc),a5
+	movem.l	(a5)+,d5-d7/a0-a4
 	
-	move.w  VERSION_-Z80BUS(a1),d0
-	andi.w  #(%1111<<8),d0
-	beq.s   .NoTMSS
-	move.l  #'SEGA',Z80BUS-TMSSSEGA(a1)
+	move.w	VERSION_-Z80BUS(a1),d0
+	andi.w	#(%1111<<8),d0
+	beq.s	.NoTMSS
+	move.l	#'SEGA',Z80BUS-TMSSSEGA(a1)
 
-.NoTMSS:              
-	move.w  (a4),d0         ; VDP dummy read
-	moveq   #0,d0
-	movea.l d0,a6           ; Clear a6 and usp
-	move.l  a6,usp
+.NoTMSS:	
+	move.w	(a4),d0		; VDP dummy read
+	moveq	#0,d0
+	movea.l	d0,a6		; Clear a6 and usp
+	move.l	a6,usp
 	
-	moveq   #24-1,d1
-.SetVDPRegs:           
-	move.b  (a5)+,d5
-	move.w  d5,(a4)
-	add.w   d7,d5
-	dbf     d1,.SetVDPRegs  ; Loop until 0
+	moveq	#24-1,d1
+
+.SetVDPRegs:	
+	move.b	(a5)+,d5
+	move.w	d5,(a4)
+	add.w	d7,d5
+	dbf	d1,.SetVDPRegs	; Loop until 0
 	
-	move.l  #VRAMDMA,(a4)
-	move.w  d0,(a3)
-	move.w  d7,(a1)
-	move.w  d7,(a2)
+	move.l	#VRAMDMA,(a4)
+	move.w	d0,(a3)
+	move.w	d7,(a1)
+	move.w	d7,(a2)
 
-.WaitForZ80:           
-	btst    d0,(a1)
-	bne.s   .WaitForZ80
-	moveq   #(SECURITY_Z80E-SECURITY_Z80)-1,d2
+.WaitForZ80:	
+	btst	d0,(a1)
+	bne.s	.WaitForZ80
+	moveq	#(SECURITY_Z80E-SECURITY_Z80)-1,d2
 
-.LoadZ80Init:          
-	move.b  (a5)+,(a0)+
-	dbf     d2,.LoadZ80Init
+.LoadZ80Init:	
+	move.b	(a5)+,(a0)+
+	dbf	d2,.LoadZ80Init
 	
-	move.w  d0,(a2)
-	move.w  d0,(a1)
-	move.w  d7,(a2)
+	move.w	d0,(a2)
+	move.w	d0,(a1)
+	move.w	d7,(a2)
 
-.ClrRAM:               
-	move.l  d0,-(a6)
-	dbf     d6,.ClrRAM
-	move.l  #$81048F02,(a4)
+.ClrRAM:	
+	move.l	d0,-(a6)
+	dbf	d6,.ClrRAM
+	move.l	#$81048F02,(a4)
 	
 	; ^ VREG $81 - %00000100 (M5 Display bit set)
 	;   VREG $8F - $02 (VDP Autoincrement value)
 	
-	move.l  #CRAMWRITE,(a4) ; Send CRAM write command
-	moveq   #32-1,d3
+	move.l	#CRAMWRITE,(a4)	; Send CRAM write command
+	moveq	#32-1,d3
 
-.ClrCRAM:              
-	move.l  d0,(a3)
-	dbf     d3,.ClrCRAM
+.ClrCRAM:	
+	move.l	d0,(a3)
+	dbf	d3,.ClrCRAM
 	
-	move.l  #VSRAMWRITE,(a4)
-	moveq   #20-1,d4
+	move.l	#VSRAMWRITE,(a4)
+	moveq	#20-1,d4
 
-.ClrVSRAM:             
-	move.l  d0,(a3)
-	dbf     d4,.ClrVSRAM
-	moveq   #4-1,d5
+.ClrVSRAM:	
+	move.l	d0,(a3)
+	dbf	d4,.ClrVSRAM
+	moveq 	#4-1,d5
 
-.PSGInitLoop:          
-	move.b  (a5)+,PSGCTRL-VDPDATA(a3)
-	dbf     d5,.PSGInitLoop
-	move.w  d0,(a2)
-	movem.l (a6),d0-d7/a0-a6
-	move    #$2700,sr
-	bra.s   Start
+.PSGInitLoop:	
+	move.b	(a5)+,PSGCTRL-VDPDATA(a3)
+	dbf	d5,.PSGInitLoop
+	move.w	d0,(a2)
+	movem.l	(a6),d0-d7/a0-a6
+	move	#$2700,sr
+	bra.s	Start
 
 ; ---------------------------------------------------------------------------
 ; SECURITY Data table
 ; ---------------------------------------------------------------------------
 
 SECURITYDATA:
-	dc.l $8000              ; d5, VDP register offset constant
-	dc.l (WORKRAME/4)-1     ; d6, Size of WORKRAM in longwords
-	dc.l $100               ; d7, VDP register increment value
+	dc.l	$8000		; d5, VDP register offset constant
+	dc.l	(WORKRAME/4)-1	; d6, Size of WORKRAM in longwords
+	dc.l	$100		; d7, VDP register increment value
 	
-	dc.l Z80RAM             ; a0
-	dc.l Z80BUS             ; a1
-	dc.l Z80RES             ; a2
-	dc.l VDPDATA            ; a3
-	dc.l VDPCTRL            ; a4
+	dc.l	Z80RAM		; a0
+	dc.l	Z80BUS		; a1
+	dc.l	Z80RES		; a2
+	dc.l	VDPDATA		; a3
+	dc.l	VDPCTRL		; a4
 	
 ; ---------------------------------------------------------------------------
 ; These are not relevant to the actual game program and are only used
@@ -187,131 +188,133 @@ SECURITYDATA:
 ; ---------------------------------------------------------------------------
 
 SECURITY_VDP:
-	dc.b %0000100   ; 00 (MODE REG1) Normal color mode           
-	dc.b %0010100   ; 01 (MODE REG2) Mode 5 display on, DMA on
-	dc.b $C000>>10  ; 02 Plane A Nametable Address 
-	dc.b $F000>>10  ; 03 Window Nametable Address
-	dc.b $E000>>13  ; 04 Plane B Nametable Address
-	dc.b $D800>>9   ; 05 Sprite Table Address
-	dc.b 0          ; 06 *Unused on MD*
-	dc.b (0<<4)+0   ; 07 Background color
-	dc.b 0          ; 08 *Unused on MD*
-	dc.b 0          ; 09 *Unused on MD*
-	dc.b 256-1      ; 0A H-BLANK Scanline Interval
-	dc.b 0          ; 0B (MODE REG3) Scroll fullscreen
-	dc.b %10000001  ; 0C (MODE REG4) H40 Cell mode
-	dc.b $DC00>>10  ; 0D H-Scroll Table Address
-	dc.b 0          ; 0E *Unused on MD*
-	dc.b 1          ; 0F VDP Address Autoincrement value
-	dc.b 1          ; 10 Plane size (256x512)
-	dc.b 0          ; 11 Window Plane Xpos
-	dc.b 0          ; 12 Window Plane Ypos
-	dc.b $FF        ; 13 DMA Length (Low)
-	dc.b $FF        ; 14 DMA Length (Hi)
-	dc.b 0          ; 15 DMA Source (Low)
-	dc.b 0          ; 16 DMA Source (Mid)
-	dc.b $80        ; 17 DMA Source (Hi)
+	dc.b %0000100	; 00 (MODE REG1) Normal color mode           
+	dc.b %0010100	; 01 (MODE REG2) Mode 5 display on, DMA on
+	dc.b $C000>>10	; 02 Plane A Nametable Address 
+	dc.b $F000>>10	; 03 Window Nametable Address
+	dc.b $E000>>13	; 04 Plane B Nametable Address
+	dc.b $D800>>9	; 05 Sprite Table Address
+	dc.b 0		; 06 *Unused on MD*
+	dc.b (0<<4)+0	; 07 Background color
+	dc.b 0		; 08 *Unused on MD*
+	dc.b 0		; 09 *Unused on MD*
+	dc.b 256-1	; 0A H-BLANK Scanline Interval
+	dc.b 0		; 0B (MODE REG3) Scroll fullscreen
+	dc.b %10000001	; 0C (MODE REG4) H40 Cell mode
+	dc.b $DC00>>10	; 0D H-Scroll Table Address
+	dc.b 0		; 0E *Unused on MD*
+	dc.b 1		; 0F VDP Address Autoincrement value
+	dc.b 1		; 10 Plane size (256x512)
+	dc.b 0		; 11 Window Plane Xpos
+	dc.b 0		; 12 Window Plane Ypos
+	dc.b $FF	; 13 DMA Length (Low)
+	dc.b $FF	; 14 DMA Length (Hi)
+	dc.b 0		; 15 DMA Source (Low)
+	dc.b 0		; 16 DMA Source (Mid)
+	dc.b $80	; 17 DMA Source (Hi)
 
 ; ---------------------------------------------------------------------------
-; Z80 dummy program (Disassembled in SECURITY.Z80)
+; Z80 dummy program (Disassembled in _temp/ICD_BLK.Z80)
 ; ---------------------------------------------------------------------------
 
 SECURITY_Z80:
-	dc.b $AF,  1,$D7,$1F
-	dc.b $11,$29,  0,$21
-	dc.b $28,  0,$F9,$77
-	dc.b $ED,$B0,$DD,$E1
-	dc.b $FD,$E1,$ED,$47
-	dc.b $ED,$4F,  8,$D9
-	dc.b $F1,$C1,$D1,$E1
-	dc.b   8,$D9,$F1,$D1
-	dc.b $E1,$F9,$F3,$ED
-	dc.b $56,$36,$E9,$E9
+	dc.b	$AF,  1,$D7,$1F
+	dc.b	$11,$29,  0,$21
+	dc.b	$28,  0,$F9,$77
+	dc.b	$ED,$B0,$DD,$E1
+	dc.b	$FD,$E1,$ED,$47
+	dc.b	$ED,$4F,  8,$D9
+	dc.b	$F1,$C1,$D1,$E1
+	dc.b	  8,$D9,$F1,$D1
+	dc.b	$E1,$F9,$F3,$ED
+	dc.b	$56,$36,$E9,$E9
 SECURITY_Z80E:
 
 ; ---------------------------------------------------------------------------
 
-SECURITY_PSG:   dc.b $9F,$BF,$DF,$FF
+SECURITY_PSG:	dc.b $9F,$BF,$DF,$FF
 
 ; ---------------------------------------------------------------------------
 ; Game program start
 ; ---------------------------------------------------------------------------
 
-Start:          
-	btst    #%110,IOCTRL3
-	beq.s   .ForceColdBoot
-	cmpi.l  #'init',bootFlag.w
-	beq.w   .WarmBoot
+Start:
+	btst	#%110,IOCTRL3
+	beq.s	.ForceColdBoot
+	cmpi.l	#'init',bootFlag.w
+	beq.w	.WarmBoot
 
-.ForceColdBoot:        
-	movea.l #HEADEREND,a0   ; Get header end location
-	movea.l #GAMEEND,a1     ; Get the catalogued ROM end location
-	move.l  (a1),d0
-	moveq   #0,d1
+.ForceColdBoot:
+	movea.l	#HEADEREND,a0   ; Get header end location
+	movea.l	#GAMEEND,a1     ; Get the catalogued ROM end location
+	move.l	(a1),d0
+	moveq	#0,d1
 
-.CalculateChkSum:              
-	add.w   (a0)+,d1         ; Add up all words into d1
-	cmp.l   a0,d0            ;  
-	bcc.s   .CalculateChkSum ; If not, continue the loop
-	movea.l #CHECKSUM,a1     ; Compare against the catalogued checksum value
-	cmp.w   (a1),d1
+.CalculateChkSum:
+	add.w	(a0)+,d1		; Add up all words into d1
+	cmp.l	a0,d0			; Are we at the end of ROM?
+	bcc.s	.CalculateChkSum	; If not, continue the loop
+	movea.l #CHECKSUM,a1		; Compare against the header
+	cmp.w	(a1),d1
 
-	nop     ; <- bne.w ChecksumFailed
+	nop	; <- bne.w ChecksumFailed
 	nop
 
-	lea     stack.w,a6
-	moveq   #0,d7
-	move.w  #($200/4)-1,d6  ; Clear previous game information
-.ClearGameVars:        
-	move.l  d7,(a6)+
-	dbf     d6,.ClearGameVars
+	lea	stack.w,a6
+	moveq	#0,d7
+	move.w	#($200/4)-1,d6		; Clear previous game information
+.ClearGameVars:
+	move.l	d7,(a6)+
+	dbf	d6,.ClearGameVars
 
-	move.b  VERSION,d0
-	andi.b  #%11000000,d0
-	move.b  d0,hardwareVersion.w
-	move.w  #1,levelselectFlag.w
-	move.l  #'init',bootFlag.w
+	move.b	VERSION,d0
+	andi.b	#%11000000,d0
+	move.b	d0,hardwareVersion.w
+	move.w	#1,levelselectFlag.w
+	move.l	#'init',bootFlag.w
 
-.WarmBoot:             
-	lea     WORKRAM,a6
-	moveq   #0,d7
-	move.w  #($FE00/4)-1,d6         ; Clear most of RAM up to 0xFE00
-.ClearRAM:             
-	move.l  d7,(a6)+
-	dbf     d6,.ClearRAM
+.WarmBoot:
+	lea	WORKRAM,a6
+	moveq	#0,d7
 
-	bsr.w   InitVDP
-	bsr.w   InitSound
-	bsr.w   InitJoypads
-	move.b  #0,gamemode.w
+	move.w	#($FE00/4)-1,d6		; Clear most of RAM up to 0xFE00
 
-Main:           
-	move.b  gamemode.w,d0
-	andi.w  #$1C,d0                 ; Clamp counter to multiples of 4
+.ClearRAM:
+	move.l	d7,(a6)+
+	dbf	d6,.ClearRAM
+
+	bsr.w	InitVDP
+	bsr.w	InitSound
+	bsr.w	InitJoypads
+	move.b	#0,gamemode.w
+
+Main:
+	move.b	gamemode.w,d0
+	andi.w	#$1C,d0			; Clamp counter to multiples of 4
 					; and limited to only 7 entries
-	jsr     .Index(pc,d0.w)
-	bra.s   Main
+	jsr	.Index(pc,d0.w)
+	bra.s	Main
 	
 ; ---------------------------------------------------------------------------
 ; macro to define gamemodes and their ID
-GAMEMODE macro   addr, id
-	bra.w   \addr
-	\id:     rs.b    4
+GAMEMODE	macro	addr, id
+	bra.w	\addr
+	\id:	rs.b	4
 	endm
 
 ; ---------------------------------------------------------------------------    
 ; Game Mode table
 ; --------------------------------------------------------------------------- 
 
-.Index:      
-	rsreset	   ; prg.       ; ID equ
-	GAMEMODE   GM_LOGO,	GMNO_LOGO       ; SEGA Logo
-	GAMEMODE   GM_TITLE,	GMNO_TITLE      ; Title Screen
-	GAMEMODE   GM_LEVEL,	GMNO_DEMO       ; Demo
-	GAMEMODE   GM_LEVEL,	GMNO_LEVEL      ; Level
-	GAMEMODE   GM_SPECIAL,	GMNO_SPECIAL    ; Special Stage
-						; (unimplemented)
-						; (unimplemented) 
+.Index:
+	rsreset	        ; prg.       ; ID equ
+	GAMEMODE	GM_LOGO,	GMNO_LOGO       ; SEGA Logo
+	GAMEMODE	GM_TITLE,	GMNO_TITLE      ; Title Screen
+	GAMEMODE	GM_LEVEL,	GMNO_DEMO       ; Demo
+	GAMEMODE	GM_LEVEL,	GMNO_LEVEL      ; Level
+	GAMEMODE	GM_SPECIAL,	GMNO_SPECIAL    ; Special Stage
+							; (unimplemented)
+							; (unimplemented) 
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -323,17 +326,17 @@ CheckSumFailed:
 	move.l	#CRAMWRITE,VDPCTRL
 	moveq	#64-1,d7
 
-.FillCRAM:                     
+.FillCRAM:
 	move.w	#$00E,VDPDATA
 	dbf	d7,.FillCRAM
 
-.Stop68K:                      
+.Stop68K:
 	bra.s	.Stop68K
 	
 ; ---------------------------------------------------------------------------
 
-	include  "ERRORS.68k"
-	include  "INTERRUPTS.68k"
+	include	"ERRORS.68k"
+	include	"INTERRUPTS.68k"
 
 ; ---------------------------------------------------------------------------
 ; Initialization and core game libraries
@@ -345,7 +348,7 @@ CheckSumFailed:
 ; Prepare to read Mega Drive joypad IO ports
 ; ---------------------------------------------------------------------------
 
-InitJoypads:                            
+InitJoypads:
 	Z80STOP
 	moveq	#$40,d0
 	move.b	d0,IOCTRL1
@@ -359,22 +362,22 @@ InitJoypads:
 ; Common SACBRLDU scheme (1 bit per button for 8 bits)
 ; ---------------------------------------------------------------------------
 
-ReadJoypads:        
+ReadJoypads:
 	Z80STOP
-	lea     joypad.w,a0             ; Set output location
-	lea     IODATA1,a1              ; Read pad 1
+	lea     joypad.w,a0     ; Set output location
+	lea     IODATA1,a1      ; Read pad 1
 	bsr.s   .ReadPad
 	addq.w  #IODATA2-IODATA1,a1     ; Quick increment to pad 2
-	bsr.s   .ReadPad                ; and read it
+	bsr.s   .ReadPad; and read it
 	Z80START
 	rts
 
-.ReadPad:                              
-	move.b  #0,(a1)         ; Get first frame bits (Start+A)    
-	nop                     ; Wait a bit for the I/O controller
+.ReadPad:  
+	move.b  #0,(a1) ; Get first frame bits (Start+A)    
+	nop     ; Wait a bit for the I/O controller
 	nop
-	move.b  (a1),d0         ; Read bits
-	lsl.b   #2,d0           ; Move them to bits 6 and 7
+	move.b  (a1),d0 ; Read bits
+	lsl.b   #2,d0   ; Move them to bits 6 and 7
 	andi.b  #%11000000,d0   ; Clear bits 0-5
 
 	move.b  #$40,(a1)       ; Get second frame bits (everything else)
@@ -382,27 +385,27 @@ ReadJoypads:
 	nop
 	move.b  (a1),d1
 	andi.b  #%00111111,d1   ; Clear top 2 bits
-	or.b    d1,d0           ; Combine them into d0
-	not.b   d0              ; Invert bit scheme (0 = not pressed)
+	or.b    d1,d0   ; Combine them into d0
+	not.b   d0      ; Invert bit scheme (0 = not pressed)
 
-	move.b  (a0),d1         ; Get previous controller read
+	move.b  (a0),d1 ; Get previous controller read
 	eor.b   d0,d1
-	move.b  d0,(a0)+        ; Calculate "pressed" from "held"
+	move.b  d0,(a0)+; Calculate "pressed" from "held"
 	and.b   d0,d1
-	move.b  d1,(a0)+        
+	move.b  d1,(a0)+
 	rts
 
 ; ---------------------------------------------------------------------------
 ; Basic VDP initialization/setup routine
 ; ---------------------------------------------------------------------------
 
-InitVDP:                                
+InitVDP:    
 	lea     VDPCTRL,a0
 	lea     VDPDATA,a1
 	lea     VDPInitValues,a2
 	moveq   #$13-1,d7
 
-.WriteRegs:                            
+.WriteRegs:
 	move.w  (a2)+,(a0)
 	dbf     d7,.WriteRegs
 	move.w  VDPInitValues+2,d0
@@ -411,7 +414,7 @@ InitVDP:
 	move.l  #CRAMWRITE,VDPCTRL
 	move.w  #64-1,d7
 
-.ClearCRAM:                            
+.ClearCRAM:
 	move.w  d0,(a1)
 	dbf     d7,.ClearCRAM
 	clr.l   mainAPosY.w
@@ -425,7 +428,7 @@ InitVDP:
 ; ---------------------------------------------------------------------------
 
 VDPInitValues:  
-	dc.w $8004              
+	dc.w $8004      
 	dc.w $8134
 	dc.w $8230
 	dc.w $8328
@@ -459,7 +462,7 @@ InitScreen:
 
 	lea     sprites.w,a1
 	moveq   #0,d0
-	move.w  #$A0-1,d1               ; ???
+	move.w  #$A0-1,d1       ; ???
 
 .ClearSprites:
 	move.l  d0,(a1)+
@@ -479,14 +482,14 @@ InitScreen:
 
 InitSound:
 	nop
-	move.w  #$100,Z80BUS         ; Stop and reset the Z80
+	move.w  #$100,Z80BUS ; Stop and reset the Z80
 	move.w  #$100,Z80RES
 	lea     Z80_SOUND_ROM,a0     ; !!! Needs new name?
 	lea     Z80RAM,a1
-	move.w  #$1C5B,d0            ; !!! Get size later
+	move.w  #$1C5B,d0    ; !!! Get size later
 
 .WriteToZ80RAM:
-	move.b  (a0)+,(a1)+          ; Load PCM driver ROM to Z80 RAM
+	move.b  (a0)+,(a1)+  ; Load PCM driver ROM to Z80 RAM
 	dbf     d0,.WriteToZ80RAM
 
 	moveq   #0,d0
@@ -550,42 +553,42 @@ SndSetUnk:
 
 PauseGame:
 	nop
-	tst.b   lives.w                 ; No pausing if no lives
-	beq.s   .Unpause                   
-	tst.w   paused.w                ; If already paused, skip ahead
+	tst.b   lives.w ; No pausing if no lives
+	beq.s   .Unpause   
+	tst.w   paused.w; If already paused, skip ahead
 	bne.s   .Paused
 
-	btst    #7,joypadPress.w        ; If start isn't pressed, don't pause   
+	btst    #7,joypadPress.w; If start isn't pressed, don't pause   
 	beq.s   .Exit
 
 .Paused:
-	move.w  #-1,paused.w            ; Assert that the game is paused
+	move.w  #-1,paused.w    ; Assert that the game is paused
 
-.Loop:                               
+.Loop:   
 	move.b  #VBCMD_PAUSE,vblankCmd.w ; Set VBLANK to PAUSE cmd
 	bsr.w   VSync
 
-	btst    #6,joypadPress.w        ; If A button pressed while paused...
-	beq.s   .ABtnNotPressed         
+	btst    #6,joypadPress.w; If A button pressed while paused...
+	beq.s   .ABtnNotPressed 
 	move.b  #GMNO_TITLE,gamemode.w  ; ..go to title screen
 	nop
 	bra.s   .Unpause
 
-.ABtnNotPressed:                       
-	btst    #4,joypad.w             ; B button
+.ABtnNotPressed:       
+	btst    #4,joypad.w     ; B button
 	bne.s   .FrameAdvance
-	btst    #5,joypadPress.w        ; C button
+	btst    #5,joypadPress.w; C button
 	bne.s   .FrameAdvance
-	btst    #7,joypadPress.w        ; Start   
+	btst    #7,joypadPress.w; Start   
 	beq.s   .Loop
 
-.Unpause:                                 
-	move.w  #0,paused.w             ; Assert unpaused
+.Unpause:     
+	move.w  #0,paused.w     ; Assert unpaused
 
-.Exit:                                 
-	rts                             
+.Exit:     
+	rts 
 
-.FrameAdvance:                               
+.FrameAdvance:   
 	move.w  #1,paused.w     ; Set to pause next frame
 				; And exit back to execution until next frame
 	rts
@@ -600,15 +603,15 @@ PauseGame:
 ;       d2 - (Height)-1
 ; ---------------------------------------------------------------------------
 
-DrawTileMap:                            
+DrawTileMap:
 	lea     VDPDATA,a6
 	move.l  #$800000,d4
 
-.LoopRow:                              
+.LoopRow:  
 	move.l  d0,VDPCTRL-VDPDATA(a6)
 	move.w  d1,d3
 
-.LoopColumn:                           
+.LoopColumn:   
 	move.w  (a1)+,(a6)
 	dbf     d3,.LoopColumn
 	add.l   d4,d0
@@ -640,7 +643,7 @@ VSync:
 ; d1.l = Randon num. 2
 ; ---------------------------------------------------------------------------
 
-CalcRandom:                             
+CalcRandom: 
 	move.l  randomSeed.w,d1
 	bne.s   .NoSeedGiven
 	move.l  #$2A6D365A,d1
@@ -741,7 +744,7 @@ CalcSquare:
 	move.w  d0,d1
 	moveq   #8-1,d2
 
-.Loop:                               
+.Loop:   
 	rol.l   #2,d1
 	add.w   d0,d0
 	addq.w  #1,d0
@@ -754,7 +757,7 @@ CalcSquare:
 	movem.l (sp)+,d1-d2
 	rts
 
-.Greater:                               
+.Greater:   
 	addq.w  #1,d0
 	dbf     d2,.Loop
 	lsr.w   #1,d0
@@ -772,7 +775,7 @@ CalcSquare:
 ; d0.w  =  Angle
 ; ---------------------------------------------------------------------------
 
-CalcATan:                               
+CalcATan:   
 	movem.l d3-d4,-(sp)
 	moveq   #0,d3
 	moveq   #0,d4
@@ -785,12 +788,12 @@ CalcATan:
 	bpl.w   .XPositive
 	neg.w   d3
 
-.XPositive:                            
+.XPositive:
 	tst.w   d4
 	bpl.w   .YPositive
 	neg.w   d4
 
-.YPositive:                            
+.YPositive:
 	cmp.w   d3,d4
 	bcc.w   .YGreater
 	lsl.l   #8,d4
@@ -800,31 +803,31 @@ CalcATan:
 	bra.s   .ChkDir
 ; ---------------------------------------------------------------------------
 
-.YGreater:                             
-	lsl.l   #8,d3           ; multiply by 256
-	divu.w  d4,d3           ; divide by Y dist.
+.YGreater: 
+	lsl.l   #8,d3   ; multiply by 256
+	divu.w  d4,d3   ; divide by Y dist.
 	moveq   #$40,d0
 	sub.b   AngleTable(pc,d3.w),d0 
 
-.ChkDir:                               
+.ChkDir:   
 	tst.w   d1
 	bpl.w   .XPositive2
 	neg.w   d0
-	addi.w  #$80,d0         ; add 180 degrees
+	addi.w  #$80,d0 ; add 180 degrees
 
-.XPositive2:                           
+.XPositive2:   
 	tst.w   d2
 	bpl.w   .YPositive2
 	neg.w   d0
-	addi.w  #$100,d0        ; add 360 degrees?
+	addi.w  #$100,d0; add 360 degrees?
 
-.YPositive2:                           
+.YPositive2:   
 	movem.l (sp)+,d3-d4
 	rts
 ; ---------------------------------------------------------------------------
 
-.ZeroDist:                             
-	move.w  #$40,d0         ; return 90 degrees?
+.ZeroDist: 
+	move.w  #$40,d0 ; return 90 degrees?
 	movem.l (sp)+,d3-d4
 	rts
 
@@ -869,20 +872,20 @@ AngleTable:
 ; Game Modes
 ; ---------------------------------------------------------------------------
 ; Deprecate these. Use vlink.
-	include         "Logo/_LOGO.68k"
-	include         "Title/_TITLE.68k"
-;       include         "Level/_LEVEL.68k"
-;       include         "Special/_SPECIAL.68k"
+	include	"Logo/_LOGO.68k"
+	include	"Title/_TITLE.68k"
+;       include	"Level/_LEVEL.68k"
+;       include	"Special/_SPECIAL.68k"
 
 ; ---------------------------------------------------------------------------
 ; Camera System
 ; ---------------------------------------------------------------------------
 
-	include         "Camera/Cam Init.asm"
-	include         "Camera/Cam Main.asm"
+	include	"Camera/Cam Init.asm"
+	include	"Camera/Cam Main.asm"
 
 ; ---------------------------------------------------------------------------
 ; Object System 
 ; ---------------------------------------------------------------------------
 
-	include         "Objects/Objects.asm"   ; Main functions for objs
+	include	"Objects/Objects.asm"
