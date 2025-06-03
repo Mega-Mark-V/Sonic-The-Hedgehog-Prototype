@@ -1,6 +1,6 @@
 ; ---------------------------------------------------------------------------
 ; Unused Enemy Pig and the bomb it launches
-; These are not the same object as the final game. They were later redone.
+; These are not the same objects as the final game. They were later redone.
 ;
 ; This variant was seen in B-Roll footage used in Computer Chronicles
 ; ---------------------------------------------------------------------------
@@ -17,6 +17,7 @@ ObjEnemyPig:
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
 	jmp	.Index(pc,d1.w)
+
 ; ---------------------------------------------------------------------------
 .Index:    
 	dc.w	Pig_Init-.Index
@@ -34,20 +35,28 @@ Pig_Init:
 	move.b	#4,obj.Priority(a0)
 	move.b	#5,obj.Collision(a0)
 	move.b	#12,obj.XRender(a0)
-	bsr.w	_objectFall
-	jsr	_physBasicChkDown
-	tst.w	d1
-	bpl.s	.NoFloor
-	add.w	d1,obj.Y(a0)
-	move.w	#0,obj.YSpeed(a0)
-	addq.b	#2,obj.Action(a0)
 
-.NoFloor:  
+	; For some reason, it falls to the floor first
+	; This ends up looping the above init. code
+	; Probably done to adjust for collision scope
+	; However, it doesn't set to draw
+
+	bsr.w	_objectFall		; Apply gravity and speed
+
+	jsr	_physBasicChkDown	; Check collision down
+	tst.w	d1			
+	bpl.s	.OverFloor		; If over floor, exit
+
+	add.w	d1,obj.Y(a0)		; Adhere to floor
+	move.w	#0,obj.YSpeed(a0)	; Clear falling YSpeed
+	addq.b	#2,obj.Action(a0)	; Increment action cntr.
+
+.OverFloor:
 	rts
 
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 ; Main loop
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 
 Pig_Main:   
 	moveq	#0,d0
@@ -64,9 +73,9 @@ Pig_Main:
 	dc.w	PigSub_Idle-.Subdex
 ; ---------------------------------------------------------------------------
 
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 ; Walk to left or right and fire
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 
 PigSub_Walk: 
 	subq.w	#1,pig.Timer(a0)
@@ -86,7 +95,7 @@ PigSub_Walk:
 	move.b	#0,pig.Flag(a0)		; Clear firing flag
 	rts
 
-; --------------------------------------
+; -----------------------------------------------------
 
 .WaitTimer:
 	tst.b	pig.Flag(a0)		; Has bomb launched already?
@@ -112,9 +121,9 @@ PigSub_Walk:
 .NotFound:
 	rts
 
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 ; Wait a little bit before continuing to walk
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 
 PigSub_Idle:
 	subq.w	#1,pig.Timer(a0)
@@ -137,15 +146,15 @@ PigSub_Idle:
 .Return:
 	rts
 
-; ---------------------------------------------------------------------------
+; -----------------------------------------------------
 ; Display (unused)
-
+; -----------------------------------------------------
 Pig_Show:
 	bsr.w	_objectDraw
 	rts
-
+; -----------------------------------------------------
 ; Delete (unused)
-
+; -----------------------------------------------------
 Pig_Done:   
 	bsr.w	_objectDelete
 	rts
@@ -161,6 +170,7 @@ ObjBallBomb:
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
 	jmp	.Index(pc,d1.w)
+
 ; ---------------------------------------------------------------------------
 .Index:
 	dc.w	BallBomb_Init-.Index
@@ -175,8 +185,8 @@ BallBomb_Init:
 	move.b	#4,obj.Render(a0)
 	move.b	#3,obj.Priority(a0)
 	move.b	#$87,obj.Collision(a0)
-	move.b	#8,obj.XRender(a0)
-	move.w	#24,ballbomb.Timer(a0)
+	move.b	#8,obj.XRender(a0)		; X render width
+	move.w	#24,ballbomb.Timer(a0)		; Set initial timer value
 
 BallBomb_Main:
 	btst	#STAT.KILLED,obj.Status(a0)	; Check if kill flag set
@@ -207,8 +217,9 @@ BallBomb_Main:
 	bcs.s	BallBomb_Done
 	rts
 
-; ---------------------------------------------------------------------------
-; Delete (unused)
+; -----------------------------------------------------
+; Delete
+; -----------------------------------------------------
 
 BallBomb_Done:
 	bsr.w	_objectDelete

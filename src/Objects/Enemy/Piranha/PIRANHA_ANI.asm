@@ -1,8 +1,8 @@
 .anitbl:
-	dc.w	byte_8C42-.anitbl
-	dc.w	byte_8C46-.anitbl
-	dc.w	byte_8C4A-.anitbl
+	dc.w	pirachompslow-.anitbl
+	dc.w	pirachompfast-.anitbl
+	dc.w	pirastopchomp-.anitbl
 
-byte_8C42:	dc.b	7,0,1,$FF
-byte_8C46:	dc.b	3,0,1,$FF
-byte_8C4A:	dc.b	7,0,$FF,0
+pirachompslow:	dc.b	7,0,1,$FF
+pirachompfast:	dc.b	3,0,1,$FF
+pirastopchomp:	dc.b	7,0,$FF,0

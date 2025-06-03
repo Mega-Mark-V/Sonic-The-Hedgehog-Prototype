@@ -2,14 +2,15 @@
 ; Enemy Piranha object code (source name "fish")
 ; ---------------------------------------------------------------------------
 ; local enums
-batabata.YOrigin= $30
+
+piranha.YOrg	= $30
 
 objEnemyPiranha:
 	moveq	#0,d0
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
 	jsr	.Index(pc,d1.w)
-	bra.w	_objectChkOffscreen
+	bra.w	_objectChkOffscreen	; Always run delete if offscreen chk.
 
 ; ---------------------------------------------------------------------------
 .Index:
@@ -24,31 +25,38 @@ Piranha_Init:
 	move.b	#4,obj.Render(a0)
 	move.b	#4,obj.Priority(a0)
 	move.b	#9,obj.Collision(a0)
-	move.b	#$10,obj.XRender(a0)
-	move.w	#-$700,obj.YSpeed(a0)
-	move.w	obj.Y(a0),batabata.YOrigin(a0)
+	move.b	#16,obj.XRender(a0)
+	move.w	#-$700,obj.YSpeed(a0)		; Set initial YSpeed
+
+	move.w	obj.Y(a0),piranha.YOrg(a0)	; Set Y-origin pos.
+
+; -----------------------------------------------------
+; Main loop
+; -----------------------------------------------------
 
 Piranha_Main:
-	lea	(AniSpr_Piranha).l,a1
+	lea	AniSpr_Piranha,a1	; Animate
 	bsr.w	_objectAnimate
-	bsr.w	_objectSetSpeed
-	addi.w	#$18,obj.YSpeed(a0)
-	move.w	batabata.YOrigin(a0),d0
-	cmp.w	obj.Y(a0),d0
-	bcc.s	.NoJump
+	bsr.w	_objectSetSpeed		; Set speed 
+
+	addi.w	#$18,obj.YSpeed(a0)	; Add to YSpeed, falling manually
+
+	move.w	piranha.YOrg(a0),d0	; Get Y org.
+	cmp.w	obj.Y(a0),d0		; Check against current Y pos.
+	bhs.s	.SkipJump		; If above Y org., don't jump again
 	move.w	d0,obj.Y(a0)
 	move.w	#-$700,obj.YSpeed(a0)
 
-.NoJump:
-	move.b	#1,obj.Anim(a0)
-	subi.w	#$C0,d0
-	cmp.w	obj.Y(a0),d0
-	bcc.s	.Exit
-	move.b	#0,obj.Anim(a0)
-	tst.w	obj.YSpeed(a0)
-	bmi.s	.Exit
-	move.b	#2,obj.Anim(a0)
+.SkipJump:
+	move.b	#1,obj.Anim(a0)		; Use fast chomping anim.
+	subi.w	#$C0,d0			; Use Y org as anim. chg. range
+	cmp.w	obj.Y(a0),d0		; If above new range, exit
+	bhs.s	.Exit
+	move.b	#0,obj.Anim(a0)		; Otherwise, set slow chomp anim.
+
+	tst.w	obj.YSpeed(a0)		; Check if falling
+	bmi.s	.Exit			; If not, exit
+	move.b	#2,obj.Anim(a0)		; Otherwise, set no-chomping anim.
 
 .Exit:
 	rts
-; End of function objEnemyPiranha
