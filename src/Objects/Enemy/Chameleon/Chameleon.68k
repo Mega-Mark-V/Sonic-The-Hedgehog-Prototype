@@ -51,6 +51,7 @@ Chameleon_Main:
 	dc.w	Chameleon_Floor-.Subdex
 	dc.w	Chameleon_Move-.Subdex
 	dc.w	Chameleon_Shoot-.Subdex
+; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
 ; Wait for Player to be in range and parse user argument

@@ -5,6 +5,8 @@
 
 piranha.YOrg	= $30
 
+; ---------------------------------------------------------------------------
+
 objEnemyPiranha:
 	moveq	#0,d0
 	move.b	obj.Action(a0),d0
@@ -37,7 +39,7 @@ Piranha_Init:
 Piranha_Main:
 	lea	AniSpr_Piranha,a1	; Animate
 	bsr.w	_objectAnimate
-	bsr.w	_objectSetSpeed		; Set speed 
+	bsr.w	_objectSetSpeed		; Set speed
 
 	addi.w	#$18,obj.YSpeed(a0)	; Add to YSpeed, falling manually
 

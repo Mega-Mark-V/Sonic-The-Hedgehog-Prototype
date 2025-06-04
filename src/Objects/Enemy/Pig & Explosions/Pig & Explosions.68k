@@ -5,11 +5,13 @@
 ; This variant was seen in B-Roll footage used in Computer Chronicles
 ; ---------------------------------------------------------------------------
 
+; ---------------------------------------------------------------------------
+; Enemy Pig object code
+; ---------------------------------------------------------------------------
+; local enums
+
 pig.Timer	= $30
 pig.Flag	= $32
-
-; ---------------------------------------------------------------------------
-; Pig Object
 ; ---------------------------------------------------------------------------
 
 ObjEnemyPig:
@@ -19,14 +21,14 @@ ObjEnemyPig:
 	jmp	.Index(pc,d1.w)
 
 ; ---------------------------------------------------------------------------
-.Index:    
+.Index:
 	dc.w	Pig_Init-.Index
 	dc.w	Pig_Main-.Index
 	dc.w	Pig_Show-.Index
 	dc.w	Pig_Done-.Index
 ; ---------------------------------------------------------------------------
 
-Pig_Init:   
+Pig_Init:
 	move.b	#19,obj.YRad(a0)
 	move.b	#8,obj.XRad(a0)
 	move.l	#SprPat_Pig,obj.Pat(a0)
@@ -44,7 +46,7 @@ Pig_Init:
 	bsr.w	_objectFall		; Apply gravity and speed
 
 	jsr	_physBasicChkDown	; Check collision down
-	tst.w	d1			
+	tst.w	d1
 	bpl.s	.OverFloor		; If over floor, exit
 
 	add.w	d1,obj.Y(a0)		; Adhere to floor
@@ -58,7 +60,7 @@ Pig_Init:
 ; Main loop
 ; -----------------------------------------------------
 
-Pig_Main:   
+Pig_Main:
 	moveq	#0,d0
 	move.b	obj.SubAction(a0),d0
 	move.w	.Subdex(pc,d0.w),d1
@@ -68,7 +70,7 @@ Pig_Main:
 	bra.w	_objectChkOffscreen
 
 ; ---------------------------------------------------------------------------
-.Subdex:   
+.Subdex:
 	dc.w	PigSub_Walk-.Subdex
 	dc.w	PigSub_Idle-.Subdex
 ; ---------------------------------------------------------------------------
@@ -77,12 +79,12 @@ Pig_Main:
 ; Walk to left or right and fire
 ; -----------------------------------------------------
 
-PigSub_Walk: 
+PigSub_Walk:
 	subq.w	#1,pig.Timer(a0)
 	bpl.s	.WaitTimer
 
 	addq.b	#2,obj.SubAction(a0)	; Increment action
-	move.w	#$FF,pig.Timer(a0)	; Set timer 
+	move.w	#$FF,pig.Timer(a0)	; Set timer
 	move.w	#$40,obj.XSpeed(a0)	; Set base XSpeed
 	move.b	#1,obj.Anim(a0)		; Set anim
 
@@ -129,7 +131,7 @@ PigSub_Idle:
 	subq.w	#1,pig.Timer(a0)
 	bmi.s	.TimerDepl
 
-	bsr.w	_objectSetSpeed	
+	bsr.w	_objectSetSpeed
 	jsr	_physBasicChkDown
 	add.w	d1,obj.Y(a0)
 	rts
@@ -152,18 +154,24 @@ PigSub_Idle:
 Pig_Show:
 	bsr.w	_objectDraw
 	rts
+
 ; -----------------------------------------------------
 ; Delete (unused)
 ; -----------------------------------------------------
-Pig_Done:   
+Pig_Done:
 	bsr.w	_objectDelete
 	rts
+
+
 
 ; ---------------------------------------------------------------------------
 ; Bomb launched by Enemy Pig
 ; ---------------------------------------------------------------------------
+; local enums
 
 ballbomb.Timer	= $30
+
+; ---------------------------------------------------------------------------
 
 ObjBallBomb:
 	moveq	#0,d0
@@ -220,7 +228,6 @@ BallBomb_Main:
 ; -----------------------------------------------------
 ; Delete
 ; -----------------------------------------------------
-
 BallBomb_Done:
 	bsr.w	_objectDelete
 	rts
