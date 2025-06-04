@@ -1,0 +1,134 @@
+; ---------------------------------------------------------------------------
+; Enemy Ladybug object code (source name "musi")
+; ---------------------------------------------------------------------------
+
+objEnemyLadybug:
+	moveq   #0,d0
+	move.b  obj.Action(a0),d0
+	move.w  .Index(pc,d0.w),d1
+	jmp     .Index(pc,d1.w)
+
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w Ladybug_Init-.Index
+	dc.w Ladybug_Main-.Index
+	dc.w Ladybug_Smoke-.Index
+	dc.w Ladybug_Done-.Index
+; ---------------------------------------------------------------------------
+
+Ladybug_Init:
+	move.l  #SprPat_Ladybug,obj.Pat(a0)
+	move.w  #$4F0,obj.Tile(a0)
+	move.b  #4,obj.Render(a0)
+	move.b  #4,obj.Priority(a0)
+	move.b  #$14,obj.XRender(a0)
+	tst.b   obj.Anim(a0)
+	bne.s   .DoSmoke
+	move.b  #14,obj.YRad(a0)
+	move.b  #8,obj.XRad(a0)
+	move.b  #$C,obj.Collision(a0)
+	bsr.w   _objectFall
+	bsr.w   _physBasicChkDown
+	tst.w   d1
+	bpl.s   .NotFound
+	add.w   d1,obj.Y(a0)
+	move.w  #0,obj.YSpeed(a0)
+	addq.b  #2,obj.Action(a0)
+	bchg    #0,obj.Status(a0)
+
+.NotFound:
+	rts
+
+.DoSmoke:
+	addq.b  #4,obj.Action(a0)
+	bra.w   Ladybug_Smoke
+
+Ladybug_Main:
+	moveq   #0,d0
+	move.b  obj.SubAction(a0),d0
+	move.w  .Subdex(pc,d0.w),d1
+	jsr     .Subdex(pc,d1.w)
+	lea     (AniSpr_Ladybug).l,a1
+	bsr.w   _objectAnimate
+
+; -----------------------------------------------------
+; this is called globally lol
+; -----------------------------------------------------
+_objectChkOffscreen:
+	move.w  obj.X(a0),d0
+	andi.w  #$FF80,d0
+	move.w  (cameraAPosX).w,d1
+	subi.w  #128,d1
+	andi.w  #$FF80,d1
+	sub.w   d1,d0
+	bmi.w   .Offscreen
+	cmpi.w  #640,d0
+	bhi.w   .Offscreen
+	bra.w   _objectDraw
+; ---------------------------------------------------------------------------
+
+.Offscreen:
+	lea     (objectStates).w,a2
+	moveq   #0,d0
+	move.b  obj.Respawn(a0),d0
+	beq.s   .Delete
+	bclr    #7,2(a2,d0.w)
+
+.Delete:
+	bra.w   _objectDelete
+
+; ---------------------------------------------------------------------------
+.Subdex:
+	dc.w Ladybug_Paused-.Subdex
+	dc.w Ladybug_Moving-.Subdex
+; ---------------------------------------------------------------------------
+
+Ladybug_Paused:
+	subq.w  #1,obj.field_30(a0)
+	bpl.s   .Waiting
+	addq.b  #2,obj.SubAction(a0)
+	move.w  #-$100,obj.XSpeed(a0)
+	move.b  #1,obj.Anim(a0)
+	bchg    #0,obj.Status(a0)
+	bne.s   .Waiting
+	neg.w   obj.XSpeed(a0)
+
+.Waiting:
+	rts
+
+Ladybug_Moving:
+	bsr.w   _objectSetSpeed
+	bsr.w   _physBasicChkDown
+	cmpi.w  #-8,d1
+	blt.s   .AtWallOrCliff
+	cmpi.w  #$C,d1
+	bge.s   .AtWallOrCliff
+	add.w   d1,obj.Y(a0)
+	subq.b  #1,obj.field_33(a0)
+	bpl.s   .WaitSmokeTimer
+	move.b  #$F,obj.field_33(a0)
+	bsr.w   _objectFindFreeSlot
+	bne.s   .WaitSmokeTimer
+	move.b  #$40,obj.No(a1) ; '@' ; Spawn smoke object
+	move.w  obj.X(a0),obj.X(a1)
+	move.w  obj.Y(a0),obj.Y(a1)
+	move.b  obj.Status(a0),obj.Status(a1)
+	move.b  #2,obj.Anim(a1)
+
+.WaitSmokeTimer:
+	rts
+
+.AtWallOrCliff:
+	subq.b  #2,obj.SubAction(a0)
+	move.w  #59,obj.field_30(a0)
+	move.w  #0,obj.XSpeed(a0)
+	move.b  #0,obj.Anim(a0)
+	rts
+
+Ladybug_Smoke:
+	lea     (AniSpr_Ladybug).l,a1
+	bsr.w   _objectAnimate
+	bra.w   _objectDraw
+
+Ladybug_Done:
+	bra.w   _objectDelete
