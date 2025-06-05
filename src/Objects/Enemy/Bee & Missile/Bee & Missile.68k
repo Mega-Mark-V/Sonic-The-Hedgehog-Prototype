@@ -1,15 +1,22 @@
 ; ---------------------------------------------------------------------------
-; Enemy Bee object code (source name "hachi")
+; Enemy Bee and its missile projectile code.
+; The missile is also spawned by ObjEnemyChameleon
+; ---------------------------------------------------------------------------
+
+
+
+; ---------------------------------------------------------------------------
+; Enemy Bee main code (source name "hachi")
 ; ---------------------------------------------------------------------------
 ; local enums
 
-bee.Timer    =  $32
-bee.Flags    =  $34
-missile.Parent  =  $3C
+bee.Timer	= $32
+bee.Flags	= $34
+missile.Parent  = $3C
 
 ; ---------------------------------------------------------------------------
 
-objEnemyBee:
+ObjEnemyBee:
 	moveq   #0,d0
 	move.b  obj.Action(a0),d0
 	move.w  .Index(pc,d0.w),d1
@@ -17,14 +24,14 @@ objEnemyBee:
 
 ; ---------------------------------------------------------------------------
 .Index:
-	dc.w Bee_Init-.Index
-	dc.w Bee_Main-.Index
-	dc.w Bee_Done-.Index
+	dc.w	Bee_Init-.Index
+	dc.w	Bee_Main-.Index
+	dc.w	Bee_Done-.Index
 ; ---------------------------------------------------------------------------
 
 Bee_Init:
-	addq.b  #2,obj.Action(a0) ; Increment action to Main loop
-	move.l  #SprPat_Bee,obj.Pat(a0) ; Init sprite mappings and properties
+	addq.b  #2,obj.Action(a0)
+	move.l  #SprPat_Bee,obj.Pat(a0
 	move.w  #$444,obj.Tile(a0)
 	move.b  #4,obj.Render(a0)
 	move.b  #3,obj.Priority(a0)
@@ -36,9 +43,9 @@ Bee_Main:
 	move.b  obj.SubAction(a0),d0 ; Set up subaction table
 	move.w  .Subdex(pc,d0.w),d1
 	jsr     .Subdex(pc,d1.w)
-	lea     (AniSpr_Bee).l,a1
+	lea     AniSpr_Bee,a1
 	bsr.w   _objectAnimate
-	bra.w   _objectChkOffscreen
+	bra.w   _objectChkDespawn
 
 ; ---------------------------------------------------------------------------
 .Subdex:
@@ -101,7 +108,7 @@ Bee_Proximity:
 	neg.w   d0              ; abs. value?
 
 .ProxPositive:
-	cmpi.w  #$60,d0 ; '`'
+	cmpi.w  #$60,d0
 	bcc.s   .Exit
 	tst.b   obj.Render(a0)
 	bpl.s   .Exit
@@ -137,7 +144,7 @@ missile.Parent  =  $3C
 
 ; ---------------------------------------------------------------------------
 
-objMissile:
+ObjMissile:
 	moveq   #0,d0
 	move.b  obj.Action(a0),d0
 	move.w  .Index(pc,d0.w),d1
@@ -145,7 +152,7 @@ objMissile:
 
 ; ---------------------------------------------------------------------------
 .Index:
-	dc.w Missile_Init-*
+	dc.w Missile_Init-.Index
 	dc.w Missile_Bee-.Index
 	dc.w Missile_Move-.Index
 	dc.w Missile_Done-.Index
@@ -153,15 +160,18 @@ objMissile:
 ; ---------------------------------------------------------------------------
 
 Missile_Init:
-	subq.w  #1,missile.Timer(a0) ; Decrement parent timer
-	bpl.s   .ChkParentState ; If positive, branch to exit
-	addq.b  #2,obj.Action(a0) ; Setup properties
+	subq.w  #1,missile.Timer(a0) 	; Decrement parent timer
+	bpl.s   .ChkParentState		; If positive, branch to exit
+
+	addq.b  #2,obj.Action(a0)
 	move.l  #MapSpr_Missile,obj.Pat(a0)
 	move.w  #$2444,obj.Tile(a0)
 	move.b  #4,obj.Render(a0)
 	move.b  #3,obj.Priority(a0)
 	move.b  #8,obj.XRender(a0)
+	
 	andi.b  #3,obj.Status(a0)
+
 	tst.b   obj.Args(a0)
 	beq.s   Missile_Bee
 	move.b  #8,obj.Action(a0)
@@ -171,7 +181,7 @@ Missile_Init:
 
 Missile_Bee:
 	bsr.s   .ChkParentState
-	lea     (AniSpr_Missile).l,a1
+	lea     AniSpr_Missile,a1
 	bsr.w   _objectAnimate
 	bra.w   _objectDraw
 

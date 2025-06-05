@@ -42,7 +42,7 @@ Chameleon_Main:
 	lea	AniSpr_Chameleon,a1		; Set and run animation
 	bsr.w	_objectAnimate
 
-	bra.w	_objectChkOffscreen		; Kill if offscreen
+	bra.w	_objectChkDespawn		; Kill if offscreen
 
 ; ---------------------------------------------------------------------------
 .Subdex:  

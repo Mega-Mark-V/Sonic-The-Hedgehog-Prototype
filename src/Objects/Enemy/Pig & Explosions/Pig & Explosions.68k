@@ -67,7 +67,7 @@ Pig_Main:
 	jsr	.Subdex(pc,d1.w)
 	lea	AniSpr_Pig,a1
 	bsr.w	_objectAnimate
-	bra.w	_objectChkOffscreen
+	bra.w	_objectChkDespawn
 
 ; ---------------------------------------------------------------------------
 .Subdex:

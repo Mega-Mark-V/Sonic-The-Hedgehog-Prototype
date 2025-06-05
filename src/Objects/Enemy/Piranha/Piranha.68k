@@ -12,7 +12,7 @@ objEnemyPiranha:
 	move.b	obj.Action(a0),d0
 	move.w	.Index(pc,d0.w),d1
 	jsr	.Index(pc,d1.w)
-	bra.w	_objectChkOffscreen	; Always run delete if offscreen chk.
+	bra.w	_objectChkDespawn	; Always run delete if offscreen chk.
 
 ; ---------------------------------------------------------------------------
 .Index:

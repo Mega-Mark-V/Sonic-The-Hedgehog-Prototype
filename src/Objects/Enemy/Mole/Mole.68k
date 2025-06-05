@@ -49,21 +49,21 @@ Mole_Main:
 	jsr     .Subdex(pc,d1.w)
 	lea     (AniSpr_Mole).l,a1
 	bsr.w   _objectAnimate
-	bra.w   _objectChkOffscreen
+	bra.w   _objectChkDespawn
 
 ; ---------------------------------------------------------------------------
 .Subdex:
 	dc.w Mole_Move-.Subdex
-	dc.w loc_8DA2-.Subdex
-	dc.w loc_8E10-.Subdex
+	dc.w Mole_Jump-.Subdex
+	dc.w Mole_Fall-.Subdex
 ; ---------------------------------------------------------------------------
 
 Mole_Move:
 	subq.w  #1,mole.Timer(a0)
 	bpl.s   .WaitTimer
 	addq.b  #2,obj.SubAction(a0)
-	move.w  #255,obj.field_30(a0)
-	move.w  #128,obj.XSpeed(a0)
+	move.w  #255,mole.Timer(a0)
+	move.w  #$80,obj.XSpeed(a0)
 	move.b  #1,obj.Anim(a0)
 	bchg    #0,obj.Status(a0)
 	beq.s   .WaitTimer
@@ -72,7 +72,9 @@ Mole_Move:
 .WaitTimer:
 	rts
 
-loc_8DA2:
+; ---------------------------------------------------------------------------
+
+Mole_Jump:
 	subq.w  #1,mole.Timer(a0)
 	bmi.s   loc_8DDE
 	bsr.w   _objectSetSpeed
@@ -110,22 +112,26 @@ loc_8DFE:
 	move.b  #2,obj.Anim(a0)
 	rts
 
-loc_8E10:
+; ---------------------------------------------------------------------------
+
+Mole_Fall:
 	bsr.w   _objectSetSpeed
-	addi.w  #24,obj.YSpeed(a0)
-	bmi.s   locret_8E44
+	addi.w  #$18,obj.YSpeed(a0)
+	bmi.s   .Exit
 	move.b  #3,obj.Anim(a0)
 	bsr.w   _physBasicChkDown
 	tst.w   d1
-	bpl.s   locret_8E44
+	bpl.s   .Exit
 	add.w   d1,obj.Y(a0)
 	move.w  #0,obj.YSpeed(a0)
 	move.b  #1,obj.Anim(a0)
 	move.w  #255,mole.Timer(a0)
 	subq.b  #2,obj.SubAction(a0)
 
-locret_8E44:
+.Exit:
 	rts
+
+; ---------------------------------------------------------------------------
 
 Mole_Done:
 	bsr.w   _objectDelete

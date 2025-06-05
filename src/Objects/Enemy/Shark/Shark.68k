@@ -3,29 +3,29 @@
 ; ---------------------------------------------------------------------------
 
 objEnemyShark:
-        moveq   #0,d0
-        move.b  obj.Action(a0),d0
-        move.w  .Index(pc,d0.w),d1
-        jsr     .Index(pc,d1.w)
-        bra.w   _objectChkOffscreen
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jsr	.Index(pc,d1.w)
+	bra.w	_objectChkDespawn
 
 ; ---------------------------------------------------------------------------
 .Index:
-        dc.w Shark_Init-.Index
-        dc.w Shark_Main-.Index
+	dc.w	Shark_Init-.Index
+	dc.w	Shark_Main-.Index
 ; ---------------------------------------------------------------------------
 
 Shark_Init:
-        addq.b  #2,obj.Action(a0)
-        move.l  #SprPat_Shark,obj.Pat(a0)
-        move.w  #$47B,obj.Tile(a0)
-        move.b  #4,obj.Render(a0)
-        move.b  #$A,obj.Collision(a0)
-        move.b  #4,obj.Priority(a0)
-        move.b  #$10,obj.XRender(a0)
-        move.w  #-$40,obj.XSpeed(a0)
+	addq.b	#2,obj.Action(a0)
+	move.l	#SprPat_Shark,obj.Pat(a0)
+	move.w	#$47B,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#$A,obj.Collision(a0)
+	move.b	#4,obj.Priority(a0)
+	move.b	#$10,obj.XRender(a0)
 
+	move.w	#-$40,obj.XSpeed(a0)
 Shark_Main:
-        lea     (AniSpr_Shark).l,a1
-        bsr.w   _objectAnimate
-        bra.w   _objectSetSpeed
+	lea	AniSpr_Shark,a1
+	bsr.w	_objectAnimate
+	bra.w	_objectSetSpeed

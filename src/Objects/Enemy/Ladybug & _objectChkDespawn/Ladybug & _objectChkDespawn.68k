@@ -48,31 +48,41 @@ Ladybug_Main:
 	move.b  obj.SubAction(a0),d0
 	move.w  .Subdex(pc,d0.w),d1
 	jsr     .Subdex(pc,d1.w)
-	lea     (AniSpr_Ladybug).l,a1
+	lea     AniSpr_Ladybug,a1
 	bsr.w   _objectAnimate
+	; fall into function below
 
-; -----------------------------------------------------
-; this is called globally lol
-; -----------------------------------------------------
-_objectChkOffscreen:
-	move.w  obj.X(a0),d0
-	andi.w  #$FF80,d0
-	move.w  (cameraAPosX).w,d1
-	subi.w  #128,d1
-	andi.w  #$FF80,d1
-	sub.w   d1,d0
-	bmi.w   .Offscreen
-	cmpi.w  #640,d0
-	bhi.w   .Offscreen
-	bra.w   _objectDraw
+; ---------------------------------------------------------------------------
+; Global function for checking if an object should despawn or draw 
+; Will draw if onscreen, or delete and handle respawn state if offscreen
+;
+; Checks -128pix behind camA position (top left corner), then 640pix ahead
+;
+; This looks to have been programmed locally, but then called globally
 ; ---------------------------------------------------------------------------
 
+_objectChkDespawn:
+	move.w  obj.X(a0),d0		; d0 = xpos.
+	andi.w  #$FF80,d0		; Get in multiples of 128 pix. ($80)
+
+	move.w  cameraAPosX.w,d1	; d1 = camera X position
+	subi.w  #128,d1			; Adjust backward 128 pix.
+	andi.w  #$FF80,d1		; Multiples of 128 pix.
+
+	sub.w   d1,d0			; Get adjusted pos. relative to cam.
+
+	bmi.w   .Offscreen		; Branch if behind camera
+	cmpi.w  #640,d0			
+	bhi.w   .Offscreen		; Branch if ahead of camera
+
+	bra.w   _objectDraw		; Otherwise, draw normally
+
 .Offscreen:
-	lea     (objectStates).w,a2
+	lea     objectStates.w,a2	; Get state tbl.
 	moveq   #0,d0
-	move.b  obj.Respawn(a0),d0
-	beq.s   .Delete
-	bclr    #7,2(a2,d0.w)
+	move.b  obj.Respawn(a0),d0	; Get current obj. respawn setting
+	beq.s   .Delete			; Skip if empty
+	bclr    #7,2(a2,d0.w)		; Set state info
 
 .Delete:
 	bra.w   _objectDelete
@@ -105,17 +115,19 @@ Ladybug_Moving:
 	bge.s   .AtWallOrCliff
 	add.w   d1,obj.Y(a0)
 	subq.b  #1,obj.field_33(a0)
-	bpl.s   .WaitSmokeTimer
+	bpl.s   .Exit
 	move.b  #$F,obj.field_33(a0)
-	bsr.w   _objectFindFreeSlot
-	bne.s   .WaitSmokeTimer
-	move.b  #$40,obj.No(a1) ; '@' ; Spawn smoke object
-	move.w  obj.X(a0),obj.X(a1)
-	move.w  obj.Y(a0),obj.Y(a1)
-	move.b  obj.Status(a0),obj.Status(a1)
-	move.b  #2,obj.Anim(a1)
 
-.WaitSmokeTimer:
+	bsr.w   _objectFindFreeSlot		; Find slot
+	bne.s   .Exit				; Exit if none found
+
+	move.b  #OBJNO_ENEMYLADYBUG,obj.No(a1)	; Spawn smoke object
+	move.w  obj.X(a0),obj.X(a1)		; Copy X and Y pos.
+	move.w  obj.Y(a0),obj.Y(a1)
+	move.b  obj.Status(a0),obj.Status(a1)	; Inherit its status info.
+	move.b  #2,obj.Anim(a1)			; Set its animation
+
+.Exit:
 	rts
 
 .AtWallOrCliff:
