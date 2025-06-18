@@ -25,7 +25,7 @@ struct __attribute__((packed)) __attribute__((aligned(1))) obj
   char No;
   char Render;
   __int16 Tile;
-  int Map;
+  int Pat;
   __int16 X;
   __int16 YScr;
   __int16 Y;
@@ -35,7 +35,7 @@ struct __attribute__((packed)) __attribute__((aligned(1))) obj
   __int16 Momentum;
   char YRad;
   char XRad;
-  char XDraw;
+  char XRender;
   char Priority;
   char Frame;
   char AnimFrame;
@@ -183,7 +183,7 @@ enum gm
 };
 
 /* 8 */
-struct phys
+struct play
 {
   _BYTE gap0[20];
   __int16 Momentum;
@@ -218,10 +218,8 @@ struct phys
   __int16 Speedup;
   char FootFront;
   char FootBack;
-  char Convex;
-  char field_39;
-  char LocalTimer;
-  char field_3B;
+  __int16 YDeath;
+  __int16 LocalTimer;
   char Jump;
   char OnObject;
   char Locked;
@@ -261,7 +259,7 @@ enum artID
 /* 11 */
 struct __attribute__((packed)) __attribute__((aligned(1))) levelhead
 {
-  char plcID;
+  _BYTE gap0;
   __int16 field_1;
 };
 
@@ -301,27 +299,29 @@ enum textcode
 };
 
 /* 13 */
-enum objID
+enum OBJNO
 {
-  objID_Null = 0x0,
-  objID_Sonic = 0x1,
-  objID_SpecialStg = 0x9,
-  objID_LavaBall = 0x14,
-  objID_ProjectileBall = 0x20,
-  objID_Missile = 0x23,
-  objID_ProjectileExplosion = 0x24,
-  objID_Ring = 0x25,
-  objID_LightExplosion = 0x27,
-  objID_MonitorItem = 0x2E,
-  objID_TitleCard = 0x34,
-  objID_SpreadingFire = 0x35,
-  objID_RingLoss = 0x37,
-  objID_Shield = 0x38,
-  objID_GameOver = 0x39,
-  objID_Boss = 0x3D,
-  objID_BossWeapons = 0x48,
-  objID_Warp = 0x4A,
-  objID_GeyserSpawn = 0x4C,
+  OBJNO_NULL = 0x0,
+  OBJNO_PLAYER = 0x1,
+  OBJNO_PLAYSPECIAL = 0x9,
+  OBJNO_FIREBALL = 0x14,
+  OBJNO_BALLBOMB = 0x20,
+  OBJNO_MISSILE = 0x23,
+  OBJNO_BOMBHIT = 0x24,
+  OBJNO_RING = 0x25,
+  OBJNO_LIGHTEXPL = 0x27,
+  OBJNO_MONITORITEM = 0x2E,
+  OBJNO_TITLECARD = 0x34,
+  OBJNO_SPREADFIRE = 0x35,
+  what = 0x36,
+  OBJNO_RINGLOSS = 0x37,
+  OBJNO_SHIELD = 0x38,
+  OBJNO_GAMEOVER = 0x39,
+  OBJNO_BOSS = 0x3D,
+  OBJNO_ENEMYLADYBUG = 0x40,
+  OBJNO_BOSSWEAPONS = 0x48,
+  OBJNO_WARP = 0x4A,
+  OBJNO_GEYSERSPAWN = 0x4C,
 };
 
 /* 14 */
@@ -381,9 +381,9 @@ enum OBJREND
   REND_CAMOFF = 0x2,
   REND_CAMOFF2 = 0x3,
   REND_HEIGHT = 0x4,
-  REND_SPTYPE = 0x5,
+  REND_RAW = 0x5,
   REND_BEHIND = 0x6,
-  REND_ONSCREEN = 0x7,
+  REND_TOGGLE = 0x7,
 };
 
 /* 22 */
@@ -402,16 +402,12 @@ struct __attribute__((packed)) __attribute__((aligned(1))) snd
   char QueueA;
   char QueueB;
   char QueueC;
-  char SndFlag;
-  char SndMode;
-  __int16 Detune1;
-  __int16 Detune2;
-  __int16 Detune3;
-  __int16 Detune4;
-  int MusVoicePtr;
-  int SndVoicePtr;
-  int SpecialVoicePtr;
-  char FadeIn;
+  char field_D;
+  char IntrumentMode;
+  _BYTE gapF[9];
+  int field_18;
+  int field_1C;
+  int field_20;
   char FadeinCnt;
   char FadeinTime;
   char SndImportant;
@@ -482,17 +478,17 @@ struct channel
 /* 25 */
 struct __attribute__((packed)) __attribute__((aligned(1))) track
 {
-  char PlaybackCtrl;
-  char VoiceCtrl;
-  __int16 TempoDivider;
-  int VoicePointer;
+  char Flags;
+  char Channel;
+  __int16 Tempo;
+  int DataPtr;
   char Transpose;
   char Volume;
-  char AMSFMSPan;
-  char VoiceIndex;
+  char Pan;
+  char Instrument;
   char PSGEnvIndex;
   char StackPtr;
-  char DurationTimeout;
+  char DurCntr;
   char SavedDuration;
   char SavedPCM;
   char Freq;
@@ -518,7 +514,7 @@ struct __attribute__((packed)) __attribute__((aligned(1))) track
   char field_25;
   char field_26;
   char field_27;
-  char field_28;
+  char RepeatCntr;
   char field_29;
   __int16 field_2A;
   char field_2C;

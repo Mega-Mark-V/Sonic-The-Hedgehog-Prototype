@@ -1,0 +1,139 @@
+; ---------------------------------------------------------------------------
+; Code for the Title screen (GM_TITLE) objects
+; ---------------------------------------------------------------------------
+; local enums
+
+titleobj.Timer	= $1F
+
+; -----------------------------------------------------------
+; hardcoded value equates for positions
+
+TSONIC_XPOS	= 240
+TSONIC_YPOS	= 222	; Start Y pos.
+TSONIC_YPOS_MV	= 150	; Target Y pos.
+
+TMISC_XPOS	= 208
+TMISC_YPOS	= 304
+
+; -----------------------------------------------------------
+; VRAM tile equates
+
+TSONIC_TILE	= $2300
+TMISC_TILE	= $0200
+
+; ---------------------------------------------------------------------------
+; Big Sonic inside the emblem
+; ---------------------------------------------------------------------------
+
+ObjTitleSonic:      
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w	TitleSonic_Init-.Index
+	dc.w	TitleSonic_Wait-.Index
+	dc.w	TitleSonic_Move-.Index
+	dc.w	TitleSonic_Done-.Index
+; ---------------------------------------------------------------------------
+
+TitleSonic_Init:    
+	addq.b	#2,obj.Action(a0)
+	move.w	#TSONIC_XPOS,obj.X(a0)		; Hardcoded screen pos.
+	move.w	#TSONIC_YPOS,obj.YScr(a0)
+	move.l	#SprPat_TitleSonic,obj.Pat(a0)
+	move.w	#TSONIC_TILE,obj.Tile(a0)
+	move.b	#1,obj.Priority(a0)
+	move.b	#30-1,titleobj.Timer(a0)	; Set initial timer
+
+	lea	AniSpr_TitleSonic,a1
+	bsr.w	_objectAnimate
+
+TitleSonic_Wait:
+	subq.b	#1,titleobj.Timer(a0)	; Decrement timer, wait if not -1	
+	bpl.s	.Wait
+	addq.b	#2,obj.Action(a0)	; Increment action cntr.
+	bra.w	_objectDraw		; Draw and exit
+.Wait:
+	rts
+
+; ---------------------------------------------------------------------------
+
+TitleSonic_Move:
+	subq.w	#8,obj.YScr(a0)			; Move upwards 8 pix.
+	cmpi.w	#TSONIC_YPOS_MV,obj.YScr(a0)	; Are we at target pos.?
+	bne.s	.Wait				; If not, skip and wait
+
+	addq.b	#2,obj.Action(a0)	; Set next action (finish)	
+
+.Wait:
+	bra.w	_objectDraw
+	rts	; dead code
+
+; ---------------------------------------------------------------------------
+
+TitleSonic_Done:    
+	lea     AniSpr_TitleSonic,a1
+	bsr.w   _objectAnimate
+	bra.w   _objectDraw
+	rts	; dead code
+
+; ---------------------------------------------------------------------------
+; Misc. Title elements object
+; ---------------------------------------------------------------------------
+
+ObjTitleMisc:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jsr	.Index(pc,d1.w)
+	bra.w	_objectDraw		; Set to always display
+
+; ---------------------------------------------------------------------------
+.Index:     
+	dc.w	TitleMisc_Init-.Index
+	dc.w	TitleMisc_PressStart-.Index
+	dc.w	TitleMisc_Mask-.Index
+; ---------------------------------------------------------------------------
+
+TitleMisc_Init:
+	addq.b	#2,obj.Action(a0)
+	move.w	#$D0,obj.X(a0)			; Hardcoded positions
+	move.w	#$130,obj.YScr(a0)	
+	move.l	#SprPat_TitleMisc,obj.Pat(a0)
+	move.w	#$200,obj.Tile(a0)
+
+	; obj.Frame is set manually in GM_TITLE for the mask object
+
+	cmpi.b	#2,obj.Frame(a0)	; Is frame set to 2?
+	bne.s	TitleMisc_PressStart	; If not, skip ahead
+	addq.b	#2,obj.Action(a0)	; Change main action to...
+
+
+
+TitleMisc_Mask:
+
+	; ...do nothing! (loop for the spritemask)
+
+	rts
+
+; ---------------------------------------------------------------------------
+
+TitleMisc_PressStart:
+	lea	AniSpr_TitleInfo,a1	; Set animation and animate
+	bra.w	_objectAnimate
+
+; ---------------------------------------------------------------------------
+; Animation data
+; ---------------------------------------------------------------------------
+
+AniSpr_TitleSonic:
+	; wait to use linker
+AniSpr_TitleInfo:
+	; wait to use linker
+
+	; ugh
+	; The code for animation scripts globally used by objects follows
+	; Then, comes its mappings.
+	; so wait to use a linker. again.

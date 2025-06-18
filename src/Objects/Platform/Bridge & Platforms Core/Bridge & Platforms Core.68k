@@ -1,0 +1,511 @@
+; ---------------------------------------------------------------------------
+; Code for the Log Bridge object in GHZ, and core platform subroutines.
+; All this code was group together in one segment, so it's split as such.
+; ---------------------------------------------------------------------------
+
+; ---------------------------------------------------------------------------
+; Bridge Object code.
+; ---------------------------------------------------------------------------
+
+ObjBridge:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
+
+; ---------------------------------------------------------------------------
+.Index:
+	dc.w Bridge_Init-.Index
+	dc.w Bridge_Main-.Index
+	dc.w Bridge_StoodOn-.Index
+	dc.w Bridge_Null-.Index
+	dc.w Bridge_Null-.Index
+	dc.w Bridge_Link-.Index
+; ---------------------------------------------------------------------------
+
+Bridge_Init:
+	addq.b	#2,obj.Action(a0)		; Basic init.
+	move.l	#SprPat_Bridge,obj.Pat(a0)
+	move.w	#$438E,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#3,obj.Priority(a0)
+	move.b	#128,obj.XRender(a0)
+
+	move.w	obj.Y(a0),d2		; d2 = Y
+	move.w	obj.X(a0),d3		; d3 = X
+	move.b	obj.No(a0),d4		; d4 = Object No.
+	lea	obj.Args(a0),a2		; a2 = Arg. RAM
+
+	moveq	#0,d1
+	move.b	(a2),d1			; Save user arg. in d1
+	move.b	#0,(a2)+		; Clear core user arg.
+					; **a2 = bridge.Links**
+	move.w	d1,d0			; Get user arg from d1
+	lsr.w	#1,d0			; Drop odd numbers. (d0 / 2)
+	lsl.w	#4,d0			; Get first link pos. (d0 * 16)
+	sub.w	d0,d3			; Subtract from saved core X-pos.
+	subq.b	#2,d1			; Subtract for dbf loop
+	bcs.s	Bridge_Main
+
+; ---------------------------------------------------------------------------
+; Build links for length of bridge
+; ---------------------------------------------------------------------------
+
+.BuildLogsLoop:
+	bsr.w	_objectFindFreeSlot	; a1 = Found slot
+	bne.s	.NoSlotFound
+	addq.b	#1,obj.Args(a0)
+
+	cmp.w	obj.X(a0),d3		; Are we at core link position?
+	bne.s	.Normal			; If not, skip
+
+	addi.w	#16,d3			; Increment position delta
+
+	move.w	d2,obj.Y(a0)		; Set core Y position
+	move.w	d2,bridge.YOrg(a0)	; Set core Y origin
+
+	move.w	a0,d5			; Get core slot        	
+	subi.w	#OBJECTRAM,d5		; Make into slot no.
+	lsr.w	#6,d5			; (d5 / 64)
+	andi.w	#$7F,d5			; limit to 128
+	move.b	d5,(a2)+		; Set this link slot no. as core
+
+	addq.b	#1,obj.Args(a0)	
+
+.Normal:
+	move.w	a1,d5			; Get found slot
+	subi.w	#OBJECTRAM,d5		; Make into slot no.
+	lsr.w	#6,d5			; (d5 / 64)
+	andi.w	#$7F,d5			; limit to 128
+	move.b	d5,(a2)+		; Set current link slot no.
+
+	; Manually initialize child object slot
+
+	move.b	#$A,obj.Action(a1)	; Set its act. ctr. to Bridge_Link
+	move.b	d4,obj.No(a1)		; Set object no. 
+	move.w	d2,obj.Y(a1)
+	move.w	d2,bridge.YOrg(a1)
+	move.w	d3,obj.X(a1)
+	move.l	#SprPat_Bridge,obj.Pat(a1)
+	move.w	#$438E,obj.Tile(a1)
+	move.b	#4,obj.Render(a1)
+	move.b	#3,obj.Priority(a1)
+	move.b	#8,obj.XRender(a1)
+	addi.w	#16,d3
+	dbf	d1,.BuildLogsLoop
+	; ...
+
+.NoSlotFound:
+
+	; Fall into Bridge_Main
+
+; ---------------------------------------------------------------------------
+; Main routine, Check if player is to be lifted
+; ---------------------------------------------------------------------------
+
+Bridge_Main:     
+	bsr.s   .Do
+	tst.b   bridge.Bend(a0)
+	beq.s   .NoBending
+	subq.b  #4,bridge.Bend(a0)
+	bsr.w   _bridgeBend
+
+.NoBending:     
+	bsr.w   _objectDraw
+	bra.w   _bridgeChkOffscreen
+
+.Do:      
+	moveq   #0,d1
+	move.b  obj.Args(a0),d1
+	lsl.w   #3,d1
+	move.w  d1,d2
+	addq.w  #8,d1
+	add.w   d2,d2
+	lea     OBJECTRAM.w,a1
+	tst.w   play.YSpeed(a1)
+	bmi.w   _objectLiftPlay.Exit
+	move.w  play.X(a1),d0
+	sub.w   obj.X(a0),d0
+	add.w   d1,d0
+	bmi.w   _objectLiftPlay.Exit	; exit if to left
+	cmp.w   d2,d0
+	bcc.w   _objectLiftPlay.Exit	; exit if to right
+	bra.s   _objectLiftPlay.UserX	; Will increment action counter
+
+; ---------------------------------------------------------------------------
+; Core platform lifting subroutine
+; Checks if the player has entered radius 
+; ---------------------------------------------------------------------------
+
+
+_objectLiftPlay:
+	lea     OBJECTRAM.w,a1		; a1 = player
+	tst.w   play.YSpeed(a1)
+	bmi.w   _objectLiftPlay.Exit	; exit if moving upwards
+	move.w  play.X(a1),d0
+	sub.w   obj.X(a0),d0
+	add.w   d1,d0
+	bmi.w   .Exit			; exit if to left
+	add.w   d1,d1
+	cmp.w   d1,d0
+	bcc.w   .Exit 			; exit if to right
+
+.UserX:
+	move.w  obj.Y(a0),d0
+	subq.w  #8,d0
+
+.UserXY:
+	move.w  play.Y(a1),d2   	; play ypos = d2
+	move.b  play.YRad(a1),d1 	; play. yrad = d1
+	ext.w   d1			; d1.b -> d1.w
+	add.w   d2,d1			; get player cur. foot pos.
+	addq.w  #4,d1			; adjust up 4 pix
+	sub.w   d1,d0			; d0 = plat. Y pos, subtract d1 from
+	bhi.w   .Exit 			; exit if above range
+	cmpi.w  #-16,d0
+	bcs.w   .Exit			; exit if below range
+	cmpi.b  #6,play.Action(a1)
+	bcc.w   .Exit			; exit if player dead
+	add.w   d0,d2			; add cur. Y pos
+	addq.w  #3,d2			; adjust up 3 pix
+	move.w  d2,play.Y(a1)		; adhere player to it
+	addq.b  #2,obj.Action(a0) 	; inc platform act. cntr
+
+.UserRange:              
+	btst    #PHYS.LIFTED,play.Status(a1) ; already lifted?
+	beq.s   .NotLifted     ; if not, skip
+	moveq   #0,d0
+	move.b  play.OnObject(a1),d0 ; get object slot player is set on
+	lsl.w   #6,d0
+	addi.l  #$FFD000,d0
+	movea.l d0,a2
+	cmpi.b  #4,obj.Action(a2) ; basically exchanges object collided with
+	bne.s   .NotLifted
+	subq.b  #2,obj.Action(a2)
+	clr.b   obj.SubAction(a2)
+
+.NotLifted:     
+	move.w  a0,d0           	; get cur. object slot
+	subi.w  #$D000,d0
+	lsr.w   #6,d0
+	andi.w  #$7F,d0
+	move.b  d0,play.OnObject(a1) ; set new stood on object
+	move.b  #0,play.Angle(a1)
+	move.w  #0,play.YSpeed(a1)
+	move.w  play.XSpeed(a1),d0
+	asr.w   #2,d0
+	sub.w   d0,play.XSpeed(a1)
+	move.w  play.XSpeed(a1),play.Momentum(a1)
+	btst    #PHYS.AIRBORNE,play.Status(a1)
+	beq.s   .NotAirborne
+	move.l  a0,-(sp)        ; push plat. onto stack
+	movea.l a1,a0           ; set cur. obj. as player
+	jsr     _physAirExit 	; run player's air exit routine
+	movea.l (sp)+,a0        ; restore plat. in a0
+
+.NotAirborne:   
+	bset    #PHYS.LIFTED,obj.Status(a1)
+	bset    #STAT.LIFTING,obj.Status(a0)
+
+.Exit:                   
+	rts
+; End of function _objectLiftPlay
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+_objectLiftPlaySloped:                  
+	lea     OBJECTRAM.w,a1
+	tst.w   obj.YSpeed(a1)
+	bmi.w   _objectLiftPlay.Exit
+	move.w  obj.X(a1),d0
+	sub.w   obj.X(a0),d0
+	add.w   d1,d0
+	bmi.s   _objectLiftPlay.Exit
+	add.w   d1,d1
+	cmp.w   d1,d0
+	bcc.s   _objectLiftPlay.Exit
+	btst    #REND.XMIRR,obj.Render(a0)
+	beq.s   .NotFlipped
+	not.w   d0
+	add.w   d1,d0
+
+.NotFlipped:    
+	lsr.w   #1,d0
+	moveq   #0,d3
+	move.b  (a2,d0.w),d3
+	move.w  obj.Y(a0),d0
+	sub.w   d3,d0
+	bra.w   _objectLiftPlay.UserXY
+; End of function _objectLiftPlaySloped
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+_objectLiftPlaySizable:                 
+	lea     (objSlot00).w,a1
+	tst.w   play.YSpeed(a1)
+	bmi.w   _objectLiftPlay.Exit ; moving up
+	move.w  play.X(a1),d0
+	sub.w   obj.X(a0),d0
+	add.w   d1,d0
+	bmi.w   _objectLiftPlay.Exit
+	add.w   d1,d1
+	cmp.w   d1,d0
+	bcc.w   _objectLiftPlay.Exit
+	move.w  obj.Y(a0),d0
+	sub.w   d3,d0
+	bra.w   _objectLiftPlay.UserXY
+; End of function _objectLiftPlaySizable
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+Bridge_StoodOn:  
+	bsr.s   .Do
+	bsr.w   _objectDraw
+	bra.w   _bridgeChkOffscreen
+; ---------------------------------------------------------------------------
+
+.Do:     
+	moveq   #0,d1
+	move.b  obj.Args(a0),d1
+	lsl.w   #3,d1
+	move.w  d1,d2
+	addq.w  #8,d1
+	bsr.s   _objectLiftPlayChkExit_User
+	bcc.s   .Exit
+	lsr.w   #4,d0
+	move.b  d0,bridge.Lifter(a0)
+	move.b  bridge.Bend(a0),d0
+	cmpi.b  #obj.Size,d0
+	beq.s   .BendCap
+	addq.b  #4,bridge.Bend(a0)
+
+.BendCap:
+	bsr.w   _bridgeBend
+	bsr.w   _bridgeSetPlayerY
+
+.Exit:   
+	rts
+; End of function Bridge_StoodOn
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+_objectLiftPlayChkExit:                 
+	move.w  d1,d2
+
+_objectLiftPlayChkExit_User:            
+	add.w   d2,d2
+	lea     (objSlot00).w,a1
+	btst    #PHYS.AIRBORNE,obj.Status(a1)
+	bne.s   .SetOff
+	move.w  obj.X(a1),d0
+	sub.w   obj.X(a0),d0
+	add.w   d1,d0
+	bmi.s   .SetOff
+	cmp.w   d2,d0
+	bcs.s   .Exit
+
+.SetOff: 
+	bclr    #PHYS.LIFTED,obj.Status(a1)
+	move.b  #2,obj.Action(a0)
+	bclr    #3,obj.Status(a0)
+
+.Exit:   
+	rts
+; End of function _objectLiftPlayChkExit
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+_bridgeSetPlayerY:                      
+	moveq   #0,d0
+	move.b  bridge.Lifter(a0),d0
+	move.b  bridge.Children(a0,d0.w),d0
+	lsl.w   #6,d0
+	addi.l  #objSlot00,d0
+	movea.l d0,a2
+	lea     (objSlot00).w,a1
+	move.w  obj.Y(a2),d0
+	subq.w  #8,d0
+	moveq   #0,d1
+	move.b  obj.YRad(a1),d1
+	sub.w   d1,d0
+	move.w  d0,obj.Y(a1)
+	rts
+; End of function _bridgeSetPlayerY
+
+
+; =============== S U B R O U T I N E =======================================
+
+
+_bridgeBend:     
+	move.b  bridge.Bend(a0),d0
+	bsr.w   CalcSinCos
+	move.w  d0,d4
+	lea     (BridgeBendingData).l,a4
+	moveq   #0,d0
+	move.b  obj.Args(a0),d0 ; get size
+	lsl.w   #4,d0           ; (d0 * 16) for index
+	moveq   #0,d3
+	move.b  bridge.Lifter(a0),d3 ; get current lifter
+	move.w  d3,d2
+	add.w   d0,d3
+	moveq   #0,d5
+	lea     (BridgeOffsetData).l,a5
+	move.b  (a5,d3.w),d5
+	andi.w  #$F,d3
+	lsl.w   #4,d3
+	lea     (a4,d3.w),a3
+	lea     bridge.Children(a0),a2
+
+.SetLeftHalf:   
+	moveq   #0,d0
+	move.b  (a2)+,d0
+	lsl.w   #6,d0
+	addi.l  #$FFD000,d0
+	movea.l d0,a1
+	moveq   #0,d0
+	move.b  (a3)+,d0
+	addq.w  #1,d0
+	mulu.w  d5,d0
+	mulu.w  d4,d0
+	swap    d0
+	add.w   play.Jump(a1),d0
+	move.w  d0,obj.Y(a1)
+	dbf     d2,.SetLeftHalf
+	moveq   #0,d0
+	move.b  obj.Args(a0),d0
+	moveq   #0,d3
+	move.b  bridge.Lifter(a0),d3
+	addq.b  #1,d3
+	sub.b   d0,d3
+	neg.b   d3
+	bmi.s   .Exit
+	move.w  d3,d2
+	lsl.w   #4,d3
+	lea     (a4,d3.w),a3
+	adda.w  d2,a3
+	subq.w  #1,d2
+	bcs.s   .Exit
+
+.SetRightHalf:  
+	moveq   #0,d0
+	move.b  (a2)+,d0
+	lsl.w   #6,d0
+	addi.l  #$FFD000,d0
+	movea.l d0,a1
+	moveq   #0,d0
+	move.b  -(a3),d0
+	addq.w  #1,d0
+	mulu.w  d5,d0
+	mulu.w  d4,d0
+	swap    d0
+	add.w   bridge.YOrg(a1),d0
+	move.w  d0,obj.Y(a1)
+	dbf     d2,.SetRightHalf
+
+.Exit:   
+	rts
+; ---------------------------------------------------------------------------
+; Data tables for bridge Y position math
+; ---------------------------------------------------------------------------
+
+BridgeOffsetData:
+	dc.b   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 
+	dc.b   2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  6,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8,  6,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8,  8,  6,  4,  2,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A,  8,  6,  4,  2,  0,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A, $A,  8,  6,  4,  2,  0,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A, $C, $A,  8,  6,  4,  2,  0,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A, $C, $C, $A,  8,  6,  4,  2,  0,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A, $C, $E, $C, $A,  8,  6,  4,  2,  0,  0,  0
+	dc.b   2,  4,  6,  8, $A, $C, $E, $E, $C, $A,  8,  6,  4,  2,  0,  0
+	dc.b   2,  4,  6,  8, $A, $C, $E,$10, $E, $C, $A,  8,  6,  4,  2,  0
+	dc.b   2,  4,  6,  8, $A, $C, $E,$10,$10, $E, $C, $A,  8,  6,  4,  2
+
+BridgeBendingData:                     
+	dc.b $FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $B5,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $7E,$DB,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $61,$B5,$EC,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $4A,$93,$CD,$F3,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $3E,$7E,$B0,$DB,$F6,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $38,$6D,$9D,$C5,$E4,$F8,$FF,  0,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $31,$61,$8E,$B5,$D4,$EC,$FB,$FF,  0,  0,  0,  0,  0,  0,  0,  0
+	dc.b $2B,$56,$7E,$A2,$C1,$DB,$EE,$FB,$FF,  0,  0,  0,  0,  0,  0,  0
+	dc.b $25,$4A,$73,$93,$B0,$CD,$E1,$F3,$FC,$FF,  0,  0,  0,  0,  0,  0
+	dc.b $1F,$44,$67,$88,$A7,$BD,$D4,$E7,$F4,$FD,$FF,  0,  0,  0,  0,  0
+	dc.b $1F,$3E,$5C,$7E,$98,$B0,$C9,$DB,$EA,$F6,$FD,$FF,  0,  0,  0,  0
+	dc.b $19,$38,$56,$73,$8E,$A7,$BD,$D1,$E1,$EE,$F8,$FE,$FF,  0,  0,  0
+	dc.b $19,$38,$50,$6D,$83,$9D,$B0,$C5,$D8,$E4,$F1,$F8,$FE,$FF,  0,  0
+	dc.b $19,$31,$4A,$67,$7E,$93,$A7,$BD,$CD,$DB,$E7,$F3,$F9,$FE,$FF,  0
+	dc.b $19,$31,$4A,$61,$78,$8E,$A2,$B5,$C5,$D4,$E1,$EC
+
+; ---------------------------------------------------------------------------
+; Subroutine to delete bridge and all children if offscreen
+; ---------------------------------------------------------------------------
+
+_bridgeChkOffscreen:                    
+	move.w  obj.X(a0),d0
+	andi.w  #$FF80,d0
+	move.w  cameraAPosX.w,d1
+	subi.w  #128,d1
+	andi.w  #$FF80,d1
+	sub.w   d1,d0
+	cmpi.w  #640,d0
+	bhi.w   .DeleteBridge
+	rts
+
+.DeleteBridge:  
+	moveq   #0,d2
+	lea     obj.Args(a0),a2
+	move.b  (a2)+,d2
+	subq.b  #1,d2
+	bcs.s   .DeleteParent
+
+.DeleteChildren:
+	moveq   #0,d0
+	move.b  (a2)+,d0
+	lsl.w   #6,d0
+	addi.l  #objSlot00,d0
+	movea.l d0,a1
+	cmp.w   a0,d0
+	beq.s   .SkipDel
+	bsr.w   _objectDeleteChild
+
+.SkipDel:
+	dbf     d2,.DeleteChildren
+
+.DeleteParent:  
+	bsr.w   _objectDelete
+	rts
+
+; ---------------------------------------------------------------------------
+; Delete object (unused)
+; ---------------------------------------------------------------------------
+
+Bridge_Null:     
+	bsr.w   _objectDelete
+	rts
+
+; ---------------------------------------------------------------------------
+; Draw object, executed by each child link
+; ---------------------------------------------------------------------------
+
+Bridge_Link:     
+	bsr.w   _objectDraw
+	rts
