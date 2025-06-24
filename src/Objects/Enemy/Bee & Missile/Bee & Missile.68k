@@ -164,7 +164,7 @@ Missile_Init:
 	bpl.s   .ChkParentState		; If positive, branch to exit
 
 	addq.b  #2,obj.Action(a0)
-	move.l  #MapSpr_Missile,obj.Pat(a0)
+	move.l  #SprPat_Missile,obj.Pat(a0)
 	move.w  #$2444,obj.Tile(a0)
 	move.b  #4,obj.Render(a0)
 	move.b  #3,obj.Priority(a0)

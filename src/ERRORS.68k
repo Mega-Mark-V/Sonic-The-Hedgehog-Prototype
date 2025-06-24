@@ -3,125 +3,135 @@
 ; ---------------------------------------------------------------------------
 ; Constants
 ; ---------------------------------------------------------------------------
-                rsreset
-errorGeneric    rs.w    1
-errorBus        rs.w    1
-errorIllegal    rs.w    1     	
-errorAddress    rs.w    1      
-errorZeroDiv    rs.w    1      
-errorChkInst    rs.w    1   
-errorTrapV      rs.w    1     
-errorPrivilege  rs.w    1       
-errorTrace      rs.w    1
-errorLineA      rs.w    1
-errorLineF      rs.w    1
+		rsreset
+ERRNO_GENERIC		rs.w	1
+ERRNO_BUS		rs.w	1
+ERRNO_ILLEGAL		rs.w	1 
+ERRNO_ADDRESS		rs.w	1 
+ERRNO_ZERODIV		rs.w	1 
+ERRNO_CHKINST		rs.w	1 
+ERRNO_TRAPV		rs.w	1 
+ERRNO_PRIVILEGE		rs.w	1 
+ERRNO_TRACE		rs.w	1
+ERRNO_LINE1010		rs.w	1
+ERRNO_LINE1111		rs.w	1
 
-ERRORTILEBASE	 EQU 	$0790		; VRAM Tile ID base
+ERRORTILEBASE		EQU	$0790	; VRAM Tile ID base
 
 ; ---------------------------------------------------------------------------
 ; Error "Jumptable"
 ; Called in the 68k vector table directly for these exceptions
 ; ---------------------------------------------------------------------------
 
-ERROR_BUS:                      
-        move.b  #errorBus,errorCode.w
-        bra.s   ErrorDetailed
-ERROR_ADDRESS:                  
-        move.b  #errorIllegal,errorCode.w
-        bra.s   ErrorDetailed
-ERROR_ILLEGAL:                  
-        move.b  #errorAddress,errorCode.w
-        addq.l  #2,2(sp)
-        bra.s   ErrorMain
-ERROR_ZERODIV:                  
-        move.b  #errorZeroDiv,errorCode.w
-        bra.s   ErrorMain
-ERROR_CHKINST:                  
-        move.b  #errorChkInst,errorCode.w
-        bra.s   ErrorMain
-ERROR_TRAPV:                    
-        move.b  #errorTrapV,errorCode.w
-        bra.s   ErrorMain
-ERROR_PRIVILEGE:                
-        move.b  #errorPrivilege,errorCode.w
-        bra.s   ErrorMain
-ERROR_TRACE:                    
-        move.b  #errorTrace,errorCode.w
-        bra.s   ErrorMain
-ERROR_LINEA:                    
-        move.b  #errorLineA,errorCode.w
-        addq.l  #2,2(sp)
-        bra.s   ErrorMain
-ERROR_LINEF:                    
-        move.b  #errorLineF,errorCode.w
-        addq.l  #2,2(sp)
-        bra.s   ErrorMain
-ERROR:                  
-        move.b  #errorGeneric,errorCode.w
-        bra.s   ErrorMain
-        
+ERROR_BUS:
+	move.b	#ERRNO_BUS,errorCode.w
+	bra.s	ErrorDetailed
+
+ERROR_ADDRESS:
+	move.b	#ERRNO_ILLEGAL,errorCode.w
+	bra.s	ErrorDetailed
+
+ERROR_ILLEGAL:
+	move.b	#ERRNO_ADDRESS,errorCode.w
+	addq.l	#2,2(sp)
+	bra.s	ErrorMain
+
+ERROR_ZERODIV:
+	move.b	#ERRNO_ZERODIV,errorCode.w
+	bra.s	ErrorMain
+
+ERROR_CHKINST:
+	move.b	#ERRNO_CHKINST,errorCode.w
+	bra.s	ErrorMain
+
+ERROR_TRAPV:
+	move.b	#ERRNO_TRAPV,errorCode.w
+	bra.s	ErrorMain
+
+ERROR_PRIVILEGE:
+	move.b	#ERRNO_PRIVILEGE,errorCode.w
+	bra.s	ErrorMain
+
+ERROR_TRACE:
+	move.b	#ERRNO_TRACE,errorCode.w
+	bra.s	ErrorMain
+
+ERROR_LINE1010:
+	move.b	#ERRNO_LINE1010,errorCode.w
+	addq.l	#2,2(sp)
+	bra.s	ErrorMain
+
+ERROR_LINE1111:
+	move.b	#ERRNO_LINE1111,errorCode.w
+	addq.l	#2,2(sp)
+	bra.s	ErrorMain
+
+ERROR:
+	move.b	#ERRNO_GENERIC,errorCode.w
+	bra.s	ErrorMain
+	
 ; ---------------------------------------------------------------------------
 ; Secondary handler for drawing extra information for specific errors
 ; ---------------------------------------------------------------------------
 
-ErrorDetailed:                   
-        move    #$2700,sr			; Disable interrupts
-        addq.w  #2,sp				; Increment stack pointer
-        move.l  (sp)+,errorInfo.w		; Save info to draw afterwards
-        addq.w  #2,sp				
-        movem.l d0-d7/a0-a7,objectStates.w	; Dump registers to RAM
-        bsr.w   DrawErrorMsg			; Draw Error ASCII
-        move.l  2(sp),d0			; Get exception info
-        bsr.w   DrawErrorValue			; Draw longword onscreen
-        move.l  errorInfo.w,d0			; Get saved info from earlier
-        bsr.w   DrawErrorValue			; Draw another longword
-        bra.s   ErrorExit			; Finish to loop
-        
+ErrorDetailed:
+	move    #$2700,sr			; Disable interrupts
+	addq.w  #2,sp				; Increment stack pointer
+	move.l  (sp)+,errorInfo.w		; Save info to draw afterwards
+	addq.w  #2,sp				
+	movem.l d0-d7/a0-a7,objectStates.w	; Dump registers to RAM
+	bsr.w   DrawErrorMsg			; Draw Error ASCII
+	move.l  2(sp),d0			; Get exception info
+	bsr.w   DrawErrorValue			; Draw longword onscreen
+	move.l  errorInfo.w,d0			; Get saved info from earlier
+	bsr.w   DrawErrorValue			; Draw another longword
+	bra.s   ErrorExit			; Finish to loop
+	
 ; ---------------------------------------------------------------------------
 ; Main "Handler"
 ; ---------------------------------------------------------------------------
 
-ErrorMain:                    
-        move    #$2700,sr                       ; Disable interrupts
-        movem.l d0-d7/a0-a7,objectStates.w      ; Dump all registers
-        bsr.w   DrawErrorMsg                    ; Draw Error message
-        move.l  2(sp),d0                        
-        bsr.w   DrawErrorValue                  ; Draw its information
+ErrorMain:
+	move    #$2700,sr                       ; Disable interrupts
+	movem.l d0-d7/a0-a7,objectStates.w      ; Dump all registers
+	bsr.w   DrawErrorMsg                    ; Draw Error message
+	move.l  2(sp),d0                        
+	bsr.w   DrawErrorValue                  ; Draw its information
 
-ErrorExit:                 
-        bsr.w   WaitPlayerInput
-        movem.l objectStates.w,d0-d7/a0-a7
-        move    #$2300,sr
-        rte
+ErrorExit:
+	bsr.w   WaitPlayerInput
+	movem.l objectStates.w,d0-d7/a0-a7
+	move    #$2300,sr
+	rte
 
 ; ---------------------------------------------------------------------------
 ; Display Handler
 ; ---------------------------------------------------------------------------
 
-DrawErrorMsg:                
-        lea     VDPDATA,a6
-        VDPCMD  move.l,$F800,VRAM,WRITE,d0      ; Set VRAM write address
-        lea     ArtUnc_Text,a0
-        move.w  #$27F,d1
+DrawErrorMsg:
+	lea     VDPDATA,a6
+	VDPCMD  move.l,$F800,VRAM,WRITE,d0      ; Set VRAM write address
+	lea     ArtUnc_Text,a0
+	move.w  #$27F,d1
 
-.LoadText:                     
-        move.w  (a0)+,(a6)
-        dbf     d1,.LoadText
-        
-        moveq   #0,d0
-        move.b  errorCode.w,d0
-        move.w  ErrorMsgs(pc,d0.w),d0
-        lea     ErrorMsgs(pc,d0.w),a0
-        VDPCMD  move.l,$C604,VRAM,WRITE,VDPCTRL
-        moveq   #18-1,d1			; Set string size
+.LoadText:
+	move.w  (a0)+,(a6)
+	dbf     d1,.LoadText
+	
+	moveq   #0,d0
+	move.b  errorCode.w,d0
+	move.w  ErrorMsgs(pc,d0.w),d0
+	lea     ErrorMsgs(pc,d0.w),a0
+	VDPCMD  move.l,$C604,VRAM,WRITE,VDPCTRL
+	moveq   #18-1,d1			; Set string size
 
-.DrawMsg:                  
-        moveq   #0,d0	
-        move.b  (a0)+,d0			; Get ASCII character				
-        addi.w  #ERRORTILEBASE,d0		; Add tile base
-        move.w  d0,(a6)				; Send tile to tilemap
-        dbf     d1,.DrawMsg			; Print for string size
-        rts
+.DrawMsg:
+	moveq   #0,d0	
+	move.b  (a0)+,d0			; Get ASCII character				
+	addi.w  #ERRORTILEBASE,d0		; Add tile base
+	move.w  d0,(a6)				; Send tile to tilemap
+	dbf     d1,.DrawMsg			; Print for string size
+	rts
 
 ; ---------------------------------------------------------------------------
 ; Error ASCIItext Index
@@ -150,43 +160,43 @@ ascErrorPriv:   dc.b 'PRIVILEGE VIOLATION'
 ascErrorTrac:   dc.b 'TRACE              ' 
 ascErrorLinA:  	dc.b 'LINE 1010 EMULATOR ' 
 ascErrorLinF:  	dc.b 'LINE 1111 EMULATOR ' 
-        even
+	even
 
 ; ---------------------------------------------------------------------------
 ; Calculate tiles for the values associated with error exceptions
 ; ---------------------------------------------------------------------------
 
 DrawErrorValue:                 
-        move.w  #ERRORTILEBASE+$3A,(a6)	; Draw '$' symbol first
-        
-        moveq   #8-1,d2			; Draw each nybble in a longword 		
+	move.w  #ERRORTILEBASE+$3A,(a6)	; Draw '$' symbol first
+	
+	moveq   #8-1,d2			; Draw each nybble in a longword 		
 
 .GetChars:                     
-        rol.l   #4,d0			; Grab nybble
-        bsr.s   .NybbleToTile   	; Convert to 8 tile indices
-        dbf     d2,.GetChars
-        rts
+	rol.l   #4,d0			; Grab nybble
+	bsr.s   .NybbleToTile   	; Convert to 8 tile indices
+	dbf     d2,.GetChars
+	rts
 
 .NybbleToTile:                    
-        move.w  d0,d1			; Get current nybble
-        andi.w  #$F,d1
-        cmpi.w  #$A,d1			; Are we at a hex value nybble?					
-        bcs.s   .Numbers		; If not, branch forward
-        
-        addq.w  #7,d1			; Otherwise, skip over 7 symbol tiles
+	move.w  d0,d1			; Get current nybble
+	andi.w  #$F,d1
+	cmpi.w  #$A,d1			; Are we at a hex value nybble?					
+	bcs.s   .Numbers		; If not, branch forward
+	
+	addq.w  #7,d1			; Otherwise, skip over 7 symbol tiles
 
 .Numbers:                      
-        addi.w  #'0'+ERRORTILEBASE,d1	; Add tile ID with ASCII num. base
-        move.w  d1,(a6)			; Send tile to plane
-        rts
-        
+	addi.w  #'0'+ERRORTILEBASE,d1	; Add tile ID with ASCII num. base
+	move.w  d1,(a6)			; Send tile to plane
+	rts
+	
 ; ---------------------------------------------------------------------------
     
 WaitPlayerInput:                 
-        bsr.w   ReadJoypads		; Read joypads
-        cmpi.b  #%100000,joypadPress.w	; Is player pressing C?
-        bne.w   WaitPlayerInput		; If not, loop here forever.
-        rts
+	bsr.w   ReadJoypads		; Read joypads
+	cmpi.b  #%100000,joypadPress.w	; Is player pressing C?
+	bne.w   WaitPlayerInput		; If not, loop here forever.
+	rts
 
 ; ---------------------------------------------------------------------------
 

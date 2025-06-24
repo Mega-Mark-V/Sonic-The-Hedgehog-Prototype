@@ -26,8 +26,8 @@ HEADER:
 	dc.l	ERROR_TRAPV
 	dc.l	ERROR_PRIVILEGE
 	dc.l	ERROR_TRACE
-	dc.l	ERROR_LINEA
-	dc.l	ERROR_LINEF
+	dc.l	ERROR_LINE1010
+	dc.l	ERROR_LINE1111
  
 	dc.l	ERROR,ERROR,ERROR,ERROR	; Reserved (Unused)   
 	dc.l	ERROR,ERROR,ERROR,ERROR
@@ -188,30 +188,30 @@ SECURITYDATA:
 ; ---------------------------------------------------------------------------
 
 SECURITY_VDP:
-	dc.b %0000100	; 00 (MODE REG1) Normal color mode           
-	dc.b %0010100	; 01 (MODE REG2) Mode 5 display on, DMA on
-	dc.b $C000>>10	; 02 Plane A Nametable Address 
-	dc.b $F000>>10	; 03 Window Nametable Address
-	dc.b $E000>>13	; 04 Plane B Nametable Address
-	dc.b $D800>>9	; 05 Sprite Table Address
-	dc.b 0		; 06 *Unused on MD*
-	dc.b (0<<4)+0	; 07 Background color
-	dc.b 0		; 08 *Unused on MD*
-	dc.b 0		; 09 *Unused on MD*
-	dc.b 256-1	; 0A H-BLANK Scanline Interval
-	dc.b 0		; 0B (MODE REG3) Scroll fullscreen
-	dc.b %10000001	; 0C (MODE REG4) H40 Cell mode
-	dc.b $DC00>>10	; 0D H-Scroll Table Address
-	dc.b 0		; 0E *Unused on MD*
-	dc.b 1		; 0F VDP Address Autoincrement value
-	dc.b 1		; 10 Plane size (256x512)
-	dc.b 0		; 11 Window Plane Xpos
-	dc.b 0		; 12 Window Plane Ypos
-	dc.b $FF	; 13 DMA Length (Low)
-	dc.b $FF	; 14 DMA Length (Hi)
-	dc.b 0		; 15 DMA Source (Low)
-	dc.b 0		; 16 DMA Source (Mid)
-	dc.b $80	; 17 DMA Source (Hi)
+	dc.b	%0000100	; 00 (MODE REG1) Normal color mode           
+	dc.b	%0010100	; 01 (MODE REG2) Mode 5 display on, DMA on
+	dc.b	$C000>>10	; 02 Plane A Nametable Address 
+	dc.b	$F000>>10	; 03 Window Nametable Address
+	dc.b	$E000>>13	; 04 Plane B Nametable Address
+	dc.b	$D800>>9	; 05 Sprite Table Address
+	dc.b	0		; 06 *Unused on MD*
+	dc.b	(0<<4)+0	; 07 Background color
+	dc.b	0		; 08 *Unused on MD*
+	dc.b	0		; 09 *Unused on MD*
+	dc.b	256-1		; 0A H-BLANK Scanline Interval
+	dc.b	0		; 0B (MODE REG3) Scroll fullscreen
+	dc.b	%10000001	; 0C (MODE REG4) H40 Cell mode
+	dc.b	$DC00>>10	; 0D H-Scroll Table Address
+	dc.b	0		; 0E *Unused on MD*
+	dc.b	1		; 0F VDP Address Autoincrement value
+	dc.b	1		; 10 Plane size (256x512)
+	dc.b	0		; 11 Window Plane Xpos
+	dc.b	0		; 12 Window Plane Ypos
+	dc.b	$FF		; 13 DMA Length (Low)
+	dc.b	$FF		; 14 DMA Length (Hi)
+	dc.b	0		; 15 DMA Source (Low)
+	dc.b	0		; 16 DMA Source (Mid)
+	dc.b	$80		; 17 DMA Source (Hi)
 
 ; ---------------------------------------------------------------------------
 ; Z80 dummy program (Disassembled in _temp/ICD_BLK.Z80)
@@ -529,19 +529,19 @@ InitSound:
 ; ---------------------------------------------------------------------------
 
 SndSetBGM:
-	move.b  d0,soundqueueA.w
+	move.b  d0,soundqueue1.w
 	rts
 
 ; ---------------------------------------------------------------------------
 
 SndSetSFX:
-	move.b  d0,soundqueueB.w
+	move.b  d0,soundqueue2.w
 	rts
 
 ; ---------------------------------------------------------------------------
 
 SndSetUnk:
-	move.b  d0,soundqueueC.w
+	move.b  d0,soundqueue.w
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -598,24 +598,25 @@ PauseGame:
 ; ---------------------------------------------------------------------------
 ; PARAMETERS:
 ;       a1 - Tilemap data address
-;       d0 - VDP command
+;       d0 - VRAMWRITE command
 ;       d1 - (Width)-1
 ;       d2 - (Height)-1
 ; ---------------------------------------------------------------------------
 
 DrawTileMap:
 	lea     VDPDATA,a6
-	move.l  #$800000,d4
+	move.l  #$800000,d4		; Tile row command delta
 
 .LoopRow:  
-	move.l  d0,VDPCTRL-VDPDATA(a6)
-	move.w  d1,d3
+	move.l  d0,VDPCTRL-VDPDATA(a6)	; Set VDP addr.
+	move.w  d1,d3			; Get current column width
 
-.LoopColumn:   
-	move.w  (a1)+,(a6)
+.LoopColumn:   				
+	move.w  (a1)+,(a6)		; Write loop for this column
 	dbf     d3,.LoopColumn
-	add.l   d4,d0
-	dbf     d2,.LoopRow
+
+	add.l   d4,d0			; Move to next row
+	dbf     d2,.LoopRow		; Loop until done
 	rts
 
 ; ---------------------------------------------------------------------------

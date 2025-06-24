@@ -233,7 +233,7 @@ loc_FD48:
         move.w  #sfxID_Spikes,d0
 
 loc_FD68:                               
-        jsr     (QueueSoundB).l
+        jsr     (SndSetSFX).l
         moveq   #-1,d0
         rts
 ; ---------------------------------------------------------------------------
@@ -259,7 +259,7 @@ loc_FD78:
         move.w  #sfxID_Spikes,d0
 
 loc_FDBA:                               
-        jsr     (QueueSoundB).l
+        jsr     (SndSetSFX).l
 
 loc_FDC0:                               
         moveq   #-1,d0

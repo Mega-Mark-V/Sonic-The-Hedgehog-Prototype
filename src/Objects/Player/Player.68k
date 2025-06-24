@@ -26,7 +26,7 @@ Player_Init:
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)         
 
-        move.l  #MapSpr_Player,obj.Pat(a0)
+        move.l  #SprPat_Player,obj.Pat(a0)
         move.w  #$780,obj.Tile(a0)
 
         move.b  #2,obj.Priority(a0)
@@ -116,7 +116,7 @@ _playTrackPowerups:
         move.b  zone.w,d0       ; Get and play BGM based on current zone
         lea     ReturnBGM,a1
         move.b  (a1,d0.w),d0
-        jsr     QueueSoundA
+        jsr     SndSetBGM
 
 .BossActive:                         
         move.b  #0,invincible.w
@@ -136,7 +136,7 @@ _playTrackPowerups:
         move.b  #0,speedup.w
 
         move.w  #SNDCMD_TEMPORES,d0         ; Reset music tempo
-        jmp     QueueSoundB
+        jmp     SndSetSFX
 
 .Spedup:                            
         rts
@@ -463,7 +463,7 @@ _playMoveLeft:
         move.b  #$D,obj.Anim(a0)                ; Set skidding anim.
         bclr    #PHYS.DIR,obj.Status(a0)        ; Set facing right
         move.w  #SFXNO_SKID,d0                  ; Play Skidding SFX
-        jsr     QueueSoundB
+        jsr     SndSetSFX
 
 .Exit:                                 
         rts
@@ -510,7 +510,7 @@ _playMoveRight:
         move.b  #$D,obj.Anim(a0)                ; Set skidding anim.
         bset    #PHYS.DIR,obj.Status(a0)        ; Set facing left
         move.w  #SFXNO_SKID,d0                  ; Play Skidding SFX
-        jsr     QueueSoundB
+        jsr     SndSetSFX
 
 .Exit:                                 
         rts
@@ -791,7 +791,7 @@ _playRollSet:
         addq.w  #5,obj.Y(a0)            ; Nudge position upwards (bugfix?)
 
         move.w  #SFXNO_SPIN,d0          ; Play spin sound
-        jsr     QueueSoundB
+        jsr     SndSetSFX
 
         tst.w   obj.Momentum(a0)        ; If momentum not 0, exit
         bne.s   .Exit                   
@@ -838,7 +838,7 @@ _playJumpChk:
 
         move.b  #1,phys.Jump(a0)
         move.w  #SFXNO_JUMP,d0
-        jsr     QueueSoundB
+        jsr     SndSetSFX
         move.b  #19,obj.YRad(a0)
         move.b  #9,obj.XRad(a0)
 

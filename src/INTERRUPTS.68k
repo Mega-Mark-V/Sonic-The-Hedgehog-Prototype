@@ -276,7 +276,7 @@ HBLANK:
         tst.w   hblankFlag.w
         beq.s   .Exit
         move.l  a5,-(sp)
-        VDPDMA  fadingPalette,$0000,$80,CRAM,a5  ; Palette DMA
+        VDPDMA  paletteFading,$0000,$80,CRAM,a5  ; Palette DMA
         movem.l (sp)+,a5
         move.w  #0,hblankFlag.w                  ; Set as executed
 

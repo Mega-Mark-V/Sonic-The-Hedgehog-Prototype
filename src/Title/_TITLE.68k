@@ -100,7 +100,7 @@ GM_TITLE:
         bsr.w   PalQueueForFade
 
         move.b  #BGMNO_TITLE,d0         ; Play BGM
-        bsr.w   QueueSoundB
+        bsr.w   SndSetSFX
 
         move.b  #0,debug.w              ; Clear debug flag
         move.w  #376,genericTimer.w
@@ -222,7 +222,7 @@ LevelSelect:
         bcs.s   .ZoneSelLoop
 
 .PlaySnd:                                 
-        bsr.w   QueueSoundB
+        bsr.w   SndSetSFX
         bra.s   .ZoneSelLoop
 
 _zoneselProcSel:              
@@ -262,7 +262,7 @@ _titleStartGame:
         move.l  d0,score.w
 
         move.b  #SNDCMD_Stop,d0 
-        bsr.w   QueueSoundB
+        bsr.w   SndSetSFX
         rts
 
 ; ---------------------------------------------------------------------------
@@ -327,18 +327,18 @@ _titleAdvanceCam:
         bne.w   .CheckIfReady
 
         move.b  #SNDCMD_Stop,d0
-        bsr.w   QueueSoundB
+        bsr.w   SndSetSFX
 
-        move.w  demoZone.w,d0
+        move.w  demoNo.w,d0
         andi.w  #7,d0
         add.w   d0,d0
         move.w  DemoZoneList(pc,d0.w),d0
         move.w  d0,zone.w
-        addq.w  #1,demoZone.w
+        addq.w  #1,demoNo.w
 
-        cmpi.w  #6,demoZone.w  ; Max. of 6 demos to play
+        cmpi.w  #6,demoNo.w  ; Max. of 6 demos to play
         blo.s   .DoLevelDemo   ; if less than max, skip clr
-        move.w  #0,demoZone.w
+        move.w  #0,demoNo.w
 
 .DoLevelDemo:                          
         move.w  #1,demo.w
