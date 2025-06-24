@@ -76,8 +76,8 @@ VDPDMA  macro src, dest, len, type, port
 	move.l	#$96009500|((((\src)/2)&$FF00)<<8)|(((\src)/2)&$FF),(\port)
 	move.w	#$9700|(((\src)>>17)&$7F),(\port)
 	VDPCMD	move.w,\dest,\type,DMA,>>16,(\port)
-	VDPCMD	move.w,\dest,\type,DMA,&$FFFF,vdpIntBuffer.w
-	move.w	vdpIntBuffer.w,(\port)
+	VDPCMD	move.w,\dest,\type,DMA,&$FFFF,dmaRegBuf.w
+	move.w	dmaRegBuf.w,(\port)
 	endm
 
 ; -------------------------------------------------------------------------

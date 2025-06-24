@@ -79,9 +79,9 @@ camAKeepH:		rs.b	2
 camAKeepV:		rs.b	2
 			rs.b	2
 			rs.b	2
-cameraDiffX:		rs.b	2
-cameraDiffY:		rs.b	2
-cameraCenterY:		rs.b	2
+camADiffX:		rs.b	2
+camADiffY:		rs.b	2
+camACenterY		rs.b	2
 autoscrollX:		rs.b	1
 autoscrollY:		rs.b	1
 eventRoutine:		rs.b	1
@@ -206,13 +206,13 @@ goggles:		rs.b	1
 			rs.b	$1E
 scoreMirror:		rs.b	1
 			rs.b	3
-lives2:			rs.b	2
-savedLives:		s.b	1
+lives2:			rs.b	2	; ?
+savedLives:		rs.b	1
 			rs.b	1
 hudTallyFlag:		rs.b	6
 globalFluxDir:		rs.b	2
 globalFlux:		rs.b	$60
-globalAnim_Time1:	rs.b	1n
+globalAnim_Time1:	rs.b	1
 globalAnim_Frame1:	rs.b	1
 globalAnim_Time2:	rs.b	1
 globalAnim_Frame2:	rs.b	1

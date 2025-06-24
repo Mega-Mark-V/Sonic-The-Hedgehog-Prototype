@@ -261,7 +261,7 @@ _titleStartGame:
         move.l  d0,time.w
         move.l  d0,score.w
 
-        move.b  #SNDCMD_Stop,d0 
+        move.b  #SNDCMD_FADE,d0 
         bsr.w   SndSetSFX
         rts
 
@@ -326,7 +326,7 @@ _titleAdvanceCam:
         tst.w   genericTimer.w
         bne.w   .CheckIfReady
 
-        move.b  #SNDCMD_Stop,d0
+        move.b  #SNDCMD_FADE,d0
         bsr.w   SndSetSFX
 
         move.w  demoNo.w,d0

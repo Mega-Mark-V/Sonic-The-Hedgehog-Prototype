@@ -125,16 +125,16 @@ VBLANK_LEVEL:
 
         move.w  #$8407,a5
         move.w  hblankLine.w,a5
-        move.w  mainZPosY.w,vdpUnkPos.w
+        move.w  mainZPosY.w,mainZPosYUnk.w
 
         VDPDMA  sprites,$F800,$280,VRAM,a5    ; Sprite DMA
 
-        tst.b   sonicRedrawFlag.w
+        tst.b   playerDrawFlag.w
         beq.s   .NoSonicRedraw
 
         VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
-        move.b  #0,sonicRedrawFlag.w
+        move.b  #0,playerDrawFlag.w
 
 .NoSonicRedraw:                                
         move.w  #0,Z80BUS
@@ -180,12 +180,12 @@ VBLANK_SPECIAL:
         move.w  #0,Z80BUS
         bsr.w   _specialstgPalCyc
 
-        tst.b   sonicRedrawFlag.w
+        tst.b   playerDrawFlag.w
         beq.s   .NoSonicRedraw
 
         VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5 ; Sonic art DMA
 
-        move.b  #0,sonicRedrawFlag.w
+        move.b  #0,playerDrawFlag.w
 
 .NoSonicRedraw:                                
         tst.w   genericTimer.w
@@ -210,10 +210,10 @@ VBLANK_LVLSTART:
         VDPDMA  palette,$0000,$80,CRAM,a5               ; Palette DMA
         VDPDMA  sprites,$F800,$280,VRAM,a5              ; Sprite DMA
         VDPDMA  hscroll,$FC00,$380,VRAM,a5              ; Hscroll DMA
-        tst.b   sonicRedrawFlag.w
+        tst.b   playerDrawFlag.w
         beq.s   .NoSonicRedraw
         VDPDMA  playDMABuffer,$F000,$2E0,VRAM,a5       ; Sonic art DMA
-        move.b  #0,sonicRedrawFlag.w
+        move.b  #0,playerDrawFlag.w
 
 .NoSonicRedraw:                        
         move.w  #0,Z80BUS

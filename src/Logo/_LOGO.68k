@@ -7,7 +7,7 @@
 logoMapBuffer = $FF0000 
 
 GM_LOGO:                                
-        move.b  #sndCMD.Fade,d0
+        move.b  #SNDCMD_FADE,d0
         bsr.w   SndSetSFX
 
         bsr.w   ClearArtListQueue

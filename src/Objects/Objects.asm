@@ -372,7 +372,7 @@ DrawObjects:
 
 	movea.l RenderCams(pc,d0.w),a1  ; Otherwise, get camera number
 	moveq   #0,d0
-	move.b  obj.XDraw(a0),d0        ; obj.XDraw = d0
+	move.b  obj.XRender(a0),d0        ; obj.XRender = d0
 	move.w  obj.X(a0),d3            ; obj.X     = d3
 
 	sub.w   (a1),d3         ; Subtract for pos. relative to cam.

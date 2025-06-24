@@ -30,7 +30,7 @@ Player_Init:
         move.w  #$780,obj.Tile(a0)
 
         move.b  #2,obj.Priority(a0)
-        move.b  #24,obj.XDraw(a0)      
+        move.b  #24,obj.XRender(a0)      
         move.b  #%100,obj.Render(a0)    ; Draw based on playfield
 
         move.w  #$600,playerMaxSpeed.w  ; Set player physics deltas
@@ -247,7 +247,7 @@ _playInputChk:
         bmi.s   .LookUp                 ; If set, object is killed,
                                         ; so skip ahead
         moveq   #0,d1
-        move.b  obj.XDraw(a1),d1        ; Get its X-draw radius
+        move.b  obj.XRender(a1),d1        ; Get its X-draw radius
         move.w  d1,d2
         add.w   d2,d2                   ; XDraw*2
         subq.w  #4,d2

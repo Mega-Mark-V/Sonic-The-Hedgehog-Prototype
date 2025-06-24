@@ -93,7 +93,7 @@ CamInitTbl:
 
 InitPlayerInfo:                    
 	move.w  zone.w,d0
-	cmpi.b  #act4,d0        ; Check if act 4
+	cmpi.b  #ACT4,d0        ; Check if act 4
 	bne.s   .NotAct4
 	subq.b  #1,act.w      	; If so, subtract 1 and set zone to act 3
 
