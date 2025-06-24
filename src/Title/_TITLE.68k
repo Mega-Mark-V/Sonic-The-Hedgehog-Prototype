@@ -61,8 +61,8 @@ GM_TITLE:
         move.w  #0,editMode.w
         move.w  #0,demo.w
         move.w  #0,zone.w
-        bsr.w   InitBoundries
-        bsr.w   Parallax
+        bsr.w   CameraInit
+        bsr.w   CameraScroll
 
         ; For Using Green Hill Zone's art here-
         ; The art files for the zone are split 
@@ -111,7 +111,7 @@ GM_TITLE:
         move.b  #2,(memTitleMask+obj.Frame).w     ; Set as masking sprite
         
         moveq   #0,d0
-        bsr.w   InitArtList
+        bsr.w   InitArtListLoad
 
         move.w  displayMode.w,d0        
         ori.b   #%01000000,d0           ; Enable display
@@ -169,7 +169,7 @@ SNDTILEADDR     =  $EBB0
 
 ; ---------------------------------------------------------------------------
 
-LevelSelect:
+ZoneSelect:
         moveq   #PALNO_SELECT,d0 
         bsr.w   PalLoad
 
@@ -308,7 +308,7 @@ _titleAdvanceCam:
         move.b  #VBCMD_TITLE,vblankCmd.w
         bsr.w   VSync
 
-        bsr.w   Parallax
+        bsr.w   CameraScroll
         bsr.w   CyclePalettes
         bsr.w   ProcessArtLoading
         move.w  (memPlayer+obj.X).w,d0   ; Update "player" position for cams.
@@ -519,10 +519,9 @@ _textHighlight:
         dbf     d2,.Loop
         rts
 
-; ---------------------------------------------------------------------------
+; ------------------------------------------------------------------------------------
 ; Level Select onscreen text mapping data
-; this sucks
-; ---------------------------------------------------------------------------
+; ------------------------------------------------------------------------------------
 
 ZoneSelText:
         dc.b _G,_R,_E,_E,_N,__,_H,_I,_L,_L,__,_Z,_O,_N,_E,__,_S,_T,_A,_G,_E,__,_1,__
