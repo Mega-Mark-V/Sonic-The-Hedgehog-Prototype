@@ -99,7 +99,7 @@ ErrorMain:
 	bsr.w   DrawErrorValue                  ; Draw its information
 
 ErrorExit:
-	bsr.w   WaitPlayerInput
+	bsr.w   ErrorWaitInput
 	movem.l objectStates.w,d0-d7/a0-a7
 	move    #$2300,sr
 	rte
@@ -192,10 +192,10 @@ DrawErrorValue:
 	
 ; ---------------------------------------------------------------------------
     
-WaitPlayerInput:                 
+ErrorWaitInput:                 
 	bsr.w   ReadJoypads		; Read joypads
 	cmpi.b  #%100000,joypadPress.w	; Is player pressing C?
-	bne.w   WaitPlayerInput		; If not, loop here forever.
+	bne.w   ErrorWaitInput		; If not, loop here forever.
 	rts
 
 ; ---------------------------------------------------------------------------

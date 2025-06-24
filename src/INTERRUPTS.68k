@@ -69,7 +69,7 @@ VBLANKCMD macro   addr, id
 ; ---------------------------------------------------------------------------
 
 VBLANK_LOGO:                                
-        bsr.w   _vblVDPRefresh
+        bsr.w   VBLANK_GENERIC
         tst.w   genericTimer.w
         beq.w   .Exit
         subq.w  #1,genericTimer.w
@@ -82,7 +82,7 @@ VBLANK_LOGO:
 ; ---------------------------------------------------------------------------
 
 VBLANK_TITLE:                               
-        bsr.w   _vblVDPRefresh
+        bsr.w   VBLANK_GENERIC
         bsr.w   _titleDrawCams
         bsr.w   DecompArtList.Fast
         tst.w   genericTimer.w
@@ -97,7 +97,7 @@ VBLANK_TITLE:
 ; ---------------------------------------------------------------------------
 
 VBLANK_UNK:                               
-        bsr.w   _vblVDPRefresh
+        bsr.w   VBLANK_GENERIC
         rts
 
 ; ---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ VBLANK_LVLSTART:
 ; ---------------------------------------------------------------------------
 
 VBLANK_TIMER:                                 
-        bsr.w   _vblVDPRefresh
+        bsr.w   VBLANK_GENERIC
         bsr.w   RunObjects
         bsr.w   DrawObjects
         addq.b  #1,vblankUnk1.w
@@ -241,14 +241,14 @@ VBLANK_TIMER:
 ; ---------------------------------------------------------------------------
 
 VBLANK_PALETTE:                             
-        bsr.w   _vblVDPRefresh
+        bsr.w   VBLANK_GENERIC
         bra.w   DecompArtList.Fast
 
 ; ---------------------------------------------------------------------------
 ; Refresh VDP tile/sprite data with most recent buffer data in memory
 ; ---------------------------------------------------------------------------
 
-_vblVDPRefresh:                      
+VBLANK_GENERIC:                      
         bsr.w   ReadJoypads
         move.w  #$100,Z80BUS
 
