@@ -663,7 +663,7 @@ _drawCamC:
         bsr.w   _drawCalcAddrHi
         move.w  (sp)+,d4
         moveq   #-16,d5
-        move.w  (camASizeY).w,d6
+        move.w  camASizeY.w,d6
         move.w  cam.Y(a3),d1
         andi.w  #$FFF0,d1
         sub.w   d1,d6
@@ -985,7 +985,7 @@ _drawCalcAddrLo:
 ; Draw chunks on initial screen for start of level
 ; ---------------------------------------------------------------------------
 
-DrawCamsInit:
+DrawCamerasInit:
         lea     VDPCTRL,a5
         lea     VDPDATA,a6
         lea     cameraAPosX.w,a3
@@ -999,8 +999,14 @@ DrawCamsInit:
 
 
 ; ---------------------------------------------------------------------------
-; Draw a full camera (user defined)
-; INPUTS: (TODO)
+; Draw the camera's view for the full screen.
+; ---------------------------------------------------------------------------
+; INPUTS:
+; a3 = Camera addr.
+; a4 = Layout
+; a5 = VDPCTRL
+; a6 = VDPDATA
+; d2 = VRAM offset
 ; ---------------------------------------------------------------------------
 
 DrawFullCam:
@@ -1022,7 +1028,7 @@ DrawFullCam:
         rts
 
 ; ---------------------------------------------------------------------------
-; Draw camera Z's initial chunks
+; Draw camera Z's full screenspace.
 ; ---------------------------------------------------------------------------
 
 DrawFullCamZ:

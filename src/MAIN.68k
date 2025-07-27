@@ -64,8 +64,8 @@ ROM_ID:
 		dc.b 'GM 00000000-00'
 CHECKSUM:	dc.w $0000              
 PERIPHERALS:	dc.b 'J               '
-GAMESTART:	dc.l CARTRIDGE
-GAMESZ:		dc.l CARTRIDGESZ
+ROMSTART:	dc.l CARTRIDGE
+ROMSZ:		dc.l CARTRIDGESZ
 RAMSTART:	dc.l WORKRAM
 RAMSZ:		dc.l WORKRAMSZ 
 CONFIG:		dc.b '                '
@@ -245,8 +245,8 @@ Start:
 	beq.w	.WarmBoot
 
 .ForceColdBoot:
-	movea.l	#HEADEREND,a0   ; Get header end location
-	movea.l	#GAMEEND,a1     ; Get the catalogued ROM end location
+	movea.l	#HEADEREND,a0	; Get header end location
+	movea.l	#ROMSZ,a1	; Get the catalogued ROM end location
 	move.l	(a1),d0
 	moveq	#0,d1
 

@@ -233,20 +233,20 @@ ObjectIndex:
 ; ---------------------------------------------------------------------------
 
 _objectFall:
-	move.l  obj.X(a0),d2
-	move.l  obj.Y(a0),d3
-	move.w  obj.XSpeed(a0),d0
-	ext.l   d0
-	asl.l   #8,d0
-	add.l   d0,d2
-	move.w  obj.YSpeed(a0),d0
-	addi.w  #OBJ_GRAVITY,d0
-	move.w  d0,obj.YSpeed(a0)
-	ext.l   d0
-	asl.l   #8,d0
-	add.l   d0,d3
-	move.l  d2,obj.X(a0)
-	move.l  d3,obj.Y(a0)
+	move.l	obj.X(a0),d2
+	move.l	obj.Y(a0),d3
+	move.w	obj.XSpeed(a0),d0
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,d2
+	move.w	obj.YSpeed(a0),d0
+	addi.w	#OBJ_GRAVITY,d0
+	move.w	d0,obj.YSpeed(a0)
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,d3
+	move.l	d2,obj.X(a0)
+	move.l	d3,obj.Y(a0)
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -254,18 +254,18 @@ _objectFall:
 ; ---------------------------------------------------------------------------
 
 _objectSetSpeed:
-	move.l  obj.X(a0),d2
-	move.l  obj.Y(a0),d3
-	move.w  obj.XSpeed(a0),d0
-	ext.l   d0
-	asl.l   #8,d0
-	add.l   d0,d2
-	move.w  obj.YSpeed(a0),d0
-	ext.l   d0
-	asl.l   #8,d0
-	add.l   d0,d3
-	move.l  d2,obj.X(a0)
-	move.l  d3,obj.Y(a0)
+	move.l	obj.X(a0),d2
+	move.l	obj.Y(a0),d3
+	move.w	obj.XSpeed(a0),d0
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,d2
+	move.w	obj.YSpeed(a0),d0
+	ext.l	d0
+	asl.l	#8,d0
+	add.l	d0,d3
+	move.l	d2,obj.X(a0)
+	move.l	d3,obj.Y(a0)
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -273,20 +273,20 @@ _objectSetSpeed:
 ; ---------------------------------------------------------------------------
 
 _objectDraw:
-	lea     objDrawQueue.w,a1    
-	move.b  obj.Priority(a0),d0     ; Get object priority
-	andi.w  #7,d0                   ; Clamp to 7
-	lsl.w   #7,d0                   ; Shift low byte into high byte
+	lea	objDrawQueue.w,a1
+	move.b	obj.Priority(a0),d0	; Get object priority
+	andi.w	#7,d0			; Clamp to 7
+	lsl.w	#7,d0			; Shift low byte into high byte
 
-	adda.w  d0,a1                   ; Jump to priority level in queue
-	cmpi.w  #$7E,(a1)               ; If it's full, exit
-	bhs.s   .Exit
+	adda.w	d0,a1			; Jump to priority level in queue
+	cmpi.w	#$7E,(a1)		; If it's full, exit
+	bhs.s	.Exit
 
-	addq.w  #2,(a1)                 ; Increment object draw count
-	adda.w  (a1),a1                 ; Jump to free slot 
-	move.w  a0,(a1)                 ; Store object's memory location
+	addq.w	#2,(a1)			; Increment object draw count
+	adda.w	(a1),a1			; Jump to free slot 
+	move.w	a0,(a1)			; Store object's memory location
 
-.Exit:     
+.Exit:
 	rts
 
 
@@ -294,17 +294,17 @@ _objectDraw:
 ; Function to queue an object's child (or obj(a1)) for rendering 
 ; ---------------------------------------------------------------------------
 
-_objectDrawChild: 
-	lea     objDrawQueue.w,a2
-	move.b  obj.Priority(a1),d0
-	andi.w  #7,d0
-	lsl.w   #7,d0
-	adda.w  d0,a2
-	cmpi.w  #$7E,(a2)
-	bhs.s   .Exit
-	addq.w  #2,(a2)
-	adda.w  (a2),a2
-	move.w  a1,(a2)
+_objectDrawChild:
+	lea	objDrawQueue.w,a2
+	move.b	obj.Priority(a1),d0
+	andi.w	#7,d0
+	lsl.w	#7,d0
+	adda.w	d0,a2
+	cmpi.w	#$7E,(a2)
+	bhs.s	.Exit
+	addq.w	#2,(a2)
+	adda.w	(a2),a2
+	move.w	a1,(a2)
 
 .Exit:     
 	rts
@@ -313,16 +313,16 @@ _objectDrawChild:
 ; Clear/Deallocate an object's memory space
 ; ---------------------------------------------------------------------------
 
-_objectDelete:   
-	movea.l a0,a1
+_objectDelete:
+	movea.l	a0,a1
 
 .Child:
-	moveq   #0,d1
-	moveq   #(OBJSZ/4)-1,d0
+	moveq	#0,d1
+	moveq	#(OBJSZ/4)-1,d0
 
-.Loop:     
-	move.l  d1,(a1)+
-	dbf     d0,.Loop
+.Loop:
+	move.l	d1,(a1)+
+	dbf	d0,.Loop
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -335,11 +335,11 @@ _objectDelete:
 ; Then there are 63 word entries as memory addrs. for the objs. to draw 
 ; ---------------------------------------------------------------------------
 
-RenderCams:    
-	dc.l 0                  ; Camera no. 0 (unset)
-	dc.l cameraAPosX        ; Camera no. 1 
-	dc.l cameraBPosX        ; Camera no. 2 
-	dc.l cameraZPosX        ; Camera no. 3
+RenderCams:
+	dc.l	0		; Camera no. 0 (unset)
+	dc.l	cameraAPosX	; Camera no. 1 
+	dc.l	cameraBPosX	; Camera no. 2 
+	dc.l	cameraZPosX	; Camera no. 3
 
 ; ---------------------------------------------------------------------------
 
@@ -654,13 +654,13 @@ _objectChkOnscreen:
 ; for each object as it is read. 
 ; ---------------------------------------------------------------------------
 
-OBJENTRSZ       EQU  6
+OBJENTRSZ	EQU  6
 
-objentr         struct
-X:              dc.w 1
-Y:              dc.w 1
-ID:             dc.b 1
-Arg:            dc.b 1
+objentr		struct
+X:		dc.w 1
+Y:		dc.w 1
+No:		dc.b 1
+Arg:		dc.b 1
 		ends
 
 ; ---------------------------------------------------------------------------
@@ -673,7 +673,7 @@ GetObjects:
 
 ; ---------------------------------------------------------------------------
 
-.Index:    
+.Index:
 	dc.w GetObjects_Init-.Index
 	dc.w GetObjects_Main-.Index
 
@@ -733,7 +733,7 @@ _getobjsLeft:
 	bge.s   .CheckRight
 
 	subq.w  #OBJENTRSZ,a0
-	tst.b   objentr.ID(a0)
+	tst.b   objentr.No(a0)
 	bpl.s   .NoStateInf
 	
 	subq.b  #1,1(a2)
@@ -748,7 +748,7 @@ _getobjsLeft:
 	bra.s   .FindLeft
 
 .Failed:   
-	tst.b   objentr.ID(a0)
+	tst.b   objentr.No(a0)
 	bpl.s   .NoStInf2
 	addq.b  #1,1(a2)
 
@@ -765,7 +765,7 @@ _getobjsLeft:
 .FindRight: 
 	cmp.w   -OBJENTRSZ(a0),d6
 	bgt.s   .FoundLeft
-	tst.b   -2(a0)                  ; objentr.ID ref. *backwards*
+	tst.b   -2(a0)                  ; objentr.No ref. *backwards*
 	bpl.s   .TryNextLeft
 	subq.b  #1,(a2)
 
@@ -790,7 +790,7 @@ _getobjRight:
 	cmp.w   objentr.X(a0),d6       ; Branch if out of fwd. range
 	bls.s   .CheckLeft
 
-	tst.b   objentr.ID(a0)         ; Skip state set if MSB unset
+	tst.b   objentr.No(a0)         ; Skip state set if MSB unset
 	bpl.s   .NoStateInfo
 
 	move.b  (a2),d2
@@ -813,7 +813,7 @@ _getobjRight:
 	cmp.w   objentr.X(a0),d6
 	bls.s   .FoundLeft
 
-	tst.b   objentr.ID(a0)
+	tst.b   objentr.No(a0)
 	bpl.s   .NoStInf2
 
 	addq.b  #1,1(a2)
@@ -854,7 +854,7 @@ _getobjExit:
 
 _getobjCreate: 
 					; Check state info    
-	tst.b   objentr.ID(a0)          ; If no respawn info, create
+	tst.b   objentr.No(a0)          ; If no respawn info, create
 	bpl.s   .Create
 
 	bset    #7,2(a2,d2.w)           ; If set to respawn, create

@@ -10,7 +10,7 @@
 #define __int64 long long
 
 /* 1 */
-enum system
+enum MEMMAP
 {
   CARTRIDGE = 0x0,
   CARTRIDGESZ = 0x7FFFF,
@@ -80,106 +80,116 @@ struct __attribute__((packed)) __attribute__((aligned(1))) obj
 /* 4 */
 enum SOUND
 {
-  musID_GHZ = 0x81,
-  musID_LZ = 0x82,
-  musID_MZ = 0x83,
-  musID_SLZ = 0x84,
-  musID_SZ = 0x85,
-  musID_CWZ = 0x86,
-  musID_Invincible = 0x87,
-  musID_ExtraLife = 0x88,
-  musID_Special = 0x89,
-  musID_TitleScreen = 0x8A,
-  musID_Ending = 0x8B,
-  musID_Boss = 0x8C,
-  musID_Final = 0x8D,
-  musID_ActClear = 0x8E,
-  musID_GameOver = 0x8F,
-  musID_Continue = 0x90,
-  musID_StaffRoll = 0x91,
-  sfxID_Jump = 0xA0,
-  __sfxID_A1 = 0xA1,
-  __sfxID_A2 = 0xA2,
-  sfxID_Death = 0xA3,
-  sfxID_Skid = 0xA4,
-  sfxID_MissileHit = 0xA5,
-  sfxID_Spikes = 0xA6,
-  sfxID_Push = 0xA7,
-  sfxID_Vanish = 0xA8,
-  __sfxID_A9 = 0xA9,
-  __sfxID_Splash = 0xAA,
-  __sfxID_AB = 0xAB,
-  sfxID_BossHit = 0xAC,
-  __sfxID_PopUnk = 0xAD,
-  sfxID_FireBall = 0xAE,
-  sfxID_Shield = 0xAF,
-  __sfxID_SirenSlow = 0xB0,
-  __sfxID_SirenFast = 0xB1,
-  __sfxID_B2 = 0xB2,
-  __sfxID_ExplodeUnk = 0xB3,
-  sfxID_Bumper = 0xB4,
-  sfxID_RingCollect = 0xB5,
-  sfxID_SpikeRetract = 0xB6,
-  __sfxID_Rumble = 0xB7,
-  __sfxID_B8 = 0xB8,
-  sfxID_Collapse = 0xB9,
-  sfxID_Slam = 0xBD,
-  sfxID_Spin = 0xBE,
-  sfxID_Flap = 0xC0,
-  sfxID_Pop = 0xC1,
-  __sfxID_PopUnk2 = 0xC2,
-  sfxID_Explode = 0xC3,
-  sfxID_CashRegister = 0xC5,
-  sfxID_ChainClink = 0xC7,
-  sfxID_Fire = 0xC8,
-  sfxID_Spring = 0xCC,
-  sfxID_Button = 0xCD,
-  sfxID_RingLeft = 0xCE,
-  sfxID_SignSpin = 0xCF,
-  sndCMD_Stop = 0xE0,
-  sndCMD_e1 = 0xE1,
-  sndCMD_Fast = 0xE2,
-  sndCMD_Slow = 0xE3,
+  BGMNO_GHZ = 0x81,
+  BGMNO_LZ = 0x82,
+  BGMNO_MZ = 0x83,
+  BGMNO_SLZ = 0x84,
+  BGMNO_SZ = 0x85,
+  BGMNO_CWZ = 0x86,
+  BGMNO_INVINC = 0x87,
+  BGMNO_1UP = 0x88,
+  BGMNO_SPECIAL = 0x89,
+  BGMNO_TITLE = 0x8A,
+  BGMNO_ENDING = 0x8B,
+  BGMNO_BOSS = 0x8C,
+  BGMNO_FINAL = 0x8D,
+  BGMNO_ZONECLR = 0x8E,
+  BGMNO_GAMEOVER = 0x8F,
+  BGMNO_CONTINUE = 0x90,
+  BGMNO_CREDITS = 0x91,
+  SFXNO_JUMP = 0xA0,
+  SFXNO_UNK_A1 = 0xA1,
+  SFXNO_UNK_A2 = 0xA2,
+  SFXNO_DEATH = 0xA3,
+  SFXNO_SKID = 0xA4,
+  SFXNO_BOMBHIT = 0xA5,
+  SFXNO_SPIKEDMG = 0xA6,
+  SFXNO_PUSHING = 0xA7,
+  SFXNO_WARP = 0xA8,
+  SFXNO_UNK_A9 = 0xA9,
+  SFXNO_SPLASH = 0xAA,
+  SFXNO_UNK_AB = 0xAB,
+  SFXNO_BOSSHIT = 0xAC,
+  SFXNO_POP1 = 0xAD,
+  SFXNO_FIREBALL = 0xAE,
+  SFXNO_GETSHIELD = 0xAF,
+  SFXNO_UNK_B0 = 0xB0,
+  SFXNO_UNK_B1 = 0xB1,
+  SFXNO_UNK_B2 = 0xB2,
+  SFXNO_UNK_B3 = 0xB3,
+  SFXNO_BUMPER = 0xB4,
+  SFXNO_RING = 0xB5,
+  SFXNO_SPIKES = 0xB6,
+  SFXNO_RUMBLE = 0xB7,
+  SFXNO_UNK_B8 = 0xB8,
+  SFXNO_COLLAPSE1 = 0xB9,
+  SFXNO_UNK_BA = 0xBA,
+  SFXNO_DOOR = 0xBB,
+  SFXNO_LAUNCH = 0xBC,
+  SFXNO_HEAVYHIT = 0xBD,
+  SFXNO_SPIN = 0xBE,
+  SFXNO_UNK_BF = 0xBF,
+  SFXNO_WINGFLAP = 0xC0,
+  SFXNO_POP2 = 0xC1,
+  SFXNO_POP3 = 0xC2,
+  SFXNO_EXPLODE1 = 0xC3,
+  SFXNO_EXPLODE2 = 0xC4,
+  SFXNO_TALLYDONE = 0xC5,
+  SFXNO_LOSERINGS = 0xC6,
+  SFXNO_CHAINPING = 0xC7,
+  SFXNO_FLAME = 0xC8,
+  SFXNO_UNK_C9 = 0xC9,
+  SFXNO_UNK_CA = 0xCA,
+  SFXNO_COLLAPSE2 = 0xCB,
+  SFXNO_SPRING = 0xCC,
+  SFXNO_BUTTON = 0xCD,
+  SFXNO_RINGLEFT = 0xCE,
+  SFXNO_GOAL = 0xCF,
+  SNDCMD_FADE = 0xE0,
+  SNDCMD_UNK = 0xE1,
+  SNDCMD_FAST = 0xE2,
+  SNDCMD_SLOW = 0xE3,
 };
 
 /* 5 */
-enum error
+enum ERRNO
 {
-  errorBus = 0x2,
-  errorIllegal = 0x4,
-  errorAddress = 0x6,
-  errorZeroDiv = 0x8,
-  errorChkInst = 0xA,
-  errorTrapV = 0xC,
-  errorPrivilege = 0xE,
-  errorTrace = 0x10,
-  errorLineA = 0x12,
-  errorLineF = 0x14,
+  ERRNO_BUS = 0x2,
+  ERRNO_ILLEGAL = 0x4,
+  ERRNO_ADDRESS = 0x6,
+  ERRNO_ZERODIV = 0x8,
+  ERRNO_CHKINST = 0xA,
+  ERRNO_TRAPV = 0xC,
+  ERRNO_PRIVILEGE = 0xE,
+  ERRNO_TRACE = 0x10,
+  ERRNO_LINE1010 = 0x12,
+  ERRNO_LINE1111 = 0x14,
+  ERRNO_GENERIC = 0x15,
 };
 
 /* 6 */
-enum vblank
+enum VBNO
 {
-  vbID_NULL = 0x0,
-  vbID_LOGO = 0x2,
-  vbID_TITLE = 0x4,
-  vbID_REFRESH = 0x6,
-  vbID_LEVEL = 0x8,
-  vbID_SPECIAL = 0xA,
-  vbID_LEVELSTART = 0xC,
-  vbID_DMA = 0xE,
-  vbID_PAUSE = 0x10,
-  vbID_PALFUNC = 0x12,
+  VBCMD_NULL = 0x0,
+  VBCMD_LOGO = 0x2,
+  VBCMD_TITLE = 0x4,
+  VBCMD_UNK = 0x6,
+  VBCMD_LEVEL = 0x8,
+  VBCMD_SPECIAL = 0xA,
+  VBCMD_LVLSTART = 0xC,
+  VBCMD_TIMER = 0xE,
+  VBCMD_PAUSE = 0x10,
+  VBCMD_PALETTE = 0x12,
 };
 
 /* 7 */
-enum gm
+enum GMNO
 {
-  gmID_LOGO = 0x0,
-  gmID_TITLE = 0x4,
-  gmID_DEMO = 0x8,
-  gmID_LEVEL = 0xC,
-  gmID_SPECIAL = 0x10,
+  GMNO_LOGO = 0x0,
+  GMNO_TITLE = 0x4,
+  GMNO_DEMO = 0x8,
+  GMNO_LEVEL = 0xC,
+  GMNO_SPECIAL = 0x10,
 };
 
 /* 8 */
@@ -235,13 +245,13 @@ struct play
 enum ZONENO
 {
   ZONENO_GHZ = 0x0,
-  act1 = 0x0,
+  ACT1 = 0x0,
   ZONENO_LZ = 0x1,
-  act2 = 0x1,
+  ACT2 = 0x1,
   ZONENO_MZ = 0x2,
-  act3 = 0x2,
+  ACT3 = 0x2,
   ZONENO_SLZ = 0x3,
-  act4 = 0x3,
+  ACT4 = 0x3,
   ZONENO_SZ = 0x4,
   ZONENO_CWZ = 0x5,
   ZONENO_UNK = 0x6,
@@ -249,11 +259,11 @@ enum ZONENO
 };
 
 /* 10 */
-enum artID
+enum ARTNO
 {
-  artID_EggmanBoss = 0x11,
-  artID_LevelEnd = 0x12,
-  artID_Special = 0x14,
+  ARTNO_BOSS = 0x11,
+  ARTNO_LVLEND = 0x12,
+  ARTNO_SPECIAL = 0x14,
 };
 
 /* 11 */
@@ -264,7 +274,7 @@ struct __attribute__((packed)) __attribute__((aligned(1))) levelhead
 };
 
 /* 12 */
-enum textcode
+enum TXTCODE
 {
   _1 = 0x1,
   _2 = 0x2,

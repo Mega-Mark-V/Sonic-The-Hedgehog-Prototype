@@ -94,7 +94,7 @@ GM_TITLE:
         lea     cameraBPosX.w,a3      
         lea     layoutB.w,a4
         move.w  #$6000,d2
-        bsr.w   DrawChunks
+        bsr.w   DrawFullCam
 
         moveq   #PALNO_TITLE,d0         ; Load palette
         bsr.w   PalQueueForFade
@@ -212,9 +212,9 @@ ZoneSelect:
         move.w  zoneselItem.w,d0       ; Get current item
 
         cmpi.w  #19,d0                   ; If not selection 19,
-        bne.s   _zoneselProcSel          ; then not level select.
+        bne.s   .ProcessSel             ; then not level select.
 
-        move.w  zoneselSnd.w,d0      ; Get current sound
+        move.w  zoneselSnd.w,d0         ; Get current sound
         addi.w  #$80,d0                  ; Add $80 for driver no.
         cmpi.w  #$93,d0                  ; Is sound >$93? 
         blo.s   .PlaySnd                 ; If not, play sound
@@ -225,7 +225,7 @@ ZoneSelect:
         bsr.w   SndSetSFX
         bra.s   .ZoneSelLoop
 
-_zoneselProcSel:              
+.ProcessSel:              
         add.w   d0,d0
         move.w  SelectionList(pc,d0.w),d0
         bmi.s   .ZoneSelLoop
