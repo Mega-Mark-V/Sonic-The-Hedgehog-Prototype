@@ -1,0 +1,378 @@
+; ---------------------------------------------------------------------------
+; Marble Zone Shifting Platforms
+; ---------------------------------------------------------------------------
+
+mzterra.OriginX =  $2A
+mzterra.OriginY =  $2C
+mzterra.InfoMirr=  $30
+mzterra.Oscillate=  $34
+mzterra.ParentFlag=  $35
+mzterra.Children=  $36
+mzterra.ParentSlot=  $38
+mzterra.SpreadFireY=  $3C
+
+ObjShiftingFloor:	       
+	moveq   #0,d0
+	move.b  obj.Action(a0),d0
+	move.w  .Index(pc,d0.w),d1
+	jmp     .Index(pc,d1.w)
+; ---------------------------------------------------------------------------
+.Index:		
+	dc.w MZTerrain_Init-.Index
+	dc.w MZTerrain_Main-.Index
+; ---------------------------------------------------------------------------
+
+TerrainDataIndex:	       
+	dc.w TerrainSlope_Hump-TerrainDataIndex
+	dc.b 0
+	dc.b $40
+	dc.w TerrainSlope_Incline-TerrainDataIndex
+	dc.b 1
+	dc.b $40
+	dc.w TerrainSlope_Bare-TerrainDataIndex
+	dc.b 2
+	dc.b $20
+; ---------------------------------------------------------------------------
+
+MZTerrain_Init:	         
+	addq.b  #2,obj.Action(a0)
+	move.l  #MapSpr_MZPlatform,obj.Pat(a0)
+	move.w  #$C000,obj.Tile(a0)
+	move.b  #4,obj.Render(a0)
+	move.b  #5,obj.Priority(a0)
+	move.w  obj.Y(a0),mzterra.OriginY(a0)
+	move.w  obj.X(a0),mzterra.OriginX(a0)
+	moveq   #0,d0
+	move.b  obj.Args(a0),d0
+	lsr.w   #2,d0
+	andi.w  #$1C,d0
+	lea     TerrainDataIndex(pc,d0.w),a1
+	move.w  (a1)+,d0
+	lea     TerrainDataIndex(pc,d0.w),a2
+	move.l  a2,mzterra.InfoMirr(a0)
+	move.b  (a1)+,obj.Frame(a0)
+	move.b  (a1),obj.XRender(a0)
+	andi.b  #$F,obj.Args(a0)
+	move.b  #$40,obj.YRad(a0)
+	bset    #4,obj.Render(a0)
+
+MZTerrain_Main:	         
+	bsr.w   _mzterraSubtypes
+	tst.b   obj.SubAction(a0)
+	beq.s   .Solid
+	moveq   #0,d1
+	move.b  obj.XRender(a0),d1
+	addi.w  #$B,d1
+	bsr.w   _objectLiftPlayChk
+	btst    #STAT.LIFTING,play.Status(a1)
+	bne.w   .StoodOn
+	clr.b   obj.SubAction(a0)
+	bra.s   .NotStoodOn
+; ---------------------------------------------------------------------------
+
+.StoodOn:	              
+	moveq   #0,d1
+	move.b  obj.XRender(a0),d1
+	addi.w  #$B,d1
+	movea.l mzterra.InfoMirr(a0),a2
+	move.w  obj.X(a0),d2
+	bsr.w   _objectSetPlaySolid2
+	bra.s   .NotStoodOn
+; ---------------------------------------------------------------------------
+
+.Solid:		
+	moveq   #0,d1
+	move.b  obj.XRender(a0),d1
+	addi.w  #$B,d1
+	move.w  #$20,d2
+	cmpi.b  #2,obj.Frame(a0)
+	bne.s   .Short
+	move.w  #$30,d2
+
+.Short:		
+	movea.l mzterra.InfoMirr(a0),a2
+	bsr.w   _objectHeightMap
+
+.NotStoodOn:	           
+	bsr.w   _objectDraw
+	bra.w   _mzterraChkOffscreen
+; ---------------------------------------------------------------------------
+
+_mzterraSubtypes:	       
+	moveq   #0,d0
+	move.b  obj.Args(a0),d0
+	andi.w  #7,d0
+	add.w   d0,d0
+	move.w  .Types(pc,d0.w),d1
+	jmp     .Types(pc,d1.w)
+; ---------------------------------------------------------------------------
+
+.Types:		
+	dc.w MZTerra_Static-.Types
+	dc.w MZTerra_UpDown1-.Types
+	dc.w MZTerra_UpDown2-.Types
+	dc.w MZTerra_UpDown3-.Types
+	dc.w MZTerra_UpDown4-.Types
+	dc.w MZTerra_UpDownProc-.Types
+; ---------------------------------------------------------------------------
+
+MZTerra_Static:	         
+	rts
+; ---------------------------------------------------------------------------
+
+MZTerra_UpDown1:	        
+	move.b  (globalFlux).w,d0
+	move.w  #32,d1
+	bra.s   MZTerra_Move
+; ---------------------------------------------------------------------------
+
+MZTerra_UpDown2:	        
+	move.b  (globalFlux+4).w,d0
+	move.w  #48,d1
+	bra.s   MZTerra_Move
+; ---------------------------------------------------------------------------
+
+MZTerra_UpDown3:	        
+	move.b  (globalFlux+8).w,d0
+	move.w  #64,d1
+	bra.s   MZTerra_Move
+; ---------------------------------------------------------------------------
+
+MZTerra_UpDown4:	        
+	move.b  (globalFlux+$C).w,d0
+	move.w  #$60,d1
+
+MZTerra_Move:	           
+	btst    #3,obj.Args(a0)
+	beq.s   .SetY
+	neg.w   d0
+	add.w   d1,d0
+
+.SetY:		 
+	move.w  mzterra.OriginY(a0),d1
+	sub.w   d0,d1
+	move.w  d1,obj.Y(a0)
+	rts
+; ---------------------------------------------------------------------------
+
+MZTerra_UpDownProc:	     
+	move.b  mzterra.Oscillate(a0),d0
+	tst.b   obj.SubAction(a0)
+	bne.s   .Clockwise
+	subq.b  #2,d0
+	bcc.s   .CreateChildren
+	moveq   #0,d0
+	bra.s   .CreateChildren
+; ---------------------------------------------------------------------------
+
+.Clockwise:	            
+	addq.b  #4,d0
+	cmpi.b  #$40,d0
+	bcs.s   .CreateChildren
+	move.b  #$40,d0
+
+.CreateChildren:	       
+	move.b  d0,mzterra.Oscillate(a0)
+	jsr     (CalcSinCos).l
+	lsr.w   #4,d0
+	move.w  d0,d1
+	add.w   mzterra.OriginY(a0),d0
+	move.w  d0,obj.Y(a0)
+	cmpi.b  #$20,mzterra.Oscillate(a0)
+	bne.s   .NoChildSlot
+	tst.b   obj.field_35(a0)
+	bne.s   .NoChildSlot
+	move.b  #1,mzterra.ParentFlag(a0)
+	bsr.w   _objectFindChildSlot
+	bne.s   .NoChildSlot
+	move.b  #OBJNO_SPREADFIRE,obj.No(a1)
+	move.w  obj.X(a0),obj.X(a1)
+	move.w  mzterra.OriginY(a0),mzterra.OriginY(a1)
+	addq.w  #8,mzterra.OriginY(a1)
+	subq.w  #3,mzterra.OriginY(a1)
+	subi.w  #$40,obj.X(a1) ; '@'
+	move.l  mzterra.InfoMirr(a0),mzterra.InfoMirr(a1)
+	move.l  a0,mzterra.ParentSlot(a1)
+	movea.l a0,a2
+	bsr.s   .SaveChildren
+
+.NoChildSlot:	          
+	moveq   #0,d2
+	lea     mzterra.Children(a0),a2
+	move.b  (a2)+,d2
+	subq.b  #1,d2
+	bcs.s   .Exit
+
+.LavaFireY:	            
+	moveq   #0,d0
+	move.b  (a2)+,d0
+	lsl.w   #6,d0
+	addi.w  #-$3000,d0
+	movea.w d0,a1
+	move.w  d1,mzterra.SpreadFireY(a1)
+	dbf     d2,.LavaFireY
+
+.Exit:		
+	rts
+; ---------------------------------------------------------------------------
+
+.SaveChildren:	         
+	lea     mzterra.Children(a2),a2
+	moveq   #0,d0
+	move.b  (a2),d0
+	addq.b  #1,(a2)
+	lea     1(a2,d0.w),a2
+	move.w  a1,d0
+	subi.w  #-$3000,d0
+	lsr.w   #6,d0
+	andi.w  #$7F,d0
+	move.b  d0,(a2)
+	rts
+; ---------------------------------------------------------------------------
+
+_mzterraChkOffscreen:	   
+	tst.b   mzterra.ParentFlag(a0)
+	beq.s   .ChkOffscreen
+	tst.b   obj.Render(a0)
+	bpl.s   .DeleteFlamesOffscr
+
+.ChkOffscreen:	         
+	move.w  mzterra.OriginX(a0),d0
+	andi.w  #$FF80,d0
+	move.w  (cameraAPosX).w,d1
+	subi.w  #$80,d1
+	andi.w  #$FF80,d1
+	sub.w   d1,d0
+	cmpi.w  #$280,d0
+	bhi.w   _objectDelete
+	rts
+; ---------------------------------------------------------------------------
+
+.DeleteFlamesOffscr:	   
+	moveq   #0,d2
+	lea     mzterra.Children(a0),a2
+	move.b  (a2),d2
+	clr.b   (a2)+
+	subq.b  #1,d2
+	bcs.s   .Exit
+
+.DeleteChildren:	       
+	moveq   #0,d0
+	move.b  (a2),d0
+	clr.b   (a2)+
+	lsl.w   #6,d0
+	addi.w  #-$3000,d0
+	movea.w d0,a1
+	bsr.w   _objectDeleteChild
+	dbf     d2,.DeleteChildren
+	move.b  #0,mzterra.ParentFlag(a0)
+	move.b  #0,mzterra.Oscillate(a0)
+
+.Exit:		 
+	rts
+; End of function ObjShiftingFloor
+; ---------------------------------------------------------------------------
+
+TerrainSlope_Hump:
+	dc.b $20,$20          
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $21,$22
+	dc.b $23,$24
+	dc.b $25,$26
+	dc.b $27,$28
+	dc.b $29,$2A
+	dc.b $2B,$2C
+	dc.b $2D,$2E
+	dc.b $2F,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$2F
+	dc.b $2E,$2D
+	dc.b $2C,$2B
+	dc.b $2A,$29
+	dc.b $28,$27
+	dc.b $26,$25
+	dc.b $24,$23
+	dc.b $22,$21
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $20,$20
+
+TerrainSlope_Bare:
+	dc.b $30,$30          
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
+
+TerrainSlope_Incline:
+	dc.b $20,$20       
+	dc.b $20,$20
+	dc.b $20,$20
+	dc.b $21,$22
+	dc.b $23,$24
+	dc.b $25,$26
+	dc.b $27,$28
+	dc.b $29,$2A
+	dc.b $2B,$2C
+	dc.b $2D,$2E
+	dc.b $2F,$30
+	dc.b $31,$32
+	dc.b $33,$34
+	dc.b $35,$36
+	dc.b $37,$38
+	dc.b $39,$3A
+	dc.b $3B,$3C
+	dc.b $3D,$3E
+	dc.b $3F,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$40
+	dc.b $40,$3F
+	dc.b $3E,$3D
+	dc.b $3C,$3B
+	dc.b $3A,$39
+	dc.b $38,$37
+	dc.b $36,$35
+	dc.b $34,$33
+	dc.b $32,$31
+	dc.b $30,$30
+	dc.b $30,$30
+	dc.b $30,$30
