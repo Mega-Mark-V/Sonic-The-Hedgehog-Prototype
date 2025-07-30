@@ -3,53 +3,71 @@
 ; ---------------------------------------------------------------------------
 
 objEnemyLadybug:
-	moveq   #0,d0
-	move.b  obj.Action(a0),d0
-	move.w  .Index(pc,d0.w),d1
-	jmp     .Index(pc,d1.w)
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jmp	.Index(pc,d1.w)
 
 ; ---------------------------------------------------------------------------
 .Index:
-	dc.w Ladybug_Init-.Index
-	dc.w Ladybug_Main-.Index
-	dc.w Ladybug_Smoke-.Index
-	dc.w Ladybug_Done-.Index
+	dc.w	Ladybug_Init-.Index
+	dc.w	Ladybug_Main-.Index
+	dc.w	Ladybug_Smoke-.Index
+	dc.w	Ladybug_Done-.Index
+; ---------------------------------------------------------------------------
+; local enums
+
+ladybug.StopTimer	=	$30
+ladybug.SmokeTimer	=	$33
+
+; ---------------------------------------------------------------------------
+; Initialization
 ; ---------------------------------------------------------------------------
 
 Ladybug_Init:
-	move.l  #SprPat_Ladybug,obj.Pat(a0)
-	move.w  #$4F0,obj.Tile(a0)
-	move.b  #4,obj.Render(a0)
-	move.b  #4,obj.Priority(a0)
-	move.b  #$14,obj.XRender(a0)
-	tst.b   obj.Anim(a0)
-	bne.s   .DoSmoke
-	move.b  #14,obj.YRad(a0)
-	move.b  #8,obj.XRad(a0)
-	move.b  #$C,obj.Collision(a0)
-	bsr.w   _objectFall
-	bsr.w   _physBasicChkDown
-	tst.w   d1
-	bpl.s   .NotFound
-	add.w   d1,obj.Y(a0)
-	move.w  #0,obj.YSpeed(a0)
-	addq.b  #2,obj.Action(a0)
-	bchg    #0,obj.Status(a0)
+	move.l	#SprPat_Ladybug,obj.Pat(a0)
+	move.w	#$4F0,obj.Tile(a0)
+	move.b	#4,obj.Render(a0)
+	move.b	#4,obj.Priority(a0)
+	move.b	#$14,obj.XRender(a0)
+
+	tst.b	obj.Anim(a0)			; Check if set as smoke
+	bne.s	.DoSmoke			; Set to run smoke routine
+
+	move.b	#14,obj.YRad(a0)
+	move.b	#8,obj.XRad(a0)
+	move.b	#$C,obj.Collision(a0)
+
+	; Check and fall down before displaying and running main routine
+
+	bsr.w	_objectFall			; Apply gravity
+	bsr.w	_physBasicChkDown		; Check for floor
+	tst.w	d1
+	bpl.s	.NotFound			; Exit if none found
+
+	add.w	d1,obj.Y(a0)			; Stick to floor
+	move.w	#0,obj.YSpeed(a0)
+	addq.b	#2,obj.Action(a0)		; Set action to main
+	bchg	#STAT.XDIR,obj.Status(a0)	; Change direction 
 
 .NotFound:
 	rts
 
 .DoSmoke:
-	addq.b  #4,obj.Action(a0)
-	bra.w   Ladybug_Smoke
+	addq.b	#4,obj.Action(a0)		; Set action to smoke and run
+	bra.w	Ladybug_Smoke
+
+; ---------------------------------------------------------------------------
+; Main 
+; ---------------------------------------------------------------------------
 
 Ladybug_Main:
-	moveq   #0,d0
-	move.b  obj.SubAction(a0),d0
-	move.w  .Subdex(pc,d0.w),d1
-	jsr     .Subdex(pc,d1.w)
-	lea     AniSpr_Ladybug,a1
-	bsr.w   _objectAnimate
+	moveq	#0,d0
+	move.b	obj.SubAction(a0),d0		; Get and run sub-act. cntr. 
+	move.w	.Subdex(pc,d0.w),d1
+	jsr	.Subdex(pc,d1.w)		
+	lea	AniSpr_Ladybug,a1		; Animate after sub-action
+	bsr.w	_objectAnimate
 	; fall into function below
 
 ; ---------------------------------------------------------------------------
@@ -88,35 +106,48 @@ _objectChkDespawn:
 	bra.w   _objectDelete
 
 ; ---------------------------------------------------------------------------
+; Sub-action index for main routine
+; ---------------------------------------------------------------------------
 .Subdex:
 	dc.w Ladybug_Paused-.Subdex
 	dc.w Ladybug_Moving-.Subdex
+
 ; ---------------------------------------------------------------------------
+; Wait before moving again
 
 Ladybug_Paused:
-	subq.w  #1,obj.field_30(a0)
-	bpl.s   .Waiting
-	addq.b  #2,obj.SubAction(a0)
-	move.w  #-$100,obj.XSpeed(a0)
-	move.b  #1,obj.Anim(a0)
-	bchg    #0,obj.Status(a0)
-	bne.s   .Waiting
-	neg.w   obj.XSpeed(a0)
+	subq.w	#1,ladybug.StopTimer(a0)	; Decrement counter
+	bpl.s	.Exit				; Exit if positive value
 
-.Waiting:
+	addq.b	#2,obj.SubAction(a0)		; Inc. sub-act. to moving
+	move.w	#-$100,obj.XSpeed(a0)		; Set X-speed
+	move.b	#1,obj.Anim(a0)			; Set animation
+	bchg	#0,obj.Status(a0)		; Change direction
+
+	bne.s	.Exit				; Negate speed to match dir.
+	neg.w	obj.XSpeed(a0)
+
+.Exit:
 	rts
 
+; ---------------------------------------------------------------------------
+; Move on floor, spawn smoke particle and stick to floor collision
+
 Ladybug_Moving:
-	bsr.w   _objectSetSpeed
-	bsr.w   _physBasicChkDown
-	cmpi.w  #-8,d1
-	blt.s   .AtWallOrCliff
-	cmpi.w  #$C,d1
+	bsr.w   _objectSetSpeed			; Apply speed values to pos.
+
+	bsr.w   _physBasicChkDown		; Check collision downwards
+	cmpi.w  #-8,d1				; Skip if 8 pix. above
+	blt.s   .AtWallOrCliff			
+	cmpi.w  #12,d1				; Skip if 12 pix. below
 	bge.s   .AtWallOrCliff
-	add.w   d1,obj.Y(a0)
-	subq.b  #1,obj.field_33(a0)
+
+	add.w   d1,obj.Y(a0)			; Otherwise, stick to ground
+
+	subq.b  #1,ladybug.SmokeTimer(a0)	; Handle smoke timer
 	bpl.s   .Exit
-	move.b  #$F,obj.field_33(a0)
+
+	move.b  #15,ladybug.SmokeTimer(a0)	; Reset timer if depleted
 
 	bsr.w   _objectFindFreeSlot		; Find slot
 	bne.s   .Exit				; Exit if none found
@@ -131,16 +162,24 @@ Ladybug_Moving:
 	rts
 
 .AtWallOrCliff:
-	subq.b  #2,obj.SubAction(a0)
-	move.w  #59,obj.field_30(a0)
-	move.w  #0,obj.XSpeed(a0)
+	subq.b  #2,obj.SubAction(a0)		; Dec. to paused sub-action 
+	move.w  #59,ladybug.StopTimer(a0)	; Reset stop timer
+	move.w  #0,obj.XSpeed(a0)		; Clear speed and anim.
 	move.b  #0,obj.Anim(a0)
 	rts
 
+; ---------------------------------------------------------------------------
+; Smoke routine
+; ---------------------------------------------------------------------------
+
 Ladybug_Smoke:
-	lea     (AniSpr_Ladybug).l,a1
-	bsr.w   _objectAnimate
-	bra.w   _objectDraw
+	lea     AniSpr_Ladybug,a1	; Run animation
+	bsr.w   _objectAnimate		
+	bra.w   _objectDraw		; Set sprite to draw
+
+; ---------------------------------------------------------------------------
+; Delete object when finished
+; ---------------------------------------------------------------------------
 
 Ladybug_Done:
 	bra.w   _objectDelete
