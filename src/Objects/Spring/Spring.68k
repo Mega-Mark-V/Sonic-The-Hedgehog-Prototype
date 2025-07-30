@@ -1,0 +1,249 @@
+; ---------------------------------------------------------------------------
+; Spring object code (source name "sjump"?)
+; ---------------------------------------------------------------------------
+
+ObjSprings:
+	moveq	#0,d0
+	move.b	obj.Action(a0),d0
+	move.w	.Index(pc,d0.w),d1
+	jsr	.Index(pc,d1.w)
+
+	bsr.w	_objectDraw
+
+	; Check if object offscreen, delete if so
+
+	move.w	obj.X(a0),d0
+	andi.w	#$FF80,d0
+	move.w	cameraAPosX.w,d1
+	subi.w	#128,d1
+	andi.w	#$FF80,d1
+	sub.w	d1,d0
+	cmpi.w	#$280,d0
+	bhi.w	_objectDelete
+	rts
+
+; ---------------------------------------------------------------------------
+
+.Index:
+	dc.w	Spring_Init-.Index	;  0
+
+	dc.w	Spring_UpMain-.Index	;  2
+	dc.w	Spring_UpAnim-.Index	;  4
+	dc.w	Spring_UpDone-.Index	;  6
+
+	dc.w	Spring_SideMain-.Index	;  8
+	dc.w	Spring_SideAnim-.Index	;  A
+	dc.w	Spring_SideDone-.Index	;  C
+
+	dc.w	Spring_DownMain-.Index	;  E
+	dc.w	Spring_DownAnim-.Index	; 10
+	dc.w	Spring_DownDone-.Index	; 12
+
+; ---------------------------------------------------------------------------
+
+SpringPowerTbl:
+	dc.w	-$1000	; Red
+	dc.w	-$A00	; Yellow
+
+; ---------------------------------------------------------------------------
+; local enums
+
+spring.Power	= $30
+
+; ---------------------------------------------------------------------------
+; Initialization, determine spring power and direction from user arguments
+; ---------------------------------------------------------------------------
+
+Spring_Init:
+	addq.b	#2,obj.Action(a0)
+	move.l	#SprPat_Spring,obj.Pat(a0)
+	move.w	#$523,obj.Tile(a0)
+	ori.b	#%100,obj.Render(a0)	; Render on Cam A
+	move.b	#$10,obj.XRender(a0)
+	move.b	#4,obj.Priority(a0)
+
+	move.b	obj.Args(a0),d0		; args = d0
+
+	btst	#4,d0			; If arg. type not sideways, skip
+	beq.s	.NotSide
+	move.b	#8,obj.Action(a0)
+	move.b	#1,obj.Anim(a0)
+	move.b	#3,obj.Frame(a0)
+	move.w	#$533,obj.Tile(a0)
+	move.b	#8,obj.XRender(a0)
+
+.NotSide:
+	btst	#5,d0			; If not downwards, skip
+	beq.s	.NotDwn			
+	move.b	#$E,obj.Action(a0)
+	bset	#1,obj.Status(a0)
+
+.NotDwn:
+	btst	#1,d0			; If not low power, skip
+	beq.s	.LowPwr
+	bset	#5,obj.Tile(a0)		; Otherwise, change palette
+
+.LowPwr:
+	andi.w	#%1111,d0				; Get spring pwr.
+	move.w	SpringPowerTbl(pc,d0.w),spring.Power(a0)
+	rts
+
+; ---------------------------------------------------------------------------
+; Main code for up-facing types, applies collision and bounce power 
+; ---------------------------------------------------------------------------
+
+Spring_UpMain:
+	move.w	#27,d1			; Set hitbox size inputs
+	move.w	#8,d2
+	move.w	#16,d3
+	move.w	obj.X(a0),d4
+	bsr.w	_objectSolid		; Make solid to player
+					; (sets a1 = memPlayer)
+	tst.b	obj.SubAction(a0)
+	bne.s	.BouncePlayer
+	rts
+
+.BouncePlayer:
+	addq.b	#2,obj.Action(a0)		; Inc. object action
+	addq.w	#8,obj.Y(a1)			; Adj. player upwards
+	move.w	spring.Power(a0),obj.YSpeed(a1)	; Set player Y-speed
+
+	bset	#PHYS.AIRBORNE,obj.Status(a1)	; Set play. in air
+	bclr	#PHYS.LIFTED,obj.Status(a1)	; off platform
+	move.b	#$10,obj.Anim(a1)		; animation no.
+	move.b	#2,obj.Action(a1)		; and action cntr.
+
+	bclr	#STAT.LIFTING,obj.Status(a0)	; Set obj. not lifting play.
+	clr.b	obj.SubAction(a0)		; Clear SubAction (as flag)
+
+	move.w	#SFXNO_SPRING,d0		; Play spring SFX
+	jsr	SndSetSFX
+	; fall into Spring_UpAnim
+
+; ---------------------------------------------------------------------------
+; Animate upwards
+
+Spring_UpAnim:
+	lea	AniSpr_Spring,a1	; Run until act. cntr. incremented
+	bra.w	_objectAnimate		; in anim. script.
+
+; ---------------------------------------------------------------------------
+; Finish and reset upwards
+
+Spring_UpDone:
+	move.b	#1,obj.LastAnim(a0)	; Reset animation state
+	subq.b	#4,obj.Action(a0)	; Dec. action back to UpMain
+	rts
+
+; ---------------------------------------------------------------------------
+; Main code for sideways-facing types
+; ---------------------------------------------------------------------------
+
+Spring_SideMain:
+	move.w	#19,d1			; Set hitbox size inputs
+	move.w	#14,d2
+	move.w	#15,d3
+	move.w	obj.X(a0),d4
+	bsr.w	_objectSolid		; a1 = memPlayer
+
+	cmpi.b	#2,obj.Action(a0)	; Check if routine set to UpMain...?
+	bne.s	.ActOk			; Skip if not...
+	move.b	#8,obj.Action(a0)	; Old hotfix, maybe?
+
+.ActOk:
+	btst	#STAT.PUSHED,obj.Status(a0)	; If play. hit sides, bounce
+	bne.s	.BouncePlayer
+	rts
+
+.BouncePlayer:
+	addq.b	#2,obj.Action(a0)		; Inc. action
+	move.w	spring.Power(a0),obj.XSpeed(a1)	; Set play. Y-speed
+	addq.w	#8,obj.X(a1)			; Adj. sideways
+
+	btst	#STAT.XDIR,obj.Status(a0)	; Skip ahead if flipped
+	bne.s	.XFlipped
+
+	subi.w	#16,obj.X(a1)			; Adj. sideways again
+	neg.w	obj.XSpeed(a1)			; negate X-speed
+
+.XFlipped:
+	move.w	#15,play.Locked(a1)		; Set play. locked 15 frames
+	move.w	obj.XSpeed(a1),obj.Momentum(a1)	; X-speed = Momentum
+	bchg	#PHYS.DIR,obj.Status(a1)	; Flip direction
+	btst	#PHYS.ROLLING,obj.Status(a1)	; If play. rolling, skip
+	bne.s	.Rolling
+	move.b	#0,obj.Anim(a1) 	; Otherwise reset anim. to walking
+
+.Rolling:
+	bclr	#STAT.PUSHED,obj.Status(a0)	; Clear obj. pushed stat
+	bclr	#PHYS.PUSH,obj.Status(a1)	; Clear play. pushing stat
+
+	move.w	#SFXNO_SPRING,d0		; Play spring SFX
+	jsr	SndSetSFX
+	; fall into Spring_SideAnim
+
+; ---------------------------------------------------------------------------
+
+Spring_SideAnim:
+	lea	AniSpr_Spring,a1		; Animate until act. chg.
+	bra.w	_objectAnimate
+
+; ---------------------------------------------------------------------------
+
+Spring_SideDone:
+	move.b	#2,obj.LastAnim(a0)		; Set anim flag
+	subq.b	#4,obj.Action(a0)		; Decrement back to main
+	rts
+
+; ---------------------------------------------------------------------------
+; Main code for downwards-facing types
+; ---------------------------------------------------------------------------
+
+Spring_DownMain:
+	move.w	#27,d1			; Set hitbox size inputs
+	move.w	#8,d2
+	move.w	#16,d3
+	move.w	obj.X(a0),d4
+	bsr.w	_objectSolid		; a1 = memPlayer
+	cmpi.b  #2,obj.Action(a0)	; Same weird thing as above...
+	bne.s   .ActOk
+	move.b  #$E,obj.Action(a0)
+
+.ActOk:
+	tst.b   obj.SubAction(a0)	; If play. on top, exit
+	bne.s   .OnTop
+	tst.w   d4			; If play. hit bottom, bounce
+	bmi.s   .BouncePlayer
+
+.OnTop:
+	rts
+
+.BouncePlayer:
+	addq.b  #2,obj.Action(a0)		; Inc. obj. action
+
+	subq.w  #8,obj.Y(a1)			; Adjust play. upwards
+	move.w  spring.Power(a0),obj.YSpeed(a1)	; Set Y-speed
+	neg.w   obj.YSpeed(a1)			; Negate it
+	bset    #PHYS.AIRBORNE,obj.Status(a1)	; Set as in air
+	bclr    #PHYS.LIFTED,obj.Status(a1)	; Not lifted
+	move.b  #2,obj.Action(a1)		; and set action to main.
+
+	bclr    #STAT.LIFTING,obj.Status(a0)	; Not lifting
+	clr.b   obj.SubAction(a0)		; Clear sub-act. (flag)
+
+	move.w  #SFXNO_SPRING,d0		; Play spring SFX
+	jsr     SndSetSFX
+	; fall into Spring_DownAnim
+
+; ---------------------------------------------------------------------------
+
+Spring_DownAnim:
+	lea	AniSpr_Spring,a1		; Animate until act. chg.
+	bra.w	_objectAnimate
+
+; ---------------------------------------------------------------------------
+
+Spring_DownDone:
+	move.b	#1,obj.LastAnim(a0)		; Set anim flag
+	subq.b	#4,obj.Action(a0)		; Decrement back to main
+	rts
