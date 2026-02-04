@@ -3,8 +3,6 @@
 ; The missile is also spawned by ObjEnemyChameleon
 ; ---------------------------------------------------------------------------
 
-
-
 ; ---------------------------------------------------------------------------
 ; Enemy Bee main code (source name "hachi")
 ; ---------------------------------------------------------------------------
@@ -186,9 +184,9 @@ Missile_Bee:
 	bra.w   _objectDraw
 
 .ChkParentState:
-	movea.l missile.Parent(a0),a1 ; Get parent
-	cmpi.b  #OBJNO_LIGHTEXPL,obj.No(a1) ; Check if parent is now an explosion
-	beq.s   Missile_Done    ; Kill if so
+	movea.l	missile.Parent(a0),a1		; Get parent
+	cmpi.b	#OBJNO_LIGHTEXPL,obj.No(a1)	; Check if parent is now an explosion
+	beq.s	Missile_Done			; Kill if so
 	rts
 
 Missile_Move:

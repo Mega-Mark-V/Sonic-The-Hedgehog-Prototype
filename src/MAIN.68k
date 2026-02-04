@@ -872,11 +872,12 @@ AngleTable:
 ; ---------------------------------------------------------------------------
 ; Game Modes
 ; ---------------------------------------------------------------------------
-; Deprecate these. Use vlink.
-	include	"Logo/_LOGO.68k"
-	include	"Title/_TITLE.68k"
-;       include	"Level/_LEVEL.68k"
-;       include	"Special/_SPECIAL.68k"
+; Idk what linker to use lol.
+
+	include	"Logo/LOGO.68k"
+	include	"Title/TITLE.68k"
+;       include	"Level/LEVEL.68k"
+;       include	"Special/SPECIAL.68k"
 
 ; ---------------------------------------------------------------------------
 ; Camera System

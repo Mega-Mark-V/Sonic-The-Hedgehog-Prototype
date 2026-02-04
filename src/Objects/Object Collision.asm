@@ -19,7 +19,7 @@ BLK.BTMSOLID    EQU     $E
 ; ---------------------------------------------------------------------------
 
 _physFootCollision:                     
-	btst    #PHYS.PLATFORM,obj.Status(a0)
+	btst    #PHYS.LIFTED,obj.Status(a0)
 	beq.s   .NotOnPlatform
 	moveq   #0,d0                   ; Clear sensor angle information
 	move.b  d0,angleFront.w
@@ -50,7 +50,7 @@ _physFootCollision:
 
 _physFootColDown:
 
-	; ---- Get right sensor information
+	; ---- Get front (right) sensor information
 
 	move.w  obj.Y(a0),d2            
 	move.w  obj.X(a0),d3
@@ -69,7 +69,7 @@ _physFootColDown:
 
 	move.w  d1,-(sp)                ; Push d1 (output distance) to stack
 
-	; ---- Get left sensor information
+	; ---- Get back (left) sensor information
 
 	move.w  obj.Y(a0),d2
 	move.w  obj.X(a0),d3
@@ -95,7 +95,7 @@ _physFootColDown:
 	bpl.s   .AboveFloor
 
 	cmpi.w  #PHYS_DOWNMAX,d1        ; Exit if out of downward radius
-	blt.s   _physUnkObjectFall
+	blt.s   _physAdjustUnk1
 
 	add.w   d1,obj.Y(a0)            ; Otherwise set to floor
 
@@ -109,7 +109,7 @@ _physFootColDown:
 	rts
 
 .InAir:                               
-	bset    #PHYS.AIRPHYS,obj.Status(a0)    ; Set air status bit
+	bset    #PHYS.AIRBORNE,obj.Status(a0)    ; Set air status bit
 	bclr    #PHYS.PUSH,obj.Status(a0)       ; Clear pushing status bit
 	move.b  #1,obj.AnimPrev(a0)             ; ???
 	rts
@@ -127,7 +127,7 @@ _physFootColDown:
 ; It also subtracts instead of adding to the position, effectively
 ; reversing the movement directions
 
-_physUnkObjectFall:                       
+_physAdjustUnk1:                       
 	rts
 	move.l  obj.X(a0),d2
 	move.w  obj.XSpeed(a0),d0
@@ -145,7 +145,7 @@ _physUnkObjectFall:
 ; Called at _physFootColRight and _physFootColLeft...  huh
 ; This only applies Y-speed and it also subtracts
 
-_physUnkFallReverse:                       
+_physAdjustUnk2:                       
 	rts
 	move.l  obj.Y(a0),d3
 	move.w  obj.YSpeed(a0),d0
@@ -159,7 +159,7 @@ _physUnkFallReverse:
 
 ; Same as above, _objectSetSpeed
 
-_physUnkSetSpeed:    
+_physAdjustUnk3:    
 	rts
 	move.l  obj.X(a0),d2
 	move.l  obj.Y(a0),d3
@@ -218,7 +218,7 @@ _physFootColRight:
 	move.b  obj.YRad(a0),d0         ; ..and X from YRad
 	ext.w   d0
 	add.w   d0,d3                   ; for X position input
-	lea     angleFront.w,a4     ; Same inputs as before:
+	lea     angleFront.w,a4		; Same inputs as before:
 	movea.w #16,a3                  ; Block height
 	move.w  #0,d6                   ; Orientation
 	moveq   #BLK.TOPSOLID,d5        ; Solidity bit
@@ -251,7 +251,7 @@ _physFootColRight:
 	bpl.s   .AboveFloor
 
 	cmpi.w  #PHYS_DOWNMAX,d1
-	blt.w   _physUnkFallReverse
+	blt.w   _physAdjustUnk2
 
 	add.w   d1,obj.X(a0)
 
@@ -265,9 +265,9 @@ _physFootColRight:
 	rts
 
 .InAir:                              
-	bset    #PHYS.AIRPHYS,obj.Status(a0)
+	bset    #PHYS.AIRBORNE,obj.Status(a0)
 	bclr    #PHYS.PUSH,obj.Status(a0)
-	move.b  #1,obj.AnimPrev(a0)             ; ???
+	move.b  #1,obj.AnimPrev(a0)             ; Flag animation reset
 	rts
 
 
@@ -323,7 +323,7 @@ _physFootColUp:
 	bpl.s   .AboveFloor
 
 	cmpi.w  #PHYS_DOWNMAX,d1
-	blt.w   _physUnkFallReverse
+	blt.w   _physAdjustUnk2
 	
 	sub.w   d1,obj.Y(a0)
 
@@ -340,7 +340,7 @@ _physFootColUp:
 	rts
 
 .InAir:                              
-	bset    #PHYS.AIRPHYS,obj.Status(a0)
+	bset    #PHYS.AIRBORNE,obj.Status(a0)
 	bclr    #PHYS.PUSH,obj.Status(a0)
 	move.b  #1,obj.AnimPrev(a0)             ; ???
 	rts
@@ -397,7 +397,7 @@ _physFootColLeft:
 	bpl.s   .AboveFloor
 
 	cmpi.w  #PHYS_DOWNMAX,d1
-	blt.w   _physUnkFallReverse
+	blt.w   _physAdjustUnk2
 	
 	sub.w   d1,obj.X(a0)
 
@@ -412,7 +412,7 @@ _physFootColLeft:
 	rts
 
 .InAir:                              
-	bset    #PHYS.AIRPHYS,obj.Status(a0)
+	bset    #PHYS.AIRBORNE,obj.Status(a0)
 	bclr    #PHYS.PUSH,obj.Status(a0)
 	move.b  #1,obj.AnimPrev(a0)             ; ???
 	rts
@@ -954,8 +954,7 @@ ConvertBlkCol:
 	rts
 
 ; ---------------------------------------------------------------------------
-; Function that approximates the next collision step and does a simple check 
-; Rename this
+; Function that approximates the next collision step(?)
 ; ---------------------------------------------------------------------------
 
 _physGetWallAhead:
@@ -988,7 +987,7 @@ _physGetWallAhead:
 	beq.w   _physChkUp.User
 	andi.b  #$38,d1 
 	bne.s   .Skip
-	addq.w  #8,d2			; wtf
+	addq.w  #8,d2			; Adjust Y downwards 8 pix.
 
 .Skip:
 	cmpi.b  #$40,d0 
@@ -1112,10 +1111,10 @@ _physRoundAngle:
 	rts
 
 ; ---------------------------------------------------------------------------
-; 
+; Basic collision check downwards for objects that don't need advanced info
 ; ---------------------------------------------------------------------------
 
-_objectColChkDown:                       
+_physBasicChkDown:                       
 	move.w  obj.X(a0),d3
 
 .UserX:                   
@@ -1201,10 +1200,10 @@ _physChkRight:
 	bra.w   _physRoundAngle
 
 ; ---------------------------------------------------------------------------
-; 
+; Basic collision check rightwards for objects that don't need advanced info
 ; ---------------------------------------------------------------------------
 
-_objectColChkRight:                   
+_physBasicChkRight:                   
 	add.w   obj.X(a0),d3
 	move.w  obj.Y(a0),d2
 	lea     angleFront.w,a4
@@ -1222,7 +1221,7 @@ _objectColChkRight:
 	rts
 
 ; ---------------------------------------------------------------------------
-; Check foot-ground information upwards, pick foot, and report back info
+; Check foot-ground information upwards, pick foot, and return info
 ; ---------------------------------------------------------------------------
 
 _physFootChkUp:                    
@@ -1266,7 +1265,7 @@ _physFootChkUp:
 	bra.w   _physFootChkPick
 
 ; ---------------------------------------------------------------------------
-; Basic collision check downwards which only uses object origin (Y-10), (X)
+; Collision check upwards which only uses object origin (Y-10), (X)
 ; ---------------------------------------------------------------------------
 
 _physChkUp:
@@ -1286,8 +1285,10 @@ _physChkUp:
 	bra.w   _physRoundAngle
 
 ; ---------------------------------------------------------------------------
+; Basic collision check upwards for objects that don't need advanced info
+; ---------------------------------------------------------------------------
 
-_objectColChkUp:                     
+_physBasicChkUp:                     
 	move.w  obj.Y(a0),d2
 	move.w  obj.X(a0),d3
 	moveq   #0,d0
@@ -1309,7 +1310,7 @@ _objectColChkUp:
 	rts
 
 ; ---------------------------------------------------------------------------
-; Check foot-ground information leftwards, pick foot, and report back info
+; Check foot-ground information leftwards, pick foot, and return info
 ; ---------------------------------------------------------------------------
 
 _physFootChkLeft:                   
@@ -1353,7 +1354,7 @@ _physFootChkLeft:
 	bra.w   _physFootChkPick
 
 ; ---------------------------------------------------------------------------
-; Basic collision check leftwards which only uses object origin (Y), (X-10)
+; Collision check leftwards which only uses object origin (Y), (X-10)
 ; ---------------------------------------------------------------------------
 
 
@@ -1374,8 +1375,10 @@ _physChkLeft:
 	bra.w   _physRoundAngle
 
 ; ---------------------------------------------------------------------------
+; Basic collision check leftwards for objects that don't need advanced info
+; ---------------------------------------------------------------------------
 
-_objectColChkLeft:                    
+_physBasicChkLeft:                    
 	add.w   obj.X(a0),d3
 	move.w  obj.Y(a0),d2
 	lea     angleFront.w,a4
