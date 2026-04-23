@@ -110,8 +110,8 @@ ErrorExit:
 
 DrawErrorMsg:
 	lea     VDPDATA,a6
-	VDPCMD  move.l,$F800,VRAM,WRITE,d0      ; Set VRAM write address
-	lea     ArtUnc_Text,a0
+	VDPCMD  move.l,$F800,VRAM,WRITE,VDPCTRL	; Set VRAM write address
+	lea     ArtUnc_Text.l,a0
 	move.w  #$27F,d1
 
 .LoadText:
@@ -123,7 +123,7 @@ DrawErrorMsg:
 	move.w  ErrorMsgs(pc,d0.w),d0
 	lea     ErrorMsgs(pc,d0.w),a0
 	VDPCMD  move.l,$C604,VRAM,WRITE,VDPCTRL
-	moveq   #18-1,d1			; Set string size
+	moveq   #19-1,d1			; Set string size
 
 .DrawMsg:
 	moveq   #0,d0	
