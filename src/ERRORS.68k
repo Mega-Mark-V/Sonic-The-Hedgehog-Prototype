@@ -56,12 +56,12 @@ ERROR_TRACE:
 	move.b	#ERRNO_TRACE,errorCode.w
 	bra.s	ErrorMain
 
-ERROR_LINE1010:
+ERROR_LINEA:
 	move.b	#ERRNO_LINE1010,errorCode.w
 	addq.l	#2,2(sp)
 	bra.s	ErrorMain
 
-ERROR_LINE1111:
+ERROR_LINEF:
 	move.b	#ERRNO_LINE1111,errorCode.w
 	addq.l	#2,2(sp)
 	bra.s	ErrorMain

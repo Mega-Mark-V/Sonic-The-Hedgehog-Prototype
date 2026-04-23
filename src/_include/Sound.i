@@ -83,15 +83,3 @@ SNDCMD_FADE		EQU	$E0
 SNDCMD_UNK		EQU	$E1
 SNDCMD_FAST		EQU	$E2
 SNDCMD_TEMPORES		EQU	$E3
-
-; ---------------------------------------------------------------------------
-; Sound RAM allocation
-; ---------------------------------------------------------------------------
-
-SOUNDRAM	EQU	$FFFFF000      
-		rsset	SOUNDRAM
-			rs.b $A   
-soundqueue1:		rs.b 1    
-soundqueue2:		rs.b 1    
-soundqueue3:		rs.b 1    
-			rs.b $5F3
