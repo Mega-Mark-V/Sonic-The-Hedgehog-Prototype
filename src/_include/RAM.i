@@ -26,6 +26,7 @@ OBJECTRAMSZ	EQU	OBJECTRAME-OBJECTRAM
 
 	rsset	$FFFFD000
 objSlot00:	rs.b 	OBJSZ
+memPlayer	=	objSlot00
 objSlot01:	rs.b 	OBJSZ
 objSlot02:	rs.b 	OBJSZ
 objSlot03:	rs.b 	OBJSZ

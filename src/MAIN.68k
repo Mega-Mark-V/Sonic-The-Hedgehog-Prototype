@@ -310,11 +310,11 @@ GAMEMODE	macro	addr, id
 
 .Index:
 	rsreset	        ; prg.       ; ID equ
-	GAMEMODE	GM_LOGO,	GMNO_LOGO       ; SEGA Logo
-	GAMEMODE	GM_TITLE,	GMNO_TITLE      ; Title Screen
-	GAMEMODE	GM_LEVEL,	GMNO_DEMO       ; Demo
-	GAMEMODE	GM_LEVEL,	GMNO_LEVEL      ; Level
-	GAMEMODE	GM_SPECIAL,	GMNO_SPECIAL    ; Special Stage
+;	GAMEMODE	GM_LOGO,	GMNO_LOGO       ; SEGA Logo
+;	GAMEMODE	GM_TITLE,	GMNO_TITLE      ; Title Screen
+;	GAMEMODE	GM_LEVEL,	GMNO_DEMO       ; Demo
+;	GAMEMODE	GM_LEVEL,	GMNO_LEVEL      ; Level
+;	GAMEMODE	GM_SPECIAL,	GMNO_SPECIAL    ; Special Stage
 							; (unimplemented)
 							; (unimplemented) 
 	rts
@@ -647,8 +647,8 @@ VSync:
 ; ---------------------------------------------------------------------------
 ; Idk what linker to use lol.
 
-	include	"Logo/LOGO.68k"
-	include	"Title/TITLE.68k"
+;	include	"Logo/LOGO.68k"
+;	include	"Title/TITLE.68k"
 ;       include	"Level/LEVEL.68k"
 ;       include	"Special/SPECIAL.68k"
 

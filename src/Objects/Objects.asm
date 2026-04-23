@@ -78,25 +78,26 @@ REND.TOGGLE	= 7
 ; ---------------------------------------------------------------------------
 
 RunObjects: 
-	lea	OBJECTRAM.w,a0	; Object memory starting location
-	moveq	#128-1,d7
-	moveq	#0,d0
-	cmpi.b	#6,objSlot00	; Sonic routine counter
-	bcc.s	.Paused
+	lea	OBJECTRAM.w,a0		; Get object memory
+	moveq	#128-1,d7		; Loop for 128 slots (-1 for dbf)
+	moveq	#0,d0			; Clear d0 for work
+
+	cmpi.b	#6,memPlayer		; Check if paused
+	bcc.s	.Paused			; Exit if paused or player dead
 
 .RunObjLoop:
-	move.b	obj.No(a0),d0	; Check object number
-	beq.s	.EmptySlot	; If empty, skip over it
+	move.b	obj.No(a0),d0			; Get object number in d0
+	beq.s	.EmptySlot			; If number = 0 (none), skip ahead
+	add.w	d0,d0				; Fast multiply by 4 for index
 	add.w	d0,d0
-	add.w	d0,d0
-	movea.l	ObjectIndex-4(pc,d0.w),a1 ; No zero offset - start at 1
-	jsr	(a1)		; Jump to object's code
+	movea.l	ObjectIndex-4(pc,d0.w),a1	; Get obj. addr. (-4 for no 0)
+	jsr	(a1)				; Go to addr., running the object
 
-	moveq   #0,d0
+	moveq   #0,d0			; On return, clear d0
 
 .EmptySlot:
-	lea	OBJSZ(a0),a0	; Move forward to next object slot in RAM
-	dbf	d7,.RunObjLoop
+	lea	OBJSZ(a0),a0            ; Move into next object memory space
+	dbf	d7,.RunObjLoop		; Run until d7 (slot cntr) equals 0
 	rts
 
 .Paused:
@@ -110,7 +111,7 @@ RunObjects:
 	beq.s	.SkipDisplay
 	tst.b	obj.Render(a0)
 	bpl.s	.SkipDisplay
-	bsr.w	_objectDraw	; Only display sprites while paused
+	bsr.w	_objectDraw     ; Only display sprites while paused
 
 .SkipDisplay:
 	lea	OBJSZ(a0),a0
@@ -132,100 +133,100 @@ ObjectIndex:
 	rsreset
 	rs.b	1	; No 0 index
 
-	OBJDEF	ObjPlayer,			OBJNO_PLAYER
-	OBJDEF	ObjDev1,			OBJNO_DEV1
-	OBJDEF	ObjDev2,			OBJNO_DEV2
-	OBJDEF	ObjDev3,			OBJNO_DEV3
-	OBJDEF	ObjDev4,			OBJNO_DEV4
-	OBJDEF	ObjDev5,			OBJNO_DEV5
-	OBJDEF	ObjDev6,			OBJNO_DEV6
-	OBJDEF	.Null
-	OBJDEF	ObjPlayerSpecial,		OBJNO_PLAYSPECIAL
-	OBJDEF	.Null
-	OBJDEF	.Null
-	OBJDEF	.Null
-	OBJDEF	ObjGoal,			OBJNO_GOAL
-	OBJDEF	ObjTitleSonic,			OBJNO_TITLESONIC
-	OBJDEF	ObjTitleMisc,			OBJNO_TITLEMISC
-	OBJDEF	ObjPlayerTest,			OBJNO_PLAYTEST
-	OBJDEF	ObjBridge,			OBJNO_BRIDGE
-	OBJDEF	ObjSceneryLamp,			OBJNO_SCENERYLAMP
-	OBJDEF	ObjFireShooter,			OBJNO_FIRESHOOTER
-	OBJDEF	ObjFireBall,			OBJNO_FIREBALL
-	OBJDEF	ObjSwingPlatform,		OBJNO_SWINGPLAT
-	OBJDEF	.Null
-	OBJDEF	ObjSpikeBridge,			OBJNO_SPIKEBRIDGE
-	OBJDEF	ObjPlatform,			OBJNO_PLATFORM
-	OBJDEF	ObjRollingBall,			OBJNO_ROLLINGBALL
-	OBJDEF	ObjCollapsingLedge,		OBJNO_COLLAPSLEDGE
-	OBJDEF	ObjUnkPlatform,			OBJNO_UNKPLATFORM
-	OBJDEF	ObjLevelScenery,		OBJNO_LVLSCENERY
-	OBJDEF	ObjHiddenSwitch,		OBJNO_HIDDENSWITCH
-	OBJDEF	ObjEnemyPig,			OBJNO_ENEMYPIG
-	OBJDEF	ObjEnemyCrab,			OBJNO_ENEMYCRAB
-	OBJDEF	ObjBallBomb,			OBJNO_BALLBOMB
-	OBJDEF	ObjHUD,				OBJNO_HUD
-	OBJDEF	ObjEnemyBee,			OBJNO_ENEMYBEE
-	OBJDEF	ObjMissile,			OBJNO_MISSILE
-	OBJDEF	ObjBombHit,			OBJNO_BOMBHIT
-	OBJDEF	ObjRing,			OBJNO_RING
-	OBJDEF	ObjMonitor,			OBJNO_MONITOR
-	OBJDEF	ObjLightExpl,			OBJNO_LIGHTEXPL
-	OBJDEF	ObjFriends,			OBJNO_FRIENDS
-	OBJDEF	ObjPoints,			OBJNO_POINTS
-	OBJDEF	ObjTunnelDoor,			OBJNO_TUNNELDOOR
-	OBJDEF	ObjEnemyPirahna,		OBJNO_ENEMYPIRAHNA
-	OBJDEF	ObjEnemyShark,			OBJNO_ENEMYSHARK
-	OBJDEF	ObjEnemyMole,			OBJNO_ENEMYMOLE
-	OBJDEF	ObjMonitorItem,			OBJNO_MONITORITEM
-	OBJDEF	ObjShiftingFloor,		OBJNO_SHIFTFLOOR
-	OBJDEF	ObjGlassBlock,			OBJNO_GLASSBLOCK
-	OBJDEF	ObjSpikeCrusherV,		OBJNO_SPIKECRUSHV
-	OBJDEF	ObjButton,			OBJNO_BUTTON
-	OBJDEF	ObjPushable,			OBJNO_PUSHABLE
-	OBJDEF	ObjTitleCards,			OBJNO_TITLECARD
-	OBJDEF	ObjSpreadingFire,		OBJNO_SPREADFIRE
-	OBJDEF	ObjSpikes,			OBJNO_SPIKES
-	OBJDEF	ObjRingLoss,			OBJNO_RINGLOSS
-	OBJDEF	ObjShield,			OBJNO_SHIELD
-	OBJDEF	ObjGameOver,			OBJNO_GAMEOVER
-	OBJDEF	ObjActClear,			OBJNO_ACTCLEAR
-	OBJDEF	ObjRock,			OBJNO_ROCK
-	OBJDEF	ObjBreakable,			OBJNO_BREAKABLE
-	OBJDEF	ObjBoss,			OBJNO_BOSS
-	OBJDEF	ObjEggCapsule,			OBJNO_EGGCAPSULE
-	OBJDEF	ObjHeavyExpl,			OBJNO_HEAVYEXPL
-	OBJDEF	ObjEnemyBug,			OBJNO_ENEMYBUG
-	OBJDEF	ObjSpring,			OBJNO_SPRING
-	OBJDEF	ObjEnemyChameleon,		OBJNO_ENEMYCHAMELEON
-	OBJDEF	ObjEnemyArmadillo,		OBJNO_ENEMYARMADILLO
-	OBJDEF	ObjEdgeWalls,			OBJNO_EDGEWALLS
-	OBJDEF	ObjSpikeCrusherH,		OBJNO_SPIKECRUSHH
-	OBJDEF	ObjBlock,			OBJNO_BLOCK
-	OBJDEF	ObjBumper,			OBJNO_BUMPER
-	OBJDEF	ObjBossWeapons,			OBJNO_BOSSWEAPONS
-	OBJDEF	ObjWaterfallSFX,		OBJNO_WTRFALLSFX
-	OBJDEF	ObjWarp,			OBJNO_WARP
-	OBJDEF	ObjBigRing,			OBJNO_BIGRING
-	OBJDEF	ObjGeyserSpawn,			OBJNO_GEYSERSPAWN
-	OBJDEF	ObjGeyser,			OBJNO_GEYSER
-	OBJDEF	ObjLavaChase,			OBJNO_LAVACHASE
-	OBJDEF	ObjEnemyRabbit,			OBJNO_ENEMYRABBIT
-	OBJDEF	ObjEnemyHermit,			OBJNO_ENEMYHERMIT
-	OBJDEF	ObjSmashBlock,			OBJNO_SMASHBLOCK
-	OBJDEF	ObjMovingPlatform,		OBJNO_MOVINGPLAT
-	OBJDEF	ObjCollapsingFloor,		OBJNO_COLLAPSFLOOR
-	OBJDEF	ObjDamageTag,			OBJNO_DAMAGETAG
-	OBJDEF	ObjEnemyBat,			OBJNO_ENEMYBAT
-	OBJDEF	ObjBobbingBlocks,		OBJNO_BOBBLOCK
-	OBJDEF	ObjSpikeBall,			OBJNO_SPIKEBALL
-	OBJDEF	ObjBigSpikedBall,		OBJNO_BIGSPIKEBALL
-	OBJDEF	ObjAdvPlatform,			OBJNO_ADVPLATFORM
-	OBJDEF	ObjCirclingGirder,		OBJNO_CIRCLEGIRDER
-	OBJDEF	ObjStairBlocks,			OBJNO_STAIRBLOCKS
-	OBJDEF	ObjGirder,			OBJNO_GIRDER
-	OBJDEF	ObjFan,				OBJNO_FAN
-	OBJDEF	ObjSeeSaw,			OBJNO_SEESAW
+;	OBJDEF	ObjPlayer,			OBJNO_PLAYER
+;	OBJDEF	ObjDev1,			OBJNO_DEV1
+;	OBJDEF	ObjDev2,			OBJNO_DEV2
+;	OBJDEF	ObjDev3,			OBJNO_DEV3
+;	OBJDEF	ObjDev4,			OBJNO_DEV4
+;	OBJDEF	ObjDev5,			OBJNO_DEV5
+;	OBJDEF	ObjDev6,			OBJNO_DEV6
+;	OBJDEF	.Null
+;	OBJDEF	ObjPlayerSpecial,		OBJNO_PLAYSPECIAL
+;	OBJDEF	.Null
+;	OBJDEF	.Null
+;	OBJDEF	.Null
+;	OBJDEF	ObjGoal,			OBJNO_GOAL
+;	OBJDEF	ObjTitleSonic,			OBJNO_TITLESONIC
+;	OBJDEF	ObjTitleMisc,			OBJNO_TITLEMISC
+;	OBJDEF	ObjPlayerTest,			OBJNO_PLAYTEST
+;	OBJDEF	ObjBridge,			OBJNO_BRIDGE
+;	OBJDEF	ObjSceneryLamp,			OBJNO_SCENERYLAMP
+;	OBJDEF	ObjFireShooter,			OBJNO_FIRESHOOTER
+;	OBJDEF	ObjFireBall,			OBJNO_FIREBALL
+;	OBJDEF	ObjSwingPlatform,		OBJNO_SWINGPLAT
+;	OBJDEF	.Null
+;	OBJDEF	ObjSpikeBridge,			OBJNO_SPIKEBRIDGE
+;	OBJDEF	ObjPlatform,			OBJNO_PLATFORM
+;	OBJDEF	ObjRollingBall,			OBJNO_ROLLINGBALL
+;	OBJDEF	ObjCollapsingLedge,		OBJNO_COLLAPSLEDGE
+;	OBJDEF	ObjUnkPlatform,			OBJNO_UNKPLATFORM
+;	OBJDEF	ObjLevelScenery,		OBJNO_LVLSCENERY
+;	OBJDEF	ObjHiddenSwitch,		OBJNO_HIDDENSWITCH
+;	OBJDEF	ObjEnemyPig,			OBJNO_ENEMYPIG
+;	OBJDEF	ObjEnemyCrab,			OBJNO_ENEMYCRAB
+;	OBJDEF	ObjBallBomb,			OBJNO_BALLBOMB
+;	OBJDEF	ObjHUD,				OBJNO_HUD
+;	OBJDEF	ObjEnemyBee,			OBJNO_ENEMYBEE
+;	OBJDEF	ObjMissile,			OBJNO_MISSILE
+;	OBJDEF	ObjBombHit,			OBJNO_BOMBHIT
+;	OBJDEF	ObjRing,			OBJNO_RING
+;	OBJDEF	ObjMonitor,			OBJNO_MONITOR
+;	OBJDEF	ObjLightExpl,			OBJNO_LIGHTEXPL
+;	OBJDEF	ObjFriends,			OBJNO_FRIENDS
+;	OBJDEF	ObjPoints,			OBJNO_POINTS
+;	OBJDEF	ObjTunnelDoor,			OBJNO_TUNNELDOOR
+;	OBJDEF	ObjEnemyPirahna,		OBJNO_ENEMYPIRAHNA
+;	OBJDEF	ObjEnemyShark,			OBJNO_ENEMYSHARK
+;	OBJDEF	ObjEnemyMole,			OBJNO_ENEMYMOLE
+;	OBJDEF	ObjMonitorItem,			OBJNO_MONITORITEM
+;	OBJDEF	ObjShiftingFloor,		OBJNO_SHIFTFLOOR
+;	OBJDEF	ObjGlassBlock,			OBJNO_GLASSBLOCK
+;	OBJDEF	ObjSpikeCrusherV,		OBJNO_SPIKECRUSHV
+;	OBJDEF	ObjButton,			OBJNO_BUTTON
+;	OBJDEF	ObjPushable,			OBJNO_PUSHABLE
+;	OBJDEF	ObjTitleCards,			OBJNO_TITLECARD
+;	OBJDEF	ObjSpreadingFire,		OBJNO_SPREADFIRE
+;	OBJDEF	ObjSpikes,			OBJNO_SPIKES
+;	OBJDEF	ObjRingLoss,			OBJNO_RINGLOSS
+;	OBJDEF	ObjShield,			OBJNO_SHIELD
+;	OBJDEF	ObjGameOver,			OBJNO_GAMEOVER
+;	OBJDEF	ObjActClear,			OBJNO_ACTCLEAR
+;	OBJDEF	ObjRock,			OBJNO_ROCK
+;	OBJDEF	ObjBreakable,			OBJNO_BREAKABLE
+;	OBJDEF	ObjBoss,			OBJNO_BOSS
+;	OBJDEF	ObjEggCapsule,			OBJNO_EGGCAPSULE
+;	OBJDEF	ObjHeavyExpl,			OBJNO_HEAVYEXPL
+;	OBJDEF	ObjEnemyBug,			OBJNO_ENEMYBUG
+;	OBJDEF	ObjSpring,			OBJNO_SPRING
+;	OBJDEF	ObjEnemyChameleon,		OBJNO_ENEMYCHAMELEON
+;	OBJDEF	ObjEnemyArmadillo,		OBJNO_ENEMYARMADILLO
+;	OBJDEF	ObjEdgeWalls,			OBJNO_EDGEWALLS
+;	OBJDEF	ObjSpikeCrusherH,		OBJNO_SPIKECRUSHH
+;	OBJDEF	ObjBlock,			OBJNO_BLOCK
+;	OBJDEF	ObjBumper,			OBJNO_BUMPER
+;	OBJDEF	ObjBossWeapons,			OBJNO_BOSSWEAPONS
+;	OBJDEF	ObjWaterfallSFX,		OBJNO_WTRFALLSFX
+;	OBJDEF	ObjWarp,			OBJNO_WARP
+;	OBJDEF	ObjBigRing,			OBJNO_BIGRING
+;	OBJDEF	ObjGeyserSpawn,			OBJNO_GEYSERSPAWN
+;	OBJDEF	ObjGeyser,			OBJNO_GEYSER
+;	OBJDEF	ObjLavaChase,			OBJNO_LAVACHASE
+;	OBJDEF	ObjEnemyRabbit,			OBJNO_ENEMYRABBIT
+;	OBJDEF	ObjEnemyHermit,			OBJNO_ENEMYHERMIT
+;	OBJDEF	ObjSmashBlock,			OBJNO_SMASHBLOCK
+;	OBJDEF	ObjMovingPlatform,		OBJNO_MOVINGPLAT
+;	OBJDEF	ObjCollapsingFloor,		OBJNO_COLLAPSFLOOR
+;	OBJDEF	ObjDamageTag,			OBJNO_DAMAGETAG
+;	OBJDEF	ObjEnemyBat,			OBJNO_ENEMYBAT
+;	OBJDEF	ObjBobbingBlocks,		OBJNO_BOBBLOCK
+;	OBJDEF	ObjSpikeBall,			OBJNO_SPIKEBALL
+;	OBJDEF	ObjBigSpikedBall,		OBJNO_BIGSPIKEBALL
+;	OBJDEF	ObjAdvPlatform,			OBJNO_ADVPLATFORM
+;	OBJDEF	ObjCirclingGirder,		OBJNO_CIRCLEGIRDER
+;	OBJDEF	ObjStairBlocks,			OBJNO_STAIRBLOCKS
+;	OBJDEF	ObjGirder,			OBJNO_GIRDER
+;	OBJDEF	ObjFan,				OBJNO_FAN
+;	OBJDEF	ObjSeeSaw,			OBJNO_SEESAW
 .Null:
 
 ; ---------------------------------------------------------------------------
@@ -685,7 +686,7 @@ GetObjects_Init:
 	move.w  zone.w,d0               ; Get current zone objtbls
 	lsl.b   #6,d0
 	lsr.w   #4,d0
-	lea     ObjPosIndex,a0
+	lea     ObjListTbl,a0
 	movea.l a0,a1
 
 	adda.w  (a0,d0.w),a0            ; Store index tables 'A' (main)
@@ -711,11 +712,11 @@ GetObjects_Init:
 GetObjects_Main: 
 	lea     objectStates.w,a2
 	moveq   #0,d2
-	move.w  cameraAPosX.w,d6        ; Get Cam A X position
-	andi.w  #$FF80,d6               ; Shorten to multiples of 128
-	cmp.w   camAChunkX.w,d6      ; Check against chunk value
-	beq.w   _getobjExit             ; Exit if within same chunk 
-	bge.s   _getobjRight            ; Get rightward if from chunk ahead  
+	move.w  cameraAPosX.w,d6	; Get Cam A X position
+	andi.w  #$FF80,d6		; Shorten to multiples of 128
+	cmp.w   camAChunkX.w,d6		; Check against chunk value
+	beq.w   _getobjExit		; Exit if within same chunk 
+	bge.s   _getobjRight		; Get rightward if from chunk ahead  
 
 ; ---------------------------------------------------------------------------
 ; Get and spawn objects for leftwards camera movement 
@@ -833,13 +834,13 @@ _getobjRight:
 _getobjZ:
 	movea.l objtblEntrRightZ.w,a0   
 	move.w  cameraZPosX.w,d0        
-	addi.w  #320,d0                 ; Adjust to 1 screen (320pix) ahead
-	andi.w  #$FF80,d0               ; Shorten to multiples of 128/$80
+	addi.w  #320,d0			; Adjust to 1 screen (320pix) ahead
+	andi.w  #$FF80,d0		; Shorten to multiples of 128/$80
 	cmp.w   objentr.X(a0),d0         
-	blo.s   _getobjExit             ; Exit if not in position
+	blo.s   _getobjExit		; Exit if not in position
 	bsr.w   _getobjCreate               
-	move.l  a0,objtblEntrRightZ.w  ; Store new entry
-	bra.w   _getobjZ                ; Check for another entry
+	move.l  a0,objtblEntrRightZ.w	; Store new entry
+	bra.w   _getobjZ		; Check for another entry
 
 ; ---------------------------------------------------------------------------
 ; Exit routine (empty, return only)
@@ -867,23 +868,23 @@ _getobjCreate:
 .Create:   
 	bsr.w   _objectFindFreeSlot
 	bne.s   .NoSlotFound
-	move.w  (a0)+,obj.X(a1)         ; Write X
-	move.w  (a0)+,d0                ; Get Y
+	move.w  (a0)+,obj.X(a1)		; Write X
+	move.w  (a0)+,d0		; Get Y
 	move.w  d0,d1      
-	andi.w  #$0FFF,d0               ; Mask out top nybble
-	move.w  d0,obj.Y(a1)            ; Write Y
-	rol.w   #2,d1; Get that top nybble (orientation)
+	andi.w  #$0FFF,d0		; Mask out top nybble
+	move.w  d0,obj.Y(a1)		; Write Y
+	rol.w   #2,d1			; Get that top nybble (orientation)
 	andi.b  #3,d1
-	move.b  d1,obj.Render(a1)       ; Write to render and status
+	move.b  d1,obj.Render(a1)	; Write to render and status
 	move.b  d1,obj.Status(a1)
-	move.b  (a0)+,d0                ; Get ID
-	bpl.s   .NoState                ; If no state entry skip over
-	andi.b  #$7F,d0                 ; Mask top bit out
-	move.b  d2,obj.Respawn(a1)      ; Write respawn info
+	move.b  (a0)+,d0		; Get ID
+	bpl.s   .NoState		; If no state entry skip over
+	andi.b  #$7F,d0			; Mask top bit out
+	move.b  d2,obj.Respawn(a1)	; Write respawn info
 
 .NoState:   
-	move.b  d0,obj.No(a1)           ; Write ID
-	move.b  (a0)+,obj.Args(a1)      ; Write argument
+	move.b  d0,obj.No(a1)		; Write ID
+	move.b  (a0)+,obj.Args(a1)	; Write argument
 	moveq   #0,d0
 
 .NoSlotFound:
