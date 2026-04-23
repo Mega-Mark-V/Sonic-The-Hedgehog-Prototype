@@ -50,10 +50,11 @@ cmd	= (\type\\rwd\)|(((\addr)&$3FFF)<<16)|((\addr)/$4000)
 DMAWAIT macro ctrl
 .Wait\@:
 	if narg>0
-		btst	#1,1(\ctrl)		; Is DMA active?
+		move.w	(\ctrl),d1
+		btst	#1,d1			; Is DMA active?
 	else
-		move.w	VDPCTRL,d0		; Is DMA active?
-		btst	#1,d0
+		move.w	VDPCTRL,d1		; Is DMA active?
+		btst	#1,d1
 	endif
 	bne.s	.Wait\@				; If so, wait
 	endm
@@ -95,7 +96,7 @@ VDPFILL macro addr, len, byte, inc, port
 	; DMA fill
 	lea	VDPCTRL,\port
 	move.w	#$8F00+\inc,(\port)
-	move.l	#$93009400|((((\len)-1)&$FF00)>>8)|((((\len)-1)&$FF)<<16),(\port)
+	move.l	#$94009300|((((\len)-1)&$FF00)>>8)|((((\len)-1)&$FF)<<16),(\port)
 	move.w	#$9780,(\port)
 	VDPCMD	move.l,\addr,VRAM,DMA,(\port)
 	move.w	#(\byte)<<8,VDPDATA

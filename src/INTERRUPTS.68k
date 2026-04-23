@@ -52,7 +52,8 @@ VBLANKCMD macro   addr, id
 
 ; ---------------------------------------------------------------------------
 
-.Index:                                
+.Index:
+	rsreset
         VBLANKCMD .NULL,                VBCMD_NULL
         VBLANKCMD VBLANK_LOGO,          VBCMD_LOGO
         VBLANKCMD VBLANK_TITLE,         VBCMD_TITLE

@@ -425,7 +425,7 @@ InitVDP:
 	clr.l   mainAPosY.w
 	clr.l   mainAPosX.w
 	move.l  d1,-(sp)
-	VDPFILL $0000,$1FFFE,$00,1,a6
+	VDPFILL $0000,$00,$00,1,a5
 	move.w  #$8F02,(a5)
 	move.l  (sp)+,d1
 	rts
@@ -458,16 +458,16 @@ VDPInitValues:
 ; ---------------------------------------------------------------------------
 
 InitScreen:
-	VDPFILL $C000,$1FFE,$00,1,a5    ; Clear plane A nametable
+	VDPFILL $C000,$FF10,$00,1,a5    ; Clear plane A nametable
 	move.w  #$8F02,(a5)
-	VDPFILL $E000,$1FFE,$00,1,a5    ; Clear plane B nametable
+	VDPFILL $E000,$FF10,$00,1,a5    ; Clear plane B nametable
 	move.w  #$8F02,(a5)
 	move.l  #0,mainAPosY.w
 	move.l  #0,mainAPosX.w
 
 	lea     sprites.w,a1
 	moveq   #0,d0
-	move.w  #$A0-1,d1       ; ???
+	move.w  #$A0,d1
 
 .ClearSprites:
 	move.l  d0,(a1)+
