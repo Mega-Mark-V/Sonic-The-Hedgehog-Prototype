@@ -59,21 +59,24 @@ HEADER:
 ; ---------------------------------------------------------------------------
 
 ROM_ID:
-		dc.b 'SEGA MEGA DRIVE '
-		dc.b '(C)SEGA 1989.JAN'
-		dc.b '                        '
-		dc.b '                        '
-		dc.b 'GM 00000000-00'
-CHECKSUM:	dc.w $0000              
-PERIPHERALS:	dc.b 'J               '
-ROMSTART:	dc.l CARTRIDGE
-ROMSZ:		dc.l CARTRIDGESZ
-RAMSTART:	dc.l WORKRAM
-RAMSZ:		dc.l WORKRAMSZ 
-CONFIG:		dc.b '                '
-INFO:		dc.b '                                                '
-REGION:		dc.b 'JU              '
-
+		dc.b 'SEGA MEGA DRIVE '		; System type
+		dc.b '(C)SEGA 1989.JAN'		; Company & Release date
+		dc.b '                '		; Domestic title
+		dc.b '                '
+		dc.b '                '
+		dc.b '                '		; Overseas title
+		dc.b '                '
+		dc.b '                '
+		dc.b 'GM 00000000-00'		; Serial
+CHECKSUM:	dc.w $0000			; Checksum (overwritten by compiler)
+		dc.b 'J               '		; Peripherals
+ROMSZ:		dc.l CARTRIDGE,CARTRIDGEE-1	; ROM address range
+		dc.l WORKRAM,WORKRAME-1		; RAM address range
+		dc.b '                '		; External memory info
+		dc.b '                '		; Modem info
+		dc.b '                '
+		dc.b '                '
+		dc.b 'JU              '		; Country code
 HEADEREND:
 
 ; ---------------------------------------------------------------------------
