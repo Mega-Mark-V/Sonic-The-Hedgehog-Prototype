@@ -4,3 +4,5 @@ set VASM="_bin/vasmm68k_psi-x.exe" -altlocal -m68000 -maxerrors=0 -Fbin -start=0
 
 if not exist _built mkdir _built
 %VASM% -o "_built/_ROM.MDRV" -L "_built/_ROM.LST" -Lall "MAIN.68k" 2> _built/_ROM.log
+
+fc s1proto.base.bin _built/_ROM.MDRV > _built/_ROM.diff.txt
