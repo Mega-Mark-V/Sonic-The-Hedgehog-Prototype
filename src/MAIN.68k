@@ -407,13 +407,13 @@ ReadJoypads:
 InitVDP:
 	lea     VDPCTRL,a0
 	lea     VDPDATA,a1
-	lea     VDPInitValues.l,a2
+	lea     VDPInitValues,a2
 	moveq   #$13-1,d7
 
 .WriteRegs:
 	move.w  (a2)+,(a0)
 	dbf     d7,.WriteRegs
-	move.w  VDPInitValues+2.l,d0
+	move.w  VDPInitValues+2,d0
 	move.w  d0,displayMode.w
 	moveq   #0,d0
 	move.l  #CRAMWRITE,VDPCTRL

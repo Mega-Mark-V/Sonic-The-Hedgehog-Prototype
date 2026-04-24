@@ -21,8 +21,8 @@ mainZPosY:		rs.b	2
 mainZPosX:		rs.b	2
 mainZPosYUnk:		rs.b	2
 hblankLine:		rs.b	2
-palFadeArgs:		
-palFadeOff:		rs.b	1
+palFadeArgs:		rs.b	1
+palFadeOff:		rs.b	0
 palFadeSize:		rs.b	1
 vblankUnk1:		rs.b	1
 vblankUnk2:		rs.b	1
