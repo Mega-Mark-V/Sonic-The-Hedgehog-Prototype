@@ -17,7 +17,7 @@ GM_TITLE:
 	lea     VDPCTRL,a6
 	move.w  #$8004,(a6)
 	move.w  #$8200+($C000>>10),(a6)         ; Set Plane A nametable addr.
-	move.w  #$8407+($E000>>13),(a6)         ; Set Plane B nametable addr.
+	move.w  #$8400+($E000>>13),(a6)         ; Set Plane B nametable addr.
 	move.w  #$9001,(a6)                     ; Set 512x256 plane res.
 	move.w  #$9200,(a6)                     ; Clear Window Y-pos
 	move.w  #$8B03,(a6)                     ; Set HScroll to per-line

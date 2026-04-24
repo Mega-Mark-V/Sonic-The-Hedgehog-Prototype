@@ -668,17 +668,47 @@ VSync:
 
 	include	"Objects/Objects.asm"
 
-; TEMPORARY DATA STORAGE
-MapChnks_GHZ:	incbin "Level/Data/Chunks/chunks GHZ.kos"
-MapBlks_GreenHill:	incbin "Level/Data/Blocks/blks GHZ.bin"
-ArtNem_GreenHill1:	incbin "Level/Data/Art/artlvl GHZ1.nem"
+; ---------------------------------------------------------------------------
+; TEMPORARY DATA STORAGE + STUBS
+; ---------------------------------------------------------------------------
+;	align $2BCE
+GM_LEVEL:		rts	;	Level game mode
+;	align $34FC
+GM_SPECIAL:		rts	;	Special stage game mode
+;	align $3730
+_specialstgPalCyc:	rts	;	Palette cycle routine for special stage
+	align $48BA
+InitZoneLayout:		rts	;	Loads chunk layout into RAM
+	align $4914
+LevelEvents:		rts	;	this is the code that handles events that trigger across the level, often checking the player position
+	align $1128C
+AnimatedLevelGFX:	rts	;	routine handles the animated graphics in levels
+	align $1167A
+UpdateHUD:		rts	;	routine that redraws the HUD's dynamic VRAM
+	align $1226A
+ArtListIndex:		rts	;	an index for the various art lists
+	align $18720
+ArtNem_LOGO:		incbin "Logo/LOGO_ART.nem"
+	align $18A56
+MapEni_LOGO:		incbin "Logo/LOGO_SCR.eni"
+	align $18A62
 MapScr_TitleScreen:	incbin "Title/TITLE_SCR_MAP.bin"
-ArtNem_TitleSonic:	incbin "Title/TITLE_ART_SONIC.nem"
+	align $1903A
 ArtNem_TitleEmblem:	incbin "Title/TITLE_ART_BANNER.nem"
-ArtNem_LOGO:	incbin "Logo/LOGO_ART.nem"
-MapEni_LOGO:	incbin "Logo/LOGO_SCR.eni"
+	align $1A046
+ArtNem_TitleSonic:	incbin "Title/TITLE_ART_SONIC.nem"
+	align $30000
+MapBlks_GreenHill:	incbin "Level/Data/Blocks/blks GHZ.bin"
+	align $30C80
+ArtNem_GreenHill1:	incbin "Level/Data/Art/artlvl GHZ1.nem"
+	align $33688
+MapChnks_GHZ:		incbin "Level/Data/Chunks/chunks GHZ.kos"
 
+	align $70000
+ObjListTbl:		rts	;	this is the table that defines where to load a level's object position
+
+	align $741D2
+sound:			rts	;	VBLANK sound handling code
+
+	align $756D0
 	include	"Sound/SOUND.S"
-
-sound:	;	temporary stub until sound source code is translated
-	rts

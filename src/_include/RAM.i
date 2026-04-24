@@ -2,7 +2,7 @@
 ; Data RAM allocations
 ; ---------------------------------------------------------------------------
 
-	rsset	WORKRAM+$FF000000
+	rsset	WORKRAM
 
 levelChunks:		rs.b	$A400
 layoutA:	=	layoutMem+$00
@@ -58,6 +58,6 @@ objSlot1C:	rs.b 	OBJSZ
 objSlot1D:	rs.b 	OBJSZ
 objSlot1E:	rs.b 	OBJSZ
 objSlot1F:	rs.b 	OBJSZ
-objsAlloc: 		rs.b 	OBJSZ*96
-OBJECTRAME:
+objsAlloc: 	rs.b 	OBJSZ*96
+OBJECTRAME:	rs.b	0
 
