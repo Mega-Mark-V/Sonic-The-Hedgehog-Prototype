@@ -1,0 +1,8231 @@
+Sections:
+00: "org0001:0" (0-1F46)
+
+
+Source: "mddr11.src"
+                        	     1: ;=======================================================;
+                        	     2: ;		    $$$DR.SRC  (Sound PCM Drum Control)				;
+                        	     3: ;  						ORG. MDDR11.SRC						;
+                        	     4: ;				'Sound-Source'								;
+                        	     5: ;				 for Mega Drive (68K)						;
+                        	     6: ;						Ver  1.1 / 1990.9.1				;
+                        	     7: ;								      By  H.Kubota		;
+                        	     8: ;=======================================================;
+                        	     9: 
+                        	    10: ;=======================================;
+                        	    11: ;				 ASSIGN						;
+                        	    12: ;=======================================;
+                        	    13: ;----------------< I/O >----------------;
+                        	    14: OPNADDRESS		EQU		4000H				; FM OPN1 address
+                        	    15: OPNDATA				EQU		4001H				; FM data set address
+                        	    16: BANKCHG				equ		6000H
+                        	    17: 
+                        	    18: ;----------------< RAM >----------------;
+                        	    19: DR_REQ::		EQU		1FFFH				; REQUEST FLAG
+                        	    20: REPEAT_FLG::		EQU		1FFEH				; REPEAT FLAG 1 := REPEAT / 
+                        	    21: 										; 80H = REPEAT END / 0 = NO REPEAT
+                        	    22: Z80_FLG				EQU		1FFDH
+                        	    23: LOOP_DATA_STR		EQU		1FFCH				; LOOP START PCM DATA STORE (byte)
+                        	    24: BANK_STORE::		equ		1FFAH				; 2 bytes  (high  ,low)
+                        	    25: 										;		1ffah  |  1ffbh
+                        	    26: 										;   a23-a16    | a15 0 0 0 0 0 0 0
+                        	    27: VOICE_TB_ADR::		equ		1FF8H				; 2 bytes
+                        	    28: VOICE_FLG		equ		1FF7H
+                        	    29: USE_FLG				equ		1FF6H				; 68k use flag  80h = voice using
+                        	    30: STACP::				EQU		1FF4H				; STAC BOTTOM
+                        	    31: 
+                        	    32: 
+                        	    33: ;------------< FM CHIP I/O >------------;
+                        	    34: DREG				EQU		2AH				; FM REG (PCM OUT)
+                        	    35: DSEL				EQU		2BH				; FM REG (MODE SET)
+                        	    36: 
+                        	    37: ;------------< DATA OFFSET >------------;
+                        	    38: TOP_ADR_OFS		equ		0				; data top adddress
+                        	    39: HD_BYTE_OFS		equ		2				; data size
+                        	    40: LOOP_FLG_OFS		equ		4				; loop flag
+                        	    41: PRIORITY_OFS		equ		5				; priority
+                        	    42: LOOP_BYTE_OFS		equ		6				; loop byte
+                        	    43: END_BYTE_OFS		equ		8				; end byte
+                        	    44: LPBASE_BYTE_OFS		equ		10				; dummy
+                        	    45: DLY_DT_OFS		equ		11				; delay
+                        	    46: 
+                        	    47: LOW						equ		1EH				; MDT: redefined based on pre-compiled mddr11.hhh file
+                        	    48: 
+                        	    49: ;=======================================;
+                        	    50: ;										;
+                        	    51: ;				 START						;
+                        	    52: ;										;
+                        	    53: ;=======================================;
+                        	    54: 
+                        	    55: ;RYTHM_TB:						; drum data top address
+                        	    56: 
+                        	    57: ;-----------< USING REGISTOR >----------;
+                        	    58: ;		 A : FM reg
+                        	    59: ;		 C : FM data
+                        	    60: ;		HL : FM i/o 
+                        	    61: ;		IX : loop data store work point
+                        	    62: ;		IY : data headder top point
+                        	    63: ;		DE': data table pointer
+                        	    64: ;		HL': dr_req
+                        	    65: ;		BC': data bytes counter
+                        	    66: 
+                        	    67: ;=======================================;
+                        	    68: ;				 START						;
+                        	    69: ;=======================================;
+                        	    70: 		ORG		0000H
+                        	    71: 
+00:0000 F3              	    72: 		DI								; interrupt disable
+00:0001 F3              	    73: 		DI								; interrupt disable
+00:0002 F3              	    74: 		DI								; interrupt disable
+                        	    75: 
+                        	    76: ;=======================================;
+                        	    77: ;				INITIAL						;
+                        	    78: ;=======================================;
+00:0003 31F41F          	    79: 		LD		SP,STACP				; stack set
+00:0006 AF              	    80: 		XOR		A
+00:0007 32FD1F          	    81: 		LD		(Z80_FLG),A				; Z80 use flag clear
+                        	    82: 
+                        	    83: ;=======================================;
+                        	    84: ;				BANK SET				;
+                        	    85: ;=======================================;
+                        	    86: BANKSET::
+00:000A 3AFB1F          	    87: 		LD		A,(BANK_STORE+1)		; bank low data
+00:000D 07              	    88: 		RLCA								; bit 0 = low data
+00:000E 320060          	    89: 		LD		(BANKCHG),A				; low set
+00:0011 0608            	    90: 		LD		B,8						; other bit total
+00:0013 3AFA1F          	    91: 		LD		A,(BANK_STORE)				; bank high data
+                        	    92: B_LOOP:
+00:0016 320060          	    93: 		LD		(BANKCHG),A				; high set
+00:0019 0F              	    94: 		RRCA
+00:001A 10FA            	    95: 		DJNZ		B_LOOP
+                        	    96: 
+00:001C 1810            	    97: 		JR		START
+                        	    98: ;=======================================;
+                        	    99: ;		     PCM CHANGE TABLE				;
+                        	   100: ;=======================================;
+                        	   101: TO_PCM_TB::
+00:001E 00              	   102: 		DB		+000H,+001H,+002H,+004H,+008H,+010H,+020H,+040H
+00:001F 01
+00:0020 02
+00:0021 04
+00:0022 08
+00:0023 10
+00:0024 20
+00:0025 40
+00:0026 80              	   103: 		DB		+080H,-001H,-002H,-004H,-008H,-010H,-020H,-040H
+00:0027 FF
+00:0028 FE
+00:0029 FC
+00:002A F8
+00:002B F0
+00:002C E0
+00:002D C0
+                        	   104: ;=======================================;
+                        	   105: ;				MAIN LOOP				;
+                        	   106: ;=======================================;
+                        	   107: START:
+00:002E 21FF1F          	   108: 		LD		HL,DR_REQ
+                        	   109: ;===========  REQUEST CHECK  ===========;
+                        	   110: DRST::
+00:0031 7E              	   111: 		LD		A,(HL)						; A = request no.
+00:0032 B7              	   112: 		OR		A						; if request = plus
+00:0033 F23100          	   113: 		JP		P,DRST						; then jump
+                        	   114: 
+00:0036 F5              	   115: 		PUSH		AF
+00:0037 E5              	   116: 		PUSH		HL
+                        	   117: 
+00:0038 3E80            	   118: 		LD		A,080H						;
+00:003A 32FD1F          	   119: 		LD		(Z80_FLG),A				; Z80 use flag set
+                        	   120: 
+                        	   121: ;----------< FM D/A MODE SET >----------;
+00:003D 210040          	   122: 		LD		HL,OPNADDRESS
+00:0040 362B            	   123: 		LD		(HL),DSEL
+00:0042 23              	   124: 		INC		HL
+00:0043 77              	   125: 		LD		(HL),A						; 80h = D/A mode set data
+                        	   126: 
+00:0044 AF              	   127: 		XOR		A
+00:0045 32FD1F          	   128: 		LD		(Z80_FLG),A				; flag set
+                        	   129: 
+                        	   130: ;------------< USE FLAG SET >-----------;
+00:0048 2B              	   131: 		DEC		HL						; HL = OPNADDRESS
+00:0049 DD21FC1F        	   132: 		LD		IX,LOOP_DATA_STR
+00:004D 1600            	   133: 		LD		D,0
+00:004F D9              	   134: 		EXX
+00:0050 E1              	   135: 		POP		HL
+00:0051 32F61F          	   136: 		LD		(USE_FLG),A
+                        	   137: 
+00:0054 F1              	   138: 		POP		AF
+                        	   139: 
+                        	   140: ;---------< REQUEST NO. CHECK >---------;
+00:0055 32F71F          	   141: 		LD		(VOICE_FLG),A				; bit 7 = on then drum
+00:0058 D681            	   142: 		SUB		81H
+00:005A 77              	   143: 		LD		(HL),A
+00:005B 110000          	   144: 		LD		DE,0
+00:005E FD216301        	   145: 		LD		IY,RYTHM_TB
+00:0062 FE06            	   146: 		CP		6						; if 7> then voice data req
+00:0064 3810            	   147: 		JR		C,DRST_0
+                        	   148: ;---------------< VOICE >---------------;
+00:0066 32F71F          	   149: 		LD		(VOICE_FLG),A				; bit 7 = off then voice
+00:0069 32F61F          	   150: 		LD		(USE_FLG),A				; voice using
+00:006C FD2AF81F        	   151: 		LD		IY,(VOICE_TB_ADR)		; 
+00:0070 ED5BF81F        	   152: 		LD		DE,(VOICE_TB_ADR)
+00:0074 D607            	   153: 		SUB		7
+                        	   154: DRST_0:
+00:0076 87              	   155: 		ADD		A,A
+00:0077 87              	   156: 		ADD		A,A						; a = a*4
+00:0078 4F              	   157: 		LD		C,A						; c = a*4
+00:0079 87              	   158: 		ADD		A,A						; a = a*8
+00:007A 81              	   159: 		ADD		A,C						; a = a*12
+                        	   160: 		
+00:007B 4F              	   161: 		LD		C,A
+00:007C 0600            	   162: 		LD		B,0
+00:007E FD09            	   163: 		ADD		IY,BC						; iy = data headder top
+                        	   164: 
+                        	   165: ;----------< GET TOP ADDRESS >----------;
+00:0080 FD5E00          	   166: 		LD		E,(IY+TOP_ADR_OFS)
+00:0083 FD5601          	   167: 		LD		D,(IY+TOP_ADR_OFS+1)		; de = data top
+00:0086 3AF71F          	   168: 		LD		A,(VOICE_FLG)
+00:0089 B7              	   169: 		OR		A
+00:008A FA9200          	   170: 		JP		M,GET_BYTE
+00:008D 2AF81F          	   171: 		LD		HL,(VOICE_TB_ADR)
+00:0090 19              	   172: 		ADD		HL,DE
+00:0091 EB              	   173: 		EX		DE,HL						; de = data top (when voice)
+                        	   174: 
+                        	   175: GET_BYTE:
+                        	   176: ;-----------< GET DATA SIZE >-----------;
+00:0092 FD4E02          	   177: 		LD		C,(IY+HD_BYTE_OFS)
+00:0095 FD4603          	   178: 		LD		B,(IY+HD_BYTE_OFS+1)		; bc = data bytes
+                        	   179: ;-----------< GET LOOP FLAG >-----------;
+00:0098 FD7E04          	   180: 		LD		A,(IY+LOOP_FLG_OFS)		; a = loop flag
+00:009B 32FE1F          	   181: 		LD		(REPEAT_FLG),A				; (0 = no loop / 80h = loop)
+                        	   182: 
+00:009E D9              	   183: 		EXX
+00:009F 0E80            	   184: 		LD		C,80H						; C = D/A start data
+00:00A1 D9              	   185: 		EXX
+                        	   186: 		
+                        	   187: SPEECH::
+00:00A2 21FF1F          	   188: 		LD		HL,DR_REQ
+                        	   189: ;=======================================;
+                        	   190: ;		       ÉfÅ[É^ì]ëó				;
+                        	   191: ;=======================================;
+                        	   192: ;----------< HIGH NIBLE DATA >----------;
+00:00A5 1A              	   193: 		LD		A,(DE)						; get original 4 bit ADPCM data
+00:00A6 E6F0            	   194: 		AND		$F0						; get 4 bit data ( H )
+00:00A8 0F              	   195: 		RRCA
+00:00A9 0F              	   196: 		RRCA
+00:00AA 0F              	   197: 		RRCA
+00:00AB 0F              	   198: 		RRCA								; HIGH NIBLE >> LOW NIBLE
+                        	   199: 
+                        	   200: 
+00:00AC C61E            	   201: 		ADD		A,LOW TO_PCM_TB
+                        	   202: ;-----------< ADPCM --> PCM >----------;
+00:00AE D9              	   203: 		EXX								; HL = FM reg addr
+                        	   204: 										; DE = table pointer
+00:00AF 5F              	   205: 		LD		E,A						; de = TO_PCM_TB
+00:00B0 1A              	   206: 		LD		A,(DE)						; get 8bit pcm data NO SA
+00:00B1 81              	   207: 		ADD		A,C						; A = pcm data
+                        	   208: ;=======================================;
+                        	   209: ;      WRITE HIGH NIBLE DATA STO D/A		;
+                        	   210: ;=======================================;
+                        	   211: ;		A = data
+00:00B2 4F              	   212: 		LD		C,A						; STORE DATA
+                        	   213: 
+00:00B3 3E80            	   214: 		LD		A,080H						;
+00:00B5 32FD1F          	   215: 		LD		(Z80_FLG),A				; flag set
+00:00B8 FD460B          	   216: 		LD		B,(IY+DLY_DT_OFS)		; b = DELY ( wait )
+                        	   217: LOOP1:
+00:00BB CB7E            	   218: 		BIT		7,(HL)						; opn busy check
+00:00BD 20FC            	   219: 		JR		NZ,LOOP1
+00:00BF 362A            	   220: 		LD		(HL),DREG				; HL = FM reg addr
+00:00C1 23              	   221: 		INC		HL
+00:00C2 AF              	   222: 		XOR		A						; a = clear data
+00:00C3 71              	   223: 		LD		(HL),C
+00:00C4 32FD1F          	   224: 		LD		(Z80_FLG),A				; flag clear
+00:00C7 2B              	   225: 		DEC		HL
+                        	   226: ;---------------< DELAY >---------------;
+00:00C8 10FE            	   227: 		DJNZ		$
+00:00CA D9              	   228: 		EXX
+                        	   229: ;-----------< LOW NIBLE DATA >----------;
+00:00CB 1A              	   230: 		LD		A,(DE)						; get original 4 bit ADPCM data
+00:00CC E60F            	   231: 		AND		$0F						; get 4 bit data ( H )
+                        	   232: 
+00:00CE C61E            	   233: 		ADD		A,LOW TO_PCM_TB
+                        	   234: 
+00:00D0 D9              	   235: 		EXX
+00:00D1 5F              	   236: 		LD		E,A						; de = TO_PCM_TB
+00:00D2 1A              	   237: 		LD		A,(DE)						; get 8bit pcm data NO SA
+00:00D3 81              	   238: 		ADD		A,C
+                        	   239: 
+                        	   240: ;=======================================;
+                        	   241: ;      WRITE LOW NIBLE DATA STO D/A		;
+                        	   242: ;=======================================;
+00:00D4 4F              	   243: 		LD		C,A						; STORE DATA
+                        	   244: 
+00:00D5 3E80            	   245: 		LD		A,080H						;
+00:00D7 32FD1F          	   246: 		LD		(Z80_FLG),A				; flag set
+00:00DA FD460B          	   247: 		LD		B,(IY+DLY_DT_OFS)		; b = DELY (wait)
+                        	   248: LOOP2:
+00:00DD CB7E            	   249: 		BIT		7,(HL)						; opn busy check
+00:00DF 20FC            	   250: 		JR		NZ,LOOP2
+00:00E1 362A            	   251: 		LD		(HL),DREG				; HL = OPNADDRESS
+00:00E3 23              	   252: 		INC		HL
+00:00E4 AF              	   253: 		XOR		A						; clear data
+00:00E5 71              	   254: 		LD		(HL),C
+00:00E6 32FD1F          	   255: 		LD		(Z80_FLG),A				; flag clear
+00:00E9 2B              	   256: 		DEC		HL
+                        	   257: ;---------------< DELAY >---------------;
+00:00EA 10FE            	   258: 		DJNZ		$
+                        	   259: 
+                        	   260: ;=======================================;
+                        	   261: ;		      CHECK REQUEST				;
+                        	   262: ;=======================================;
+                        	   263: REQ_CHECK::
+00:00EC D9              	   264: 		EXX
+00:00ED FDCB057E        	   265: 		BIT		7,(IY+PRIORITY_OFS)		; if bit 7= on then 
+00:00F1 2005            	   266: 		JR		NZ,NO_CHECK				;    req no no check
+00:00F3 CB7E            	   267: 		BIT		7,(HL)						;  hl = dr_req
+00:00F5 C23100          	   268: 		JP		NZ,DRST						;   new voice set
+                        	   269: ;=======================================;
+                        	   270: ;				NEXT LOOP				;
+                        	   271: ;=======================================;
+                        	   272: NO_CHECK::
+00:00F8 13              	   273: 		INC		DE						; inc table pointer
+00:00F9 0B              	   274: 		DEC		BC
+00:00FA 79              	   275: 		LD		A,C
+00:00FB B0              	   276: 		OR		B						; if DE = Z then 
+00:00FC C2A200          	   277: 		JP		NZ,SPEECH
+00:00FF 3AFE1F          	   278: 		LD		A,(REPEAT_FLG)
+00:0102 B7              	   279: 		OR		A
+00:0103 CA5601          	   280: 		JP		Z,PCM_END
+                        	   281: 
+00:0106 D9              	   282: 		EXX
+00:0107 F20F01          	   283: 		JP		P,PCM_LOOP_GO
+                        	   284: ;----------< REPEAT INITIAL >-----------;
+                        	   285: PCM_LOOP_SET::
+00:010A E67F            	   286: 		AND		7FH
+00:010C DD7100          	   287: 		LD		(IX),C						; IX = LOOP_DATA_STR
+                        	   288: PCM_LOOP_GO::
+00:010F 3D              	   289: 		DEC		A
+00:0110 32FE1F          	   290: 		LD		(REPEAT_FLG),A				; counter store
+00:0113 2821            	   291: 		JR		Z,LOOP_END
+00:0115 DD4E00          	   292: 		LD		C,(IX)						; IX = LOOP_DATA_STR
+                        	   293: 
+                        	   294: ;------< LOOP BYTE COUNTER MAKE >-------;
+00:0118 D9              	   295: 		EXX
+00:0119 FD6E06          	   296: 		LD		L,(IY+LOOP_BYTE_OFS)
+00:011C FD6607          	   297: 		LD		H,(IY+LOOP_BYTE_OFS+1)		; hl = loop bytes
+                        	   298: ;----------< GET REPEAT BYTE >----------;
+                        	   299: 		;   hl + de*b  ( <loop bytes> + <loop base bytes> * < ran dam >
+                        	   300: ADD_LOOP::
+00:011F 44              	   301: 		LD		B,H
+00:0120 4D              	   302: 		LD		C,L						; bc = loop byte
+                        	   303: ;-------< LOOP START ADDRES GET >-------;
+00:0121 FD5E00          	   304: 		LD		E,(IY+TOP_ADR_OFS)
+00:0124 FD5601          	   305: 		LD		D,(IY+TOP_ADR_OFS+1)
+00:0127 2AF81F          	   306: 		LD		HL,(VOICE_TB_ADR)
+00:012A 19              	   307: 		ADD		HL,DE
+                        	   308: 
+00:012B FD5E02          	   309: 		LD		E,(IY+HD_BYTE_OFS)
+00:012E FD5603          	   310: 		LD		D,(IY+HD_BYTE_OFS+1)
+                        	   311: 
+00:0131 19              	   312: 		ADD		HL,DE
+00:0132 EB              	   313: 		EX		DE,HL						; DE = loop start addr
+                        	   314: 
+00:0133 C3A200          	   315: 		JP		SPEECH
+                        	   316: 
+                        	   317: ;=======================================;
+                        	   318: ;										;
+                        	   319: ;				LOOP END				;
+                        	   320: ;										;
+                        	   321: ;=======================================;
+                        	   322: LOOP_END::
+00:0136 DD4E00          	   323: 		LD		C,(IX)						; IX = LOOP_DATA_STR
+00:0139 D9              	   324: 		EXX
+00:013A FD4E08          	   325: 		LD		C,(IY+END_BYTE_OFS)
+00:013D FD4609          	   326: 		LD		B,(IY+END_BYTE_OFS+1)
+                        	   327: 
+00:0140 FD6E02          	   328: 		LD		L,(IY+HD_BYTE_OFS)
+00:0143 FD6603          	   329: 		LD		H,(IY+HD_BYTE_OFS+1)
+00:0146 FD5E00          	   330: 		LD		E,(IY+TOP_ADR_OFS)
+00:0149 FD5601          	   331: 		LD		D,(IY+TOP_ADR_OFS+1)		; offset adr add
+00:014C 19              	   332: 		ADD		HL,DE
+00:014D ED5BF81F        	   333: 		LD		DE,(VOICE_TB_ADR)
+00:0151 19              	   334: 		ADD		HL,DE						; offset start addr add
+00:0152 EB              	   335: 		EX		DE,HL						; DE = start addr
+00:0153 C3A200          	   336: 		JP		SPEECH
+                        	   337: 
+                        	   338: ;=======================================;
+                        	   339: ;										;
+                        	   340: ;				 PCM END				;
+                        	   341: ;										;
+                        	   342: ;=======================================;
+                        	   343: PCM_END::
+00:0156 21F61F          	   344: 		LD		HL,USE_FLG
+00:0159 7E              	   345: 		LD		A,(HL)
+00:015A B7              	   346: 		OR		A						; if voice sat then pls
+00:015B FA2E00          	   347: 		JP		M,START
+00:015E AF              	   348: 		XOR		A
+00:015F 77              	   349: 		LD		(HL),A						; use flag clear
+00:0160 C32E00          	   350: 		JP		START
+                        	   351: 
+                        	   352: 		INCLUDE				"mddt11.src"		;		MDT: added since we're not using a makefile
+
+Source: "mddt11.src"
+                        	     1: ;=======================================================;
+                        	     2: ;		    $$$DT.SRC  (Sound PCM Drum Data)				;
+                        	     3: ;  						ORG. MDDT11.SRC						;
+                        	     4: ;				'Sound-Source'								;
+                        	     5: ;				 for Mega Drive (68K)						;
+                        	     6: ;						Ver  1.1 / 1990.9.1				;
+                        	     7: ;								      By  H.Kubota		;
+                        	     8: ;=======================================================;
+                        	     9: 
+                        	    10: ;=======================================;
+                        	    11: ;				 ASSIGN						;
+                        	    12: ;=======================================;
+                        	    13: ;---------------< FLAG >----------------;
+                        	    14: NO_LOOP				EQU		0
+                        	    15: LOOP				EQU		80H
+                        	    16: NO_PRIORITY		EQU		0
+                        	    17: PRIORITY		EQU		80H
+                        	    18: 
+                        	    19: ;---------------< DELAY >---------------;
+                        	    20: BD_DL				EQU		08H
+                        	    21: SNR_DL				EQU		16H
+                        	    22: HCL_DL				EQU		17H
+                        	    23: OHI_DL				EQU		01H
+                        	    24: TOM_DL				EQU		0AH
+                        	    25: 
+                        	    26: ;=======================================;
+                        	    27: ;										;
+                        	    28: ;				DRUM DATA				;
+                        	    29: ;										;
+                        	    30: ;=======================================;
+                        	    31: 
+                        	    32: ;		PUBLIC		RYTHM_TB
+                        	    33: 
+                        	    34: RYTHM_TB::
+                        	    35: ;=======================================;
+                        	    36: ;				 HEADDER				;
+                        	    37: ;=======================================;
+                        	    38: 
+                        	    39: ;==============< BASS DRUM >============;
+00:0163 9F01            	    40: BD_TB::				DW		BDTOP				; data address top
+00:0165 5203            	    41: 				DW		SNRTOP-BDTOP		; data size
+00:0167 00              	    42: 				DB		NO_LOOP				; loop flag
+00:0168 00              	    43: 				DB		NO_PRIORITY		; priority
+00:0169 0000            	    44: 				DW		0				; loop byte
+00:016B 0000            	    45: 				DW		0				; end byte
+00:016D 00              	    46: 				DB		0				; dummy
+00:016E 08              	    47: BD_DL_DT::		DB		BD_DL				; delay
+                        	    48: ;================< SNARE >==============;
+00:016F F104            	    49: SNR_TB::		DW		SNRTOP				; data address top
+00:0171 0008            	    50: 				DW		HCLTOP-SNRTOP		; data size
+00:0173 00              	    51: 				DB		NO_LOOP				; loop flag
+00:0174 00              	    52: 				DB		NO_PRIORITY		; priority
+00:0175 0000            	    53: 				DW		0				; loop byte
+00:0177 0000            	    54: 				DW		0				; end byte
+00:0179 00              	    55: 				DB		0				; dummy
+00:017A 16              	    56: SNR_DL_DT::		DB		SNR_DL				; delay
+                        	    57: ;==============< HANDCLAP >=============;
+00:017B F10C            	    58: HCL_TB::		DW		HCLTOP				; data address top
+00:017D 0003            	    59: 				DW		OHITOP-HCLTOP		; data size
+00:017F 00              	    60: 				DB		NO_LOOP				; loop flag
+00:0180 00              	    61: 				DB		NO_PRIORITY		; priority
+00:0181 0000            	    62: 				DW		0				; loop byte
+00:0183 0000            	    63: 				DW		0				; end byte
+00:0185 00              	    64: 				DB		0				; dummy
+00:0186 17              	    65: HCL_DL_DT::		DB		HCL_DL				; delay
+                        	    66: ;=============< OPEN HIHAT >============;
+00:0187 F10F            	    67: OHI_TB::		DW		OHITOP				; data address top
+00:0189 5508            	    68: 				DW		TOMTOP-OHITOP		; data size
+00:018B 00              	    69: 				DB		NO_LOOP				; loop flag
+00:018C 00              	    70: 				DB		NO_PRIORITY		; priority
+00:018D 0000            	    71: 				DW		0				; loop byte
+00:018F 0000            	    72: 				DW		0				; end byte
+00:0191 00              	    73: 				DB		0				; dummy
+00:0192 01              	    74: OHI_DL_DT::		DB		OHI_DL				; delay
+                        	    75: ;===============< TOMTOM >==============;
+00:0193 4618            	    76: TOM_TB::		DW		TOMTOP				; data address top
+00:0195 0007            	    77: 				DW		DREND-TOMTOP		; data size
+00:0197 00              	    78: 				DB		NO_LOOP				; loop flag
+00:0198 00              	    79: 				DB		NO_PRIORITY		; priority
+00:0199 0000            	    80: 				DW		0				; loop byte
+00:019B 0000            	    81: 				DW		0				; end byte
+00:019D 00              	    82: 				DB		0				; dummy
+00:019E 0A              	    83: TOM_DL_DT::		DB		TOM_DL				; delay
+                        	    84: 
+                        	    85: ;=======================================;
+                        	    86: ;		      INCLUDE FILES				;
+                        	    87: ;=======================================;
+                        	    88: BDTOP::
+                        	    89: 		INCLUDE 		BASSDRUM.HHH		; 81
+
+Source: "BASSDRUM.HHH"
+                        	     1: ;B:BD4.ABS/BD4.HHH/A/U2
+00:019F 90              	     2: 	DB	090H,000H,000H,000H,000H,000H,000H,000H
+00:01A0 00
+00:01A1 00
+00:01A2 00
+00:01A3 00
+00:01A4 00
+00:01A5 00
+00:01A6 00
+00:01A7 00              	     3: 	DB	000H,000H,000H,001H,000H,091H,03BH,0C7H
+00:01A8 00
+00:01A9 00
+00:01AA 01
+00:01AB 00
+00:01AC 91
+00:01AD 3B
+00:01AE C7
+00:01AF FD              	     4: 	DB	0FDH,052H,0DDH,053H,0BFH,07DH,00FH,076H
+00:01B0 52
+00:01B1 DD
+00:01B2 53
+00:01B3 BF
+00:01B4 7D
+00:01B5 0F
+00:01B6 76
+00:01B7 ED              	     5: 	DB	0EDH,07EH,0FEH,08DH,064H,0EEH,077H,0E9H
+00:01B8 7E
+00:01B9 FE
+00:01BA 8D
+00:01BB 64
+00:01BC EE
+00:01BD 77
+00:01BE E9
+00:01BF 6E              	     6: 	DB	06EH,065H,03DH,054H,02DH,050H,000H,000H
+00:01C0 65
+00:01C1 3D
+00:01C2 54
+00:01C3 2D
+00:01C4 50
+00:01C5 00
+00:01C6 00
+00:01C7 00              	     7: 	DB	000H,00DH,04BH,02EH,0EDH,0C4H,0FDH,05DH
+00:01C8 0D
+00:01C9 4B
+00:01CA 2E
+00:01CB ED
+00:01CC C4
+00:01CD FD
+00:01CE 5D
+00:01CF DD              	     8: 	DB	0DDH,0ECH,0CBH,090H,000H,000H,04AH,0B2H
+00:01D0 EC
+00:01D1 CB
+00:01D2 90
+00:01D3 00
+00:01D4 00
+00:01D5 4A
+00:01D6 B2
+00:01D7 59              	     9: 	DB	059H,0B3H,04CH,032H,044H,0BAH,043H,044H
+00:01D8 B3
+00:01D9 4C
+00:01DA 32
+00:01DB 44
+00:01DC BA
+00:01DD 43
+00:01DE 44
+00:01DF 49              	    10: 	DB	049H,051H,044H,034H,053H,042H,044H,043H
+00:01E0 51
+00:01E1 44
+00:01E2 34
+00:01E3 53
+00:01E4 42
+00:01E5 44
+00:01E6 43
+00:01E7 44              	    11: 	DB	044H,042H,043H,024H,034H,02BH,043H,019H
+00:01E8 42
+00:01E9 43
+00:01EA 24
+00:01EB 34
+00:01EC 2B
+00:01ED 43
+00:01EE 19
+00:01EF 3B              	    12: 	DB	03BH,03AH,04CH,003H,0BBH,02CH,01BH,0BBH
+00:01F0 3A
+00:01F1 4C
+00:01F2 03
+00:01F3 BB
+00:01F4 2C
+00:01F5 1B
+00:01F6 BB
+00:01F7 AB              	    13: 	DB	0ABH,0BBH,0CBH,0ABH,0CBH,0BCH,0CBH,0BCH
+00:01F8 BB
+00:01F9 CB
+00:01FA AB
+00:01FB CB
+00:01FC BC
+00:01FD CB
+00:01FE BC
+00:01FF BC              	    14: 	DB	0BCH,0BCH,0BBH,0BCH,0CAH,0CAH,0BBH,0BCH
+00:0200 BC
+00:0201 BB
+00:0202 BC
+00:0203 CA
+00:0204 CA
+00:0205 BB
+00:0206 BC
+00:0207 B9              	    15: 	DB	0B9H,0ABH,0BBH,00AH,0B9H,00AH,019H,00AH
+00:0208 AB
+00:0209 BB
+00:020A 0A
+00:020B B9
+00:020C 0A
+00:020D 19
+00:020E 0A
+00:020F 32              	    16: 	DB	032H,000H,033H,002H,032H,023H,033H,033H
+00:0210 00
+00:0211 33
+00:0212 02
+00:0213 32
+00:0214 23
+00:0215 33
+00:0216 33
+00:0217 13              	    17: 	DB	013H,033H,033H,033H,033H,033H,023H,032H
+00:0218 33
+00:0219 33
+00:021A 33
+00:021B 33
+00:021C 33
+00:021D 23
+00:021E 32
+00:021F 34              	    18: 	DB	034H,03BH,024H,023H,022H,021H,032H,011H
+00:0220 3B
+00:0221 24
+00:0222 23
+00:0223 22
+00:0224 21
+00:0225 32
+00:0226 11
+00:0227 12              	    19: 	DB	012H,021H,011H,009H,003H,09AH,0A2H,02AH
+00:0228 21
+00:0229 11
+00:022A 09
+00:022B 03
+00:022C 9A
+00:022D A2
+00:022E 2A
+00:022F 9A              	    20: 	DB	09AH,010H,00AH,0A0H,009H,0A9H,0ABH,009H
+00:0230 10
+00:0231 0A
+00:0232 A0
+00:0233 09
+00:0234 A9
+00:0235 AB
+00:0236 09
+00:0237 0B              	    21: 	DB	00BH,0AAH,09BH,02AH,0BAH,010H,0BAH,001H
+00:0238 AA
+00:0239 9B
+00:023A 2A
+00:023B BA
+00:023C 10
+00:023D BA
+00:023E 01
+00:023F CA              	    22: 	DB	0CAH,03AH,009H,0AAH,002H,0A9H,090H,092H
+00:0240 3A
+00:0241 09
+00:0242 AA
+00:0243 02
+00:0244 A9
+00:0245 90
+00:0246 92
+00:0247 A0              	    23: 	DB	0A0H,020H,0A0H,01AH,021H,0A2H,0B2H,013H
+00:0248 20
+00:0249 A0
+00:024A 1A
+00:024B 21
+00:024C A2
+00:024D B2
+00:024E 13
+00:024F BA              	    24: 	DB	0BAH,03AH,012H,0B9H,093H,0AAH,000H,09AH
+00:0250 3A
+00:0251 12
+00:0252 B9
+00:0253 93
+00:0254 AA
+00:0255 00
+00:0256 9A
+00:0257 00              	    25: 	DB	000H,0B2H,0AAH,029H,0B1H,0ABH,001H,0A9H
+00:0258 B2
+00:0259 AA
+00:025A 29
+00:025B B1
+00:025C AB
+00:025D 01
+00:025E A9
+00:025F AB              	    26: 	DB	0ABH,031H,0BCH,022H,009H,020H,0BAH,042H
+00:0260 31
+00:0261 BC
+00:0262 22
+00:0263 09
+00:0264 20
+00:0265 BA
+00:0266 42
+00:0267 B1              	    27: 	DB	0B1H,021H,010H,023H,0B0H,043H,0ABH,032H
+00:0268 21
+00:0269 10
+00:026A 23
+00:026B B0
+00:026C 43
+00:026D AB
+00:026E 32
+00:026F 4A              	    28: 	DB	04AH,02BH,043H,03CH,034H,02AH,040H,090H
+00:0270 2B
+00:0271 43
+00:0272 3C
+00:0273 34
+00:0274 2A
+00:0275 40
+00:0276 90
+00:0277 4A              	    29: 	DB	04AH,022H,003H,0A2H,011H,0A3H,0A0H,0A3H
+00:0278 22
+00:0279 03
+00:027A A2
+00:027B 11
+00:027C A3
+00:027D A0
+00:027E A3
+00:027F 2B              	    30: 	DB	02BH,0C3H,010H,000H,0ABH,021H,0B9H,020H
+00:0280 C3
+00:0281 10
+00:0282 00
+00:0283 AB
+00:0284 21
+00:0285 B9
+00:0286 20
+00:0287 AA              	    31: 	DB	0AAH,02AH,0B3H,09BH,0B2H,03BH,0B0H,09BH
+00:0288 2A
+00:0289 B3
+00:028A 9B
+00:028B B2
+00:028C 3B
+00:028D B0
+00:028E 9B
+00:028F 90              	    32: 	DB	090H,02BH,0C9H,04BH,0B9H,01AH,090H,01AH
+00:0290 2B
+00:0291 C9
+00:0292 4B
+00:0293 B9
+00:0294 1A
+00:0295 90
+00:0296 1A
+00:0297 A0              	    33: 	DB	0A0H,039H,0B2H,000H,0B2H,022H,0CAH,049H
+00:0298 39
+00:0299 B2
+00:029A 00
+00:029B B2
+00:029C 22
+00:029D CA
+00:029E 49
+00:029F B9              	    34: 	DB	0B9H,0B0H,029H,0AAH,022H,0A9H,012H,012H
+00:02A0 B0
+00:02A1 29
+00:02A2 AA
+00:02A3 22
+00:02A4 A9
+00:02A5 12
+00:02A6 12
+00:02A7 21              	    35: 	DB	021H,00BH,04AH,022H,0A0H,031H,001H,009H
+00:02A8 0B
+00:02A9 4A
+00:02AA 22
+00:02AB A0
+00:02AC 31
+00:02AD 01
+00:02AE 09
+00:02AF 22              	    36: 	DB	022H,013H,09AH,003H,029H,092H,03BH,0A2H
+00:02B0 13
+00:02B1 9A
+00:02B2 03
+00:02B3 29
+00:02B4 92
+00:02B5 3B
+00:02B6 A2
+00:02B7 3A              	    37: 	DB	03AH,0A2H,0A9H,010H,091H,09AH,030H,0A9H
+00:02B8 A2
+00:02B9 A9
+00:02BA 10
+00:02BB 91
+00:02BC 9A
+00:02BD 30
+00:02BE A9
+00:02BF 21              	    38: 	DB	021H,0B1H,03AH,0AAH,030H,01AH,090H,039H
+00:02C0 B1
+00:02C1 3A
+00:02C2 AA
+00:02C3 30
+00:02C4 1A
+00:02C5 90
+00:02C6 39
+00:02C7 19              	    39: 	DB	019H,03AH,092H,020H,021H,000H,001H,0A2H
+00:02C8 3A
+00:02C9 92
+00:02CA 20
+00:02CB 21
+00:02CC 00
+00:02CD 01
+00:02CE A2
+00:02CF 3B              	    40: 	DB	03BH,00AH,020H,091H,09AH,099H,01BH,002H
+00:02D0 0A
+00:02D1 20
+00:02D2 91
+00:02D3 9A
+00:02D4 99
+00:02D5 1B
+00:02D6 02
+00:02D7 A9              	    41: 	DB	0A9H,090H,001H,0AAH,012H,0A9H,099H,02BH
+00:02D8 90
+00:02D9 01
+00:02DA AA
+00:02DB 12
+00:02DC A9
+00:02DD 99
+00:02DE 2B
+00:02DF 21              	    42: 	DB	021H,0BAH,011H,09BH,0A2H,00BH,012H,0AAH
+00:02E0 BA
+00:02E1 11
+00:02E2 9B
+00:02E3 A2
+00:02E4 0B
+00:02E5 12
+00:02E6 AA
+00:02E7 A3              	    43: 	DB	0A3H,00AH,02AH,002H,091H,0A1H,02AH,0A2H
+00:02E8 0A
+00:02E9 2A
+00:02EA 02
+00:02EB 91
+00:02EC A1
+00:02ED 2A
+00:02EE A2
+00:02EF 0A              	    44: 	DB	00AH,022H,0A9H,022H,0A3H,000H,000H,022H
+00:02F0 22
+00:02F1 A9
+00:02F2 22
+00:02F3 A3
+00:02F4 00
+00:02F5 00
+00:02F6 22
+00:02F7 99              	    45: 	DB	099H,000H,029H,01BH,023H,0B1H,0A3H,0B2H
+00:02F8 00
+00:02F9 29
+00:02FA 1B
+00:02FB 23
+00:02FC B1
+00:02FD A3
+00:02FE B2
+00:02FF 2A              	    46: 	DB	02AH,022H,01AH,013H,0A1H,020H,011H,0A1H
+00:0300 22
+00:0301 1A
+00:0302 13
+00:0303 A1
+00:0304 20
+00:0305 11
+00:0306 A1
+00:0307 92              	    47: 	DB	092H,090H,093H,0ABH,024H,0BAH,0A3H,00AH
+00:0308 90
+00:0309 93
+00:030A AB
+00:030B 24
+00:030C BA
+00:030D A3
+00:030E 0A
+00:030F 31              	    48: 	DB	031H,0A1H,01AH,02AH,092H,0A0H,009H,09AH
+00:0310 A1
+00:0311 1A
+00:0312 2A
+00:0313 92
+00:0314 A0
+00:0315 09
+00:0316 9A
+00:0317 A4              	    49: 	DB	0A4H,0BBH,0B3H,023H,0B2H,0A2H,019H,0B2H
+00:0318 BB
+00:0319 B3
+00:031A 23
+00:031B B2
+00:031C A2
+00:031D 19
+00:031E B2
+00:031F 3A              	    50: 	DB	03AH,0A1H,00AH,0A0H,03BH,0AAH,019H,00AH
+00:0320 A1
+00:0321 0A
+00:0322 A0
+00:0323 3B
+00:0324 AA
+00:0325 19
+00:0326 0A
+00:0327 B2              	    51: 	DB	0B2H,00AH,0A9H,004H,0CBH,033H,0BAH,000H
+00:0328 0A
+00:0329 A9
+00:032A 04
+00:032B CB
+00:032C 33
+00:032D BA
+00:032E 00
+00:032F 93              	    52: 	DB	093H,09AH,0A2H,029H,092H,00AH,030H,0A9H
+00:0330 9A
+00:0331 A2
+00:0332 29
+00:0333 92
+00:0334 0A
+00:0335 30
+00:0336 A9
+00:0337 33              	    53: 	DB	033H,0C3H,039H,0A3H,02BH,002H,011H,000H
+00:0338 C3
+00:0339 39
+00:033A A3
+00:033B 2B
+00:033C 02
+00:033D 11
+00:033E 00
+00:033F 92              	    54: 	DB	092H,00AH,021H,0AAH,032H,0B9H,03BH,020H
+00:0340 0A
+00:0341 21
+00:0342 AA
+00:0343 32
+00:0344 B9
+00:0345 3B
+00:0346 20
+00:0347 A1              	    55: 	DB	0A1H,0A2H,03AH,0C2H,04CH,0A3H,01AH,0A3H
+00:0348 A2
+00:0349 3A
+00:034A C2
+00:034B 4C
+00:034C A3
+00:034D 1A
+00:034E A3
+00:034F 10              	    56: 	DB	010H,0B2H,029H,022H,09BH,012H,04BH,0B0H
+00:0350 B2
+00:0351 29
+00:0352 22
+00:0353 9B
+00:0354 12
+00:0355 4B
+00:0356 B0
+00:0357 32              	    57: 	DB	032H,002H,00AH,033H,099H,093H,031H,0B0H
+00:0358 02
+00:0359 0A
+00:035A 33
+00:035B 99
+00:035C 93
+00:035D 31
+00:035E B0
+00:035F 02              	    58: 	DB	002H,013H,0B0H,000H,0A9H,090H,00BH,009H
+00:0360 13
+00:0361 B0
+00:0362 00
+00:0363 A9
+00:0364 90
+00:0365 0B
+00:0366 09
+00:0367 09              	    59: 	DB	009H,01CH,0A3H,02AH,0AAH,092H,0A0H,02AH
+00:0368 1C
+00:0369 A3
+00:036A 2A
+00:036B AA
+00:036C 92
+00:036D A0
+00:036E 2A
+00:036F A0              	    60: 	DB	0A0H,022H,0ABH,012H,0ABH,021H,0AAH,02BH
+00:0370 22
+00:0371 AB
+00:0372 12
+00:0373 AB
+00:0374 21
+00:0375 AA
+00:0376 2B
+00:0377 10              	    61: 	DB	010H,01AH,099H,019H,00AH,019H,091H,0A2H
+00:0378 1A
+00:0379 99
+00:037A 19
+00:037B 0A
+00:037C 19
+00:037D 91
+00:037E A2
+00:037F 1A              	    62: 	DB	01AH,09AH,020H,011H,0A0H,0A2H,03BH,012H
+00:0380 9A
+00:0381 20
+00:0382 11
+00:0383 A0
+00:0384 A2
+00:0385 3B
+00:0386 12
+00:0387 0A              	    63: 	DB	00AH,022H,0A1H,011H,0A2H,029H,010H,022H
+00:0388 22
+00:0389 A1
+00:038A 11
+00:038B A2
+00:038C 29
+00:038D 10
+00:038E 22
+00:038F A1              	    64: 	DB	0A1H,039H,001H,011H,0A1H,039H,02AH,033H
+00:0390 39
+00:0391 01
+00:0392 11
+00:0393 A1
+00:0394 39
+00:0395 2A
+00:0396 33
+00:0397 1B              	    65: 	DB	01BH,033H,00AH,032H,092H,0A1H,009H,0A2H
+00:0398 33
+00:0399 0A
+00:039A 32
+00:039B 92
+00:039C A1
+00:039D 09
+00:039E A2
+00:039F 99              	    66: 	DB	099H,090H,0BAH,003H,09BH,0A2H,0A2H,03BH
+00:03A0 90
+00:03A1 BA
+00:03A2 03
+00:03A3 9B
+00:03A4 A2
+00:03A5 A2
+00:03A6 3B
+00:03A7 92              	    67: 	DB	092H,03BH,0A3H,03BH,0A2H,09BH,002H,0ABH
+00:03A8 3B
+00:03A9 A3
+00:03AA 3B
+00:03AB A2
+00:03AC 9B
+00:03AD 02
+00:03AE AB
+00:03AF 10              	    68: 	DB	010H,0B0H,009H,092H,090H,0A2H,020H,0C3H
+00:03B0 B0
+00:03B1 09
+00:03B2 92
+00:03B3 90
+00:03B4 A2
+00:03B5 20
+00:03B6 C3
+00:03B7 30              	    69: 	DB	030H,000H,0B9H,091H,02AH,0B1H,01AH,0B2H
+00:03B8 00
+00:03B9 B9
+00:03BA 91
+00:03BB 2A
+00:03BC B1
+00:03BD 1A
+00:03BE B2
+00:03BF 29              	    70: 	DB	029H,0A3H,0AAH,031H,0A0H,000H,001H,092H
+00:03C0 A3
+00:03C1 AA
+00:03C2 31
+00:03C3 A0
+00:03C4 00
+00:03C5 01
+00:03C6 92
+00:03C7 A9              	    71: 	DB	0A9H,013H,0AAH,002H,009H,011H,0AAH,022H
+00:03C8 13
+00:03C9 AA
+00:03CA 02
+00:03CB 09
+00:03CC 11
+00:03CD AA
+00:03CE 22
+00:03CF 99              	    72: 	DB	099H,019H,001H,020H,0A1H,012H,0A0H,099H
+00:03D0 19
+00:03D1 01
+00:03D2 20
+00:03D3 A1
+00:03D4 12
+00:03D5 A0
+00:03D6 99
+00:03D7 12              	    73: 	DB	012H,0AAH,012H,01AH,0A3H,000H,020H,002H
+00:03D8 AA
+00:03D9 12
+00:03DA 1A
+00:03DB A3
+00:03DC 00
+00:03DD 20
+00:03DE 02
+00:03DF 12              	    74: 	DB	012H,029H,093H,012H,001H,001H,002H,02AH
+00:03E0 29
+00:03E1 93
+00:03E2 12
+00:03E3 01
+00:03E4 01
+00:03E5 02
+00:03E6 2A
+00:03E7 01              	    75: 	DB	001H,011H,09AH,01AH,020H,02AH,090H,009H
+00:03E8 11
+00:03E9 9A
+00:03EA 1A
+00:03EB 20
+00:03EC 2A
+00:03ED 90
+00:03EE 09
+00:03EF 00              	    76: 	DB	000H,090H,0A1H,09AH,091H,0A2H,0A9H,0A0H
+00:03F0 90
+00:03F1 A1
+00:03F2 9A
+00:03F3 91
+00:03F4 A2
+00:03F5 A9
+00:03F6 A0
+00:03F7 19              	    77: 	DB	019H,0A1H,00AH,091H,09AH,000H,02AH,0AAH
+00:03F8 A1
+00:03F9 0A
+00:03FA 91
+00:03FB 9A
+00:03FC 00
+00:03FD 2A
+00:03FE AA
+00:03FF 2A              	    78: 	DB	02AH,099H,00AH,002H,0A0H,091H,009H,001H
+00:0400 99
+00:0401 0A
+00:0402 02
+00:0403 A0
+00:0404 91
+00:0405 09
+00:0406 01
+00:0407 90              	    79: 	DB	090H,092H,009H,019H,000H,019H,001H,010H
+00:0408 92
+00:0409 09
+00:040A 19
+00:040B 00
+00:040C 19
+00:040D 01
+00:040E 10
+00:040F A1              	    80: 	DB	0A1H,000H,002H,00AH,010H,000H,019H,001H
+00:0410 00
+00:0411 02
+00:0412 0A
+00:0413 10
+00:0414 00
+00:0415 19
+00:0416 01
+00:0417 09              	    81: 	DB	009H,010H,021H,0A1H,021H,011H,000H,011H
+00:0418 10
+00:0419 21
+00:041A A1
+00:041B 21
+00:041C 11
+00:041D 00
+00:041E 11
+00:041F 20              	    82: 	DB	020H,001H,002H,000H,011H,091H,019H,011H
+00:0420 01
+00:0421 02
+00:0422 00
+00:0423 11
+00:0424 91
+00:0425 19
+00:0426 11
+00:0427 00              	    83: 	DB	000H,010H,001H,000H,000H,010H,090H,000H
+00:0428 10
+00:0429 01
+00:042A 00
+00:042B 00
+00:042C 10
+00:042D 90
+00:042E 00
+00:042F 91              	    84: 	DB	091H,091H,090H,000H,000H,099H,010H,009H
+00:0430 91
+00:0431 90
+00:0432 00
+00:0433 00
+00:0434 99
+00:0435 10
+00:0436 09
+00:0437 99              	    85: 	DB	099H,000H,099H,01AH,090H,009H,090H,009H
+00:0438 00
+00:0439 99
+00:043A 1A
+00:043B 90
+00:043C 09
+00:043D 90
+00:043E 09
+00:043F 00              	    86: 	DB	000H,091H,009H,000H,000H,090H,000H,000H
+00:0440 91
+00:0441 09
+00:0442 00
+00:0443 00
+00:0444 90
+00:0445 00
+00:0446 00
+00:0447 09              	    87: 	DB	009H,019H,001H,009H,091H,001H,0A0H,000H
+00:0448 19
+00:0449 01
+00:044A 09
+00:044B 91
+00:044C 01
+00:044D A0
+00:044E 00
+00:044F 00              	    88: 	DB	000H,090H,090H,009H,000H,091H,090H,010H
+00:0450 90
+00:0451 90
+00:0452 09
+00:0453 00
+00:0454 91
+00:0455 90
+00:0456 10
+00:0457 91              	    89: 	DB	091H,009H,010H,000H,000H,000H,001H,090H
+00:0458 09
+00:0459 10
+00:045A 00
+00:045B 00
+00:045C 00
+00:045D 01
+00:045E 90
+00:045F 00              	    90: 	DB	000H,000H,010H,000H,029H,010H,010H,001H
+00:0460 00
+00:0461 10
+00:0462 00
+00:0463 29
+00:0464 10
+00:0465 10
+00:0466 01
+00:0467 00              	    91: 	DB	000H,010H,001H,000H,010H,001H,000H,010H
+00:0468 10
+00:0469 01
+00:046A 00
+00:046B 10
+00:046C 01
+00:046D 00
+00:046E 10
+00:046F 10              	    92: 	DB	010H,001H,000H,001H,000H,000H,000H,000H
+00:0470 01
+00:0471 00
+00:0472 01
+00:0473 00
+00:0474 00
+00:0475 00
+00:0476 00
+00:0477 00              	    93: 	DB	000H,000H,000H,000H,009H,001H,009H,000H
+00:0478 00
+00:0479 00
+00:047A 00
+00:047B 09
+00:047C 01
+00:047D 09
+00:047E 00
+00:047F 00              	    94: 	DB	000H,000H,009H,000H,019H,000H,000H,009H
+00:0480 00
+00:0481 09
+00:0482 00
+00:0483 19
+00:0484 00
+00:0485 00
+00:0486 09
+00:0487 19              	    95: 	DB	019H,000H,000H,091H,090H,000H,090H,000H
+00:0488 00
+00:0489 00
+00:048A 91
+00:048B 90
+00:048C 00
+00:048D 90
+00:048E 00
+00:048F 09              	    96: 	DB	009H,019H,000H,000H,000H,090H,000H,000H
+00:0490 19
+00:0491 00
+00:0492 00
+00:0493 00
+00:0494 90
+00:0495 00
+00:0496 00
+00:0497 00              	    97: 	DB	000H,090H,000H,000H,009H,000H,009H,019H
+00:0498 90
+00:0499 00
+00:049A 00
+00:049B 09
+00:049C 00
+00:049D 09
+00:049E 19
+00:049F 00              	    98: 	DB	000H,000H,000H,000H,000H,009H,010H,091H
+00:04A0 00
+00:04A1 00
+00:04A2 00
+00:04A3 00
+00:04A4 09
+00:04A5 10
+00:04A6 91
+00:04A7 00              	    99: 	DB	000H,000H,000H,001H,000H,000H,001H,000H
+00:04A8 00
+00:04A9 00
+00:04AA 01
+00:04AB 00
+00:04AC 00
+00:04AD 01
+00:04AE 00
+00:04AF 00              	   100: 	DB	000H,001H,000H,000H,000H,010H,000H,000H
+00:04B0 01
+00:04B1 00
+00:04B2 00
+00:04B3 00
+00:04B4 10
+00:04B5 00
+00:04B6 00
+00:04B7 00              	   101: 	DB	000H,010H,000H,001H,091H,000H,000H,000H
+00:04B8 10
+00:04B9 00
+00:04BA 01
+00:04BB 91
+00:04BC 00
+00:04BD 00
+00:04BE 00
+00:04BF 10              	   102: 	DB	010H,091H,000H,000H,000H,000H,000H,000H
+00:04C0 91
+00:04C1 00
+00:04C2 00
+00:04C3 00
+00:04C4 00
+00:04C5 00
+00:04C6 00
+00:04C7 00              	   103: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:04C8 00
+00:04C9 00
+00:04CA 00
+00:04CB 00
+00:04CC 00
+00:04CD 00
+00:04CE 00
+00:04CF 09              	   104: 	DB	009H,000H,000H,000H,000H,009H,000H,000H
+00:04D0 00
+00:04D1 00
+00:04D2 00
+00:04D3 00
+00:04D4 09
+00:04D5 00
+00:04D6 00
+00:04D7 09              	   105: 	DB	009H,000H,000H,090H,000H,000H,000H,090H
+00:04D8 00
+00:04D9 00
+00:04DA 90
+00:04DB 00
+00:04DC 00
+00:04DD 00
+00:04DE 90
+00:04DF 00              	   106: 	DB	000H,000H,000H,009H,000H,000H,000H,000H
+00:04E0 00
+00:04E1 00
+00:04E2 09
+00:04E3 00
+00:04E4 00
+00:04E5 00
+00:04E6 00
+00:04E7 00              	   107: 	DB	000H,000H,000H,000H,000H,000H,001H,091H
+00:04E8 00
+00:04E9 00
+00:04EA 00
+00:04EB 00
+00:04EC 00
+00:04ED 01
+00:04EE 91
+00:04EF 00              	   108: 	DB	000H,000H
+00:04F0 00
+                        	   109: 
+
+Source: "mddt11.src"
+                        	    90: SNRTOP::
+                        	    91: 		INCLUDE 		SNARE.HHH		; 82
+
+Source: "SNARE.HHH"
+                        	     1: ;B:SD4.ABS/SD4.HHH/A/U2
+00:04F1 C7              	     2: 	DB	0C7H,06CH,0C2H,087H,0F4H,0EBH,0BBH,07DH
+00:04F2 6C
+00:04F3 C2
+00:04F4 87
+00:04F5 F4
+00:04F6 EB
+00:04F7 BB
+00:04F8 7D
+00:04F9 64              	     3: 	DB	064H,067H,033H,05EH,0BEH,06FH,04EH,0FDH
+00:04FA 67
+00:04FB 33
+00:04FC 5E
+00:04FD BE
+00:04FE 6F
+00:04FF 4E
+00:0500 FD
+00:0501 44              	     4: 	DB	044H,0D5H,0D5H,07FH,063H,0B7H,0EEH,074H
+00:0502 D5
+00:0503 D5
+00:0504 7F
+00:0505 63
+00:0506 B7
+00:0507 EE
+00:0508 74
+00:0509 F7              	     5: 	DB	0F7H,0D5H,07EH,0A4H,065H,03DH,0DDH,0CDH
+00:050A D5
+00:050B 7E
+00:050C A4
+00:050D 65
+00:050E 3D
+00:050F DD
+00:0510 CD
+00:0511 EF              	     6: 	DB	0EFH,0B6H,0FCH,0E4H,04CH,03DH,056H,057H
+00:0512 B6
+00:0513 FC
+00:0514 E4
+00:0515 4C
+00:0516 3D
+00:0517 56
+00:0518 57
+00:0519 9E              	     7: 	DB	09EH,076H,0E7H,0B5H,0EDH,04DH,0E2H,05EH
+00:051A 76
+00:051B E7
+00:051C B5
+00:051D ED
+00:051E 4D
+00:051F E2
+00:0520 5E
+00:0521 A7              	     8: 	DB	0A7H,0CFH,0B5H,0F6H,02EH,0EDH,06EH,0D2H
+00:0522 CF
+00:0523 B5
+00:0524 F6
+00:0525 2E
+00:0526 ED
+00:0527 6E
+00:0528 D2
+00:0529 26              	     9: 	DB	026H,0B5H,046H,0E7H,056H,065H,0D4H,0CBH
+00:052A B5
+00:052B 46
+00:052C E7
+00:052D 56
+00:052E 65
+00:052F D4
+00:0530 CB
+00:0531 5E              	    10: 	DB	05EH,05EH,0E5H,0DFH,0DEH,034H,045H,06EH
+00:0532 5E
+00:0533 E5
+00:0534 DF
+00:0535 DE
+00:0536 34
+00:0537 45
+00:0538 6E
+00:0539 06              	    11: 	DB	006H,025H,063H,064H,06CH,0DEH,05CH,0DDH
+00:053A 25
+00:053B 63
+00:053C 64
+00:053D 6C
+00:053E DE
+00:053F 5C
+00:0540 DD
+00:0541 E2              	    12: 	DB	0E2H,04DH,0E3H,0D3H,05DH,043H,0D6H,04CH
+00:0542 4D
+00:0543 E3
+00:0544 D3
+00:0545 5D
+00:0546 43
+00:0547 D6
+00:0548 4C
+00:0549 46              	    13: 	DB	046H,0B6H,094H,0C5H,044H,0D3H,05DH,0C4H
+00:054A B6
+00:054B 94
+00:054C C5
+00:054D 44
+00:054E D3
+00:054F 5D
+00:0550 C4
+00:0551 1E              	    14: 	DB	01EH,0DCH,04EH,0BDH,0CEH,05EH,0B6H,0D4H
+00:0552 DC
+00:0553 4E
+00:0554 BD
+00:0555 CE
+00:0556 5E
+00:0557 B6
+00:0558 D4
+00:0559 35              	    15: 	DB	035H,055H,066H,0C6H,0D5H,055H,0A4H,0E5H
+00:055A 55
+00:055B 66
+00:055C C6
+00:055D D5
+00:055E 55
+00:055F A4
+00:0560 E5
+00:0561 DD              	    16: 	DB	0DDH,0DCH,0CEH,0E4H,0DCH,0E5H,0C3H,0B4H
+00:0562 DC
+00:0563 CE
+00:0564 E4
+00:0565 DC
+00:0566 E5
+00:0567 C3
+00:0568 B4
+00:0569 B6              	    17: 	DB	0B6H,03AH,046H,045H,044H,095H,0B5H,0C5H
+00:056A 3A
+00:056B 46
+00:056C 45
+00:056D 44
+00:056E 95
+00:056F B5
+00:0570 C5
+00:0571 B2              	    18: 	DB	0B2H,05DH,0CBH,0CCH,0DEH,0DCH,0CEH,040H
+00:0572 5D
+00:0573 CB
+00:0574 CC
+00:0575 DE
+00:0576 DC
+00:0577 CE
+00:0578 40
+00:0579 BB              	    19: 	DB	0BBH,0C5H,065H,034H,0B6H,0B9H,005H,0C5H
+00:057A C5
+00:057B 65
+00:057C 34
+00:057D B6
+00:057E B9
+00:057F 05
+00:0580 C5
+00:0581 CE              	    20: 	DB	0CEH,044H,0E3H,05CH,03CH,044H,005H,0CAH
+00:0582 44
+00:0583 E3
+00:0584 5C
+00:0585 3C
+00:0586 44
+00:0587 05
+00:0588 CA
+00:0589 0C              	    21: 	DB	00CH,03BH,0DEH,033H,03DH,05CH,04CH,02BH
+00:058A 3B
+00:058B DE
+00:058C 33
+00:058D 3D
+00:058E 5C
+00:058F 4C
+00:0590 2B
+00:0591 55              	    22: 	DB	055H,0C3H,054H,055H,0BAH,04DH,04CH,0DEH
+00:0592 C3
+00:0593 54
+00:0594 55
+00:0595 BA
+00:0596 4D
+00:0597 4C
+00:0598 DE
+00:0599 6C              	    23: 	DB	06CH,0D4H,0D5H,09DH,05BH,00CH,035H,0E5H
+00:059A D4
+00:059B D5
+00:059C 9D
+00:059D 5B
+00:059E 0C
+00:059F 35
+00:05A0 E5
+00:05A1 5D              	    24: 	DB	05DH,042H,0E5H,05CH,05CH,0AEH,06AH,0A4H
+00:05A2 42
+00:05A3 E5
+00:05A4 5C
+00:05A5 5C
+00:05A6 AE
+00:05A7 6A
+00:05A8 A4
+00:05A9 05              	    25: 	DB	005H,0E5H,053H,0ABH,04DH,043H,0D1H,05DH
+00:05AA E5
+00:05AB 53
+00:05AC AB
+00:05AD 4D
+00:05AE 43
+00:05AF D1
+00:05B0 5D
+00:05B1 3B              	    26: 	DB	03BH,0C4H,0D5H,0CCH,0C1H,0A3H,04BH,003H
+00:05B2 C4
+00:05B3 D5
+00:05B4 CC
+00:05B5 C1
+00:05B6 A3
+00:05B7 4B
+00:05B8 03
+00:05B9 1C              	    27: 	DB	01CH,041H,04DH,043H,0A1H,0B5H,0ACH,0B4H
+00:05BA 41
+00:05BB 4D
+00:05BC 43
+00:05BD A1
+00:05BE B5
+00:05BF AC
+00:05C0 B4
+00:05C1 5B              	    28: 	DB	05BH,04AH,0D5H,03DH,0CDH,051H,0C4H,0DCH
+00:05C2 4A
+00:05C3 D5
+00:05C4 3D
+00:05C5 CD
+00:05C6 51
+00:05C7 C4
+00:05C8 DC
+00:05C9 3B              	    29: 	DB	03BH,0ABH,04DH,035H,054H,05BH,04CH,03DH
+00:05CA AB
+00:05CB 4D
+00:05CC 35
+00:05CD 54
+00:05CE 5B
+00:05CF 4C
+00:05D0 3D
+00:05D1 43              	    30: 	DB	043H,0E5H,0A4H,0ADH,044H,0BDH,043H,0D4H
+00:05D2 E5
+00:05D3 A4
+00:05D4 AD
+00:05D5 44
+00:05D6 BD
+00:05D7 43
+00:05D8 D4
+00:05D9 5C              	    31: 	DB	05CH,0C2H,03BH,0D5H,0A3H,0B4H,052H,0A3H
+00:05DA C2
+00:05DB 3B
+00:05DC D5
+00:05DD A3
+00:05DE B4
+00:05DF 52
+00:05E0 A3
+00:05E1 C3              	    32: 	DB	0C3H,03BH,02BH,0B0H,0D4H,0B3H,0D4H,031H
+00:05E2 3B
+00:05E3 2B
+00:05E4 B0
+00:05E5 D4
+00:05E6 B3
+00:05E7 D4
+00:05E8 31
+00:05E9 CA              	    33: 	DB	0CAH,04BH,0B4H,04BH,0B3H,0C3H,0C5H,0ABH
+00:05EA 4B
+00:05EB B4
+00:05EC 4B
+00:05ED B3
+00:05EE C3
+00:05EF C5
+00:05F0 AB
+00:05F1 CA              	    34: 	DB	0CAH,05CH,0A4H,09CH,05AH,039H,05DH,044H
+00:05F2 5C
+00:05F3 A4
+00:05F4 9C
+00:05F5 5A
+00:05F6 39
+00:05F7 5D
+00:05F8 44
+00:05F9 4C              	    35: 	DB	04CH,0CCH,0DDH,05BH,0DCH,0BBH,055H,02BH
+00:05FA CC
+00:05FB DD
+00:05FC 5B
+00:05FD DC
+00:05FE BB
+00:05FF 55
+00:0600 2B
+00:0601 D5              	    36: 	DB	0D5H,06DH,04CH,043H,004H,0CDH,055H,0DAH
+00:0602 6D
+00:0603 4C
+00:0604 43
+00:0605 04
+00:0606 CD
+00:0607 55
+00:0608 DA
+00:0609 13              	    37: 	DB	013H,0CBH,03DH,039H,04CH,0D1H,03DH,0C3H
+00:060A CB
+00:060B 3D
+00:060C 39
+00:060D 4C
+00:060E D1
+00:060F 3D
+00:0610 C3
+00:0611 B4              	    38: 	DB	0B4H,02BH,054H,03BH,063H,044H,0BDH,039H
+00:0612 2B
+00:0613 54
+00:0614 3B
+00:0615 63
+00:0616 44
+00:0617 BD
+00:0618 39
+00:0619 23              	    39: 	DB	023H,0DCH,0DCH,05BH,04DH,03CH,0D4H,05DH
+00:061A DC
+00:061B DC
+00:061C 5B
+00:061D 4D
+00:061E 3C
+00:061F D4
+00:0620 5D
+00:0621 4C              	    40: 	DB	04CH,045H,0DCH,004H,052H,04DH,053H,02BH
+00:0622 45
+00:0623 DC
+00:0624 04
+00:0625 52
+00:0626 4D
+00:0627 53
+00:0628 2B
+00:0629 C1              	    41: 	DB	0C1H,0C3H,0DCH,053H,094H,024H,01BH,0CAH
+00:062A C3
+00:062B DC
+00:062C 53
+00:062D 94
+00:062E 24
+00:062F 1B
+00:0630 CA
+00:0631 9C              	    42: 	DB	09CH,00DH,0C3H,06DH,0C5H,041H,0BBH,003H
+00:0632 0D
+00:0633 C3
+00:0634 6D
+00:0635 C5
+00:0636 41
+00:0637 BB
+00:0638 03
+00:0639 4C              	    43: 	DB	04CH,0B3H,05DH,0A5H,0D5H,09CH,05CH,0DCH
+00:063A B3
+00:063B 5D
+00:063C A5
+00:063D D5
+00:063E 9C
+00:063F 5C
+00:0640 DC
+00:0641 4D              	    44: 	DB	04DH,0D5H,0D5H,0CCH,052H,03AH,05CH,05DH
+00:0642 D5
+00:0643 D5
+00:0644 CC
+00:0645 52
+00:0646 3A
+00:0647 5C
+00:0648 5D
+00:0649 6D              	    45: 	DB	06DH,0ABH,0C5H,040H,0CCH,034H,05CH,0DBH
+00:064A AB
+00:064B C5
+00:064C 40
+00:064D CC
+00:064E 34
+00:064F 5C
+00:0650 DB
+00:0651 CA              	    46: 	DB	0CAH,0DCH,0D4H,0B3H,04AH,0C5H,015H,04CH
+00:0652 DC
+00:0653 D4
+00:0654 B3
+00:0655 4A
+00:0656 C5
+00:0657 15
+00:0658 4C
+00:0659 4A              	    47: 	DB	04AH,045H,02DH,041H,0D6H,0DDH,0DBH,033H
+00:065A 45
+00:065B 2D
+00:065C 41
+00:065D D6
+00:065E DD
+00:065F DB
+00:0660 33
+00:0661 4C              	    48: 	DB	04CH,0A2H,095H,0BBH,0B5H,03BH,0ACH,0C3H
+00:0662 A2
+00:0663 95
+00:0664 BB
+00:0665 B5
+00:0666 3B
+00:0667 AC
+00:0668 C3
+00:0669 9D              	    49: 	DB	09DH,0D5H,05BH,092H,052H,0C3H,0B4H,0ACH
+00:066A D5
+00:066B 5B
+00:066C 92
+00:066D 52
+00:066E C3
+00:066F B4
+00:0670 AC
+00:0671 1B              	    50: 	DB	01BH,0C4H,0C4H,03CH,022H,023H,0C0H,092H
+00:0672 C4
+00:0673 C4
+00:0674 3C
+00:0675 22
+00:0676 23
+00:0677 C0
+00:0678 92
+00:0679 95              	    51: 	DB	095H,0C0H,095H,0CBH,0C5H,0BBH,0BDH,02BH
+00:067A C0
+00:067B 95
+00:067C CB
+00:067D C5
+00:067E BB
+00:067F BD
+00:0680 2B
+00:0681 B4              	    52: 	DB	0B4H,04DH,04CH,0D5H,05AH,0C4H,0A3H,04CH
+00:0682 4D
+00:0683 4C
+00:0684 D5
+00:0685 5A
+00:0686 C4
+00:0687 A3
+00:0688 4C
+00:0689 D5              	    53: 	DB	0D5H,043H,041H,0C4H,0D3H,019H,03CH,05DH
+00:068A 43
+00:068B 41
+00:068C C4
+00:068D D3
+00:068E 19
+00:068F 3C
+00:0690 5D
+00:0691 1B              	    54: 	DB	01BH,0ACH,04CH,094H,0CDH,05CH,03BH,003H
+00:0692 AC
+00:0693 4C
+00:0694 94
+00:0695 CD
+00:0696 5C
+00:0697 3B
+00:0698 03
+00:0699 D5              	    55: 	DB	0D5H,042H,045H,004H,0ACH,0D5H,03DH,05DH
+00:069A 42
+00:069B 45
+00:069C 04
+00:069D AC
+00:069E D5
+00:069F 3D
+00:06A0 5D
+00:06A1 B3              	    56: 	DB	0B3H,0C4H,00CH,003H,0A0H,00DH,012H,0CCH
+00:06A2 C4
+00:06A3 0C
+00:06A4 03
+00:06A5 A0
+00:06A6 0D
+00:06A7 12
+00:06A8 CC
+00:06A9 44              	    57: 	DB	044H,0C4H,0A3H,054H,04DH,053H,09CH,032H
+00:06AA C4
+00:06AB A3
+00:06AC 54
+00:06AD 4D
+00:06AE 53
+00:06AF 9C
+00:06B0 32
+00:06B1 D3              	    58: 	DB	0D3H,0C3H,0ABH,0C9H,03DH,035H,0C4H,024H
+00:06B2 C3
+00:06B3 AB
+00:06B4 C9
+00:06B5 3D
+00:06B6 35
+00:06B7 C4
+00:06B8 24
+00:06B9 C4              	    59: 	DB	0C4H,03BH,055H,0E3H,000H,0AAH,0CCH,04CH
+00:06BA 3B
+00:06BB 55
+00:06BC E3
+00:06BD 00
+00:06BE AA
+00:06BF CC
+00:06C0 4C
+00:06C1 B3              	    60: 	DB	0B3H,0CCH,04BH,0B4H,0D4H,0A5H,0A3H,042H
+00:06C2 CC
+00:06C3 4B
+00:06C4 B4
+00:06C5 D4
+00:06C6 A5
+00:06C7 A3
+00:06C8 42
+00:06C9 95              	    61: 	DB	095H,0A0H,0C4H,045H,0DBH,0BBH,04BH,0DDH
+00:06CA A0
+00:06CB C4
+00:06CC 45
+00:06CD DB
+00:06CE BB
+00:06CF 4B
+00:06D0 DD
+00:06D1 3A              	    62: 	DB	03AH,04DH,0AAH,043H,0B4H,02AH,0C4H,0A1H
+00:06D2 4D
+00:06D3 AA
+00:06D4 43
+00:06D5 B4
+00:06D6 2A
+00:06D7 C4
+00:06D8 A1
+00:06D9 95              	    63: 	DB	095H,00BH,054H,0DAH,024H,040H,0CDH,0C2H
+00:06DA 0B
+00:06DB 54
+00:06DC DA
+00:06DD 24
+00:06DE 40
+00:06DF CD
+00:06E0 C2
+00:06E1 4B              	    64: 	DB	04BH,0C5H,0D1H,05AH,09CH,099H,04BH,0C4H
+00:06E2 C5
+00:06E3 D1
+00:06E4 5A
+00:06E5 9C
+00:06E6 99
+00:06E7 4B
+00:06E8 C4
+00:06E9 B3              	    65: 	DB	0B3H,0B5H,0D4H,0D4H,0C2H,031H,094H,044H
+00:06EA B5
+00:06EB D4
+00:06EC D4
+00:06ED C2
+00:06EE 31
+00:06EF 94
+00:06F0 44
+00:06F1 5D              	    66: 	DB	05DH,03AH,04DH,0D3H,01CH,043H,02DH,050H
+00:06F2 3A
+00:06F3 4D
+00:06F4 D3
+00:06F5 1C
+00:06F6 43
+00:06F7 2D
+00:06F8 50
+00:06F9 CC              	    67: 	DB	0CCH,0C5H,02DH,05BH,05EH,05AH,0C2H,0B4H
+00:06FA C5
+00:06FB 2D
+00:06FC 5B
+00:06FD 5E
+00:06FE 5A
+00:06FF C2
+00:0700 B4
+00:0701 B3              	    68: 	DB	0B3H,035H,0D4H,05AH,0B5H,0CEH,059H,04CH
+00:0702 35
+00:0703 D4
+00:0704 5A
+00:0705 B5
+00:0706 CE
+00:0707 59
+00:0708 4C
+00:0709 0D              	    69: 	DB	00DH,05CH,04CH,0C3H,05BH,0D4H,0BAH,0D4H
+00:070A 5C
+00:070B 4C
+00:070C C3
+00:070D 5B
+00:070E D4
+00:070F BA
+00:0710 D4
+00:0711 23              	    70: 	DB	023H,0B3H,0A2H,05BH,0D4H,05CH,04AH,0CCH
+00:0712 B3
+00:0713 A2
+00:0714 5B
+00:0715 D4
+00:0716 5C
+00:0717 4A
+00:0718 CC
+00:0719 6C              	    71: 	DB	06CH,03BH,024H,0CAH,0D5H,0D5H,09CH,04DH
+00:071A 3B
+00:071B 24
+00:071C CA
+00:071D D5
+00:071E D5
+00:071F 9C
+00:0720 4D
+00:0721 C2              	    72: 	DB	0C2H,0C0H,090H,04BH,032H,03CH,05CH,054H
+00:0722 C0
+00:0723 90
+00:0724 4B
+00:0725 32
+00:0726 3C
+00:0727 5C
+00:0728 54
+00:0729 CD              	    73: 	DB	0CDH,053H,04CH,091H,02AH,0BCH,0C4H,0C3H
+00:072A 53
+00:072B 4C
+00:072C 91
+00:072D 2A
+00:072E BC
+00:072F C4
+00:0730 C3
+00:0731 BB              	    74: 	DB	0BBH,02BH,0CAH,030H,05DH,052H,05DH,030H
+00:0732 2B
+00:0733 CA
+00:0734 30
+00:0735 5D
+00:0736 52
+00:0737 5D
+00:0738 30
+00:0739 4A              	    75: 	DB	04AH,0CBH,024H,02DH,043H,0D2H,04BH,0ACH
+00:073A CB
+00:073B 24
+00:073C 2D
+00:073D 43
+00:073E D2
+00:073F 4B
+00:0740 AC
+00:0741 94              	    76: 	DB	094H,039H,0B3H,0C2H,0B1H,002H,004H,04AH
+00:0742 39
+00:0743 B3
+00:0744 C2
+00:0745 B1
+00:0746 02
+00:0747 04
+00:0748 4A
+00:0749 53              	    77: 	DB	053H,03AH,0C4H,0C2H,0D3H,04DH,0D4H,09BH
+00:074A 3A
+00:074B C4
+00:074C C2
+00:074D D3
+00:074E 4D
+00:074F D4
+00:0750 9B
+00:0751 E5              	    78: 	DB	0E5H,0C3H,054H,0B5H,0A4H,0D5H,03CH,0B2H
+00:0752 C3
+00:0753 54
+00:0754 B5
+00:0755 A4
+00:0756 D5
+00:0757 3C
+00:0758 B2
+00:0759 23              	    79: 	DB	023H,034H,034H,0D2H,05DH,0C4H,0DCH,0D4H
+00:075A 34
+00:075B 34
+00:075C D2
+00:075D 5D
+00:075E C4
+00:075F DC
+00:0760 D4
+00:0761 BD              	    80: 	DB	0BDH,034H,0C4H,05CH,025H,0D4H,04DH,055H
+00:0762 34
+00:0763 C4
+00:0764 5C
+00:0765 25
+00:0766 D4
+00:0767 4D
+00:0768 55
+00:0769 C0              	    81: 	DB	0C0H,044H,0CCH,0C3H,00AH,0D3H,0CBH,04BH
+00:076A 44
+00:076B CC
+00:076C C3
+00:076D 0A
+00:076E D3
+00:076F CB
+00:0770 4B
+00:0771 2C              	    82: 	DB	02CH,059H,04CH,0C6H,00CH,02DH,04EH,054H
+00:0772 59
+00:0773 4C
+00:0774 C6
+00:0775 0C
+00:0776 2D
+00:0777 4E
+00:0778 54
+00:0779 D5              	    83: 	DB	0D5H,0B3H,029H,054H,0CCH,000H,04DH,04CH
+00:077A B3
+00:077B 29
+00:077C 54
+00:077D CC
+00:077E 00
+00:077F 4D
+00:0780 4C
+00:0781 BA              	    84: 	DB	0BAH,02BH,0C5H,0B2H,0BAH,0A9H,0C4H,03BH
+00:0782 2B
+00:0783 C5
+00:0784 B2
+00:0785 BA
+00:0786 A9
+00:0787 C4
+00:0788 3B
+00:0789 53              	    85: 	DB	053H,044H,0D5H,01CH,04DH,05AH,0DCH,0B3H
+00:078A 44
+00:078B D5
+00:078C 1C
+00:078D 4D
+00:078E 5A
+00:078F DC
+00:0790 B3
+00:0791 CD              	    86: 	DB	0CDH,042H,031H,0C9H,041H,025H,093H,03CH
+00:0792 42
+00:0793 31
+00:0794 C9
+00:0795 41
+00:0796 25
+00:0797 93
+00:0798 3C
+00:0799 B3              	    87: 	DB	0B3H,0C5H,0CCH,05DH,092H,05CH,0CBH,0BCH
+00:079A C5
+00:079B CC
+00:079C 5D
+00:079D 92
+00:079E 5C
+00:079F CB
+00:07A0 BC
+00:07A1 4B              	    88: 	DB	04BH,0A2H,01BH,0BCH,055H,0D3H,053H,033H
+00:07A2 A2
+00:07A3 1B
+00:07A4 BC
+00:07A5 55
+00:07A6 D3
+00:07A7 53
+00:07A8 33
+00:07A9 C4              	    89: 	DB	0C4H,0C2H,0CAH,03DH,04CH,05BH,0D2H,03DH
+00:07AA C2
+00:07AB CA
+00:07AC 3D
+00:07AD 4C
+00:07AE 5B
+00:07AF D2
+00:07B0 3D
+00:07B1 32              	    90: 	DB	032H,022H,0C4H,039H,0A3H,044H,035H,0BDH
+00:07B2 22
+00:07B3 C4
+00:07B4 39
+00:07B5 A3
+00:07B6 44
+00:07B7 35
+00:07B8 BD
+00:07B9 42              	    91: 	DB	042H,0ADH,0B4H,0B0H,0D3H,003H,0A3H,04CH
+00:07BA AD
+00:07BB B4
+00:07BC B0
+00:07BD D3
+00:07BE 03
+00:07BF A3
+00:07C0 4C
+00:07C1 2C              	    92: 	DB	02CH,0A4H,0C4H,03CH,0B3H,03DH,05AH,049H
+00:07C2 A4
+00:07C3 C4
+00:07C4 3C
+00:07C5 B3
+00:07C6 3D
+00:07C7 5A
+00:07C8 49
+00:07C9 14              	    93: 	DB	014H,0C4H,032H,0ABH,0B4H,05EH,02CH,0C4H
+00:07CA C4
+00:07CB 32
+00:07CC AB
+00:07CD B4
+00:07CE 5E
+00:07CF 2C
+00:07D0 C4
+00:07D1 BC              	    94: 	DB	0BCH,0B1H,0A4H,030H,022H,05BH,040H,0D4H
+00:07D2 B1
+00:07D3 A4
+00:07D4 30
+00:07D5 22
+00:07D6 5B
+00:07D7 40
+00:07D8 D4
+00:07D9 0B              	    95: 	DB	00BH,03CH,0B4H,0B4H,03BH,0A2H,013H,05DH
+00:07DA 3C
+00:07DB B4
+00:07DC B4
+00:07DD 3B
+00:07DE A2
+00:07DF 13
+00:07E0 5D
+00:07E1 4C              	    96: 	DB	04CH,0C1H,03DH,0C4H,0D5H,0D5H,04BH,0B4H
+00:07E2 C1
+00:07E3 3D
+00:07E4 C4
+00:07E5 D5
+00:07E6 D5
+00:07E7 4B
+00:07E8 B4
+00:07E9 32              	    97: 	DB	032H,0B5H,0CBH,023H,0C6H,0DDH,053H,0ADH
+00:07EA B5
+00:07EB CB
+00:07EC 23
+00:07ED C6
+00:07EE DD
+00:07EF 53
+00:07F0 AD
+00:07F1 3D              	    98: 	DB	03DH,0C3H,03CH,0C6H,0D4H,04BH,0B2H,0A4H
+00:07F2 C3
+00:07F3 3C
+00:07F4 C6
+00:07F5 D4
+00:07F6 4B
+00:07F7 B2
+00:07F8 A4
+00:07F9 C3              	    99: 	DB	0C3H,03CH,0C3H,044H,0B2H,03CH,053H,0CDH
+00:07FA 3C
+00:07FB C3
+00:07FC 44
+00:07FD B2
+00:07FE 3C
+00:07FF 53
+00:0800 CD
+00:0801 3A              	   100: 	DB	03AH,0ACH,03CH,0B4H,0CAH,039H,030H,05CH
+00:0802 AC
+00:0803 3C
+00:0804 B4
+00:0805 CA
+00:0806 39
+00:0807 30
+00:0808 5C
+00:0809 3D              	   101: 	DB	03DH,055H,0ACH,0B4H,0A3H,0C3H,0CCH,0A4H
+00:080A 55
+00:080B AC
+00:080C B4
+00:080D A3
+00:080E C3
+00:080F CC
+00:0810 A4
+00:0811 C0              	   102: 	DB	0C0H,0B2H,094H,0B4H,0ABH,05AH,0BAH,0C3H
+00:0812 B2
+00:0813 94
+00:0814 B4
+00:0815 AB
+00:0816 5A
+00:0817 BA
+00:0818 C3
+00:0819 D1              	   103: 	DB	0D1H,05BH,002H,0BBH,052H,022H,044H,0CAH
+00:081A 5B
+00:081B 02
+00:081C BB
+00:081D 52
+00:081E 22
+00:081F 44
+00:0820 CA
+00:0821 BC              	   104: 	DB	0BCH,0C2H,0CCH,033H,0DBH,054H,0B1H,0CBH
+00:0822 C2
+00:0823 CC
+00:0824 33
+00:0825 DB
+00:0826 54
+00:0827 B1
+00:0828 CB
+00:0829 54              	   105: 	DB	054H,0C3H,035H,04DH,09CH,03CH,04CH,0C4H
+00:082A C3
+00:082B 35
+00:082C 4D
+00:082D 9C
+00:082E 3C
+00:082F 4C
+00:0830 C4
+00:0831 CB              	   106: 	DB	0CBH,05CH,03BH,04BH,0BCH,05CH,0BBH,05CH
+00:0832 5C
+00:0833 3B
+00:0834 4B
+00:0835 BC
+00:0836 5C
+00:0837 BB
+00:0838 5C
+00:0839 40              	   107: 	DB	040H,0D5H,04CH,039H,03CH,0A3H,0BAH,0BCH
+00:083A D5
+00:083B 4C
+00:083C 39
+00:083D 3C
+00:083E A3
+00:083F BA
+00:0840 BC
+00:0841 4B              	   108: 	DB	04BH,033H,033H,0CBH,04CH,0CAH,04DH,054H
+00:0842 33
+00:0843 33
+00:0844 CB
+00:0845 4C
+00:0846 CA
+00:0847 4D
+00:0848 54
+00:0849 C2              	   109: 	DB	0C2H,034H,0C5H,0C3H,033H,03CH,02BH,03BH
+00:084A 34
+00:084B C5
+00:084C C3
+00:084D 33
+00:084E 3C
+00:084F 2B
+00:0850 3B
+00:0851 AC              	   110: 	DB	0ACH,0D3H,01AH,04DH,0ACH,04CH,03CH,033H
+00:0852 D3
+00:0853 1A
+00:0854 4D
+00:0855 AC
+00:0856 4C
+00:0857 3C
+00:0858 33
+00:0859 44              	   111: 	DB	044H,043H,03AH,024H,045H,0DAH,0A0H,000H
+00:085A 43
+00:085B 3A
+00:085C 24
+00:085D 45
+00:085E DA
+00:085F A0
+00:0860 00
+00:0861 CC              	   112: 	DB	0CCH,039H,0A4H,0DBH,0B4H,0DBH,0CCH,05DH
+00:0862 39
+00:0863 A4
+00:0864 DB
+00:0865 B4
+00:0866 DB
+00:0867 CC
+00:0868 5D
+00:0869 45              	   113: 	DB	045H,005H,041H,093H,0C3H,093H,0C5H,0BCH
+00:086A 05
+00:086B 41
+00:086C 93
+00:086D C3
+00:086E 93
+00:086F C5
+00:0870 BC
+00:0871 13              	   114: 	DB	013H,0CAH,0A5H,0CBH,0C4H,0CCH,05CH,0CBH
+00:0872 CA
+00:0873 A5
+00:0874 CB
+00:0875 C4
+00:0876 CC
+00:0877 5C
+00:0878 CB
+00:0879 39              	   115: 	DB	039H,04DH,04CH,033H,039H,0A4H,0C1H,043H
+00:087A 4D
+00:087B 4C
+00:087C 33
+00:087D 39
+00:087E A4
+00:087F C1
+00:0880 43
+00:0881 C5              	   116: 	DB	0C5H,032H,0B3H,04BH,02BH,0CAH,0D4H,01DH
+00:0882 32
+00:0883 B3
+00:0884 4B
+00:0885 2B
+00:0886 CA
+00:0887 D4
+00:0888 1D
+00:0889 2D              	   117: 	DB	02DH,014H,024H,0ABH,044H,02BH,042H,0C3H
+00:088A 14
+00:088B 24
+00:088C AB
+00:088D 44
+00:088E 2B
+00:088F 42
+00:0890 C3
+00:0891 10              	   118: 	DB	010H,044H,0D3H,09BH,0B0H,0BCH,04BH,0A2H
+00:0892 44
+00:0893 D3
+00:0894 9B
+00:0895 B0
+00:0896 BC
+00:0897 4B
+00:0898 A2
+00:0899 34              	   119: 	DB	034H,0A1H,0C2H,0C4H,01BH,0C4H,032H,034H
+00:089A A1
+00:089B C2
+00:089C C4
+00:089D 1B
+00:089E C4
+00:089F 32
+00:08A0 34
+00:08A1 C3              	   120: 	DB	0C3H,0C2H,04CH,03BH,0A3H,02AH,02AH,0B1H
+00:08A2 C2
+00:08A3 4C
+00:08A4 3B
+00:08A5 A3
+00:08A6 2A
+00:08A7 2A
+00:08A8 B1
+00:08A9 4C              	   121: 	DB	04CH,00CH,02CH,0B4H,0D3H,005H,0A4H,034H
+00:08AA 0C
+00:08AB 2C
+00:08AC B4
+00:08AD D3
+00:08AE 05
+00:08AF A4
+00:08B0 34
+00:08B1 C0              	   122: 	DB	0C0H,013H,01CH,0C4H,05CH,0D4H,04BH,0A9H
+00:08B2 13
+00:08B3 1C
+00:08B4 C4
+00:08B5 5C
+00:08B6 D4
+00:08B7 4B
+00:08B8 A9
+00:08B9 BA              	   123: 	DB	0BAH,03CH,0A3H,0B5H,0C9H,0B2H,0B4H,0C0H
+00:08BA 3C
+00:08BB A3
+00:08BC B5
+00:08BD C9
+00:08BE B2
+00:08BF B4
+00:08C0 C0
+00:08C1 32              	   124: 	DB	032H,02CH,014H,004H,0C4H,03BH,0C9H,04CH
+00:08C2 2C
+00:08C3 14
+00:08C4 04
+00:08C5 C4
+00:08C6 3B
+00:08C7 C9
+00:08C8 4C
+00:08C9 4C              	   125: 	DB	04CH,09BH,04AH,04CH,0D3H,034H,0C2H,033H
+00:08CA 9B
+00:08CB 4A
+00:08CC 4C
+00:08CD D3
+00:08CE 34
+00:08CF C2
+00:08D0 33
+00:08D1 0B              	   126: 	DB	00BH,04CH,0B3H,0CAH,0A1H,0A2H,0A4H,042H
+00:08D2 4C
+00:08D3 B3
+00:08D4 CA
+00:08D5 A1
+00:08D6 A2
+00:08D7 A4
+00:08D8 42
+00:08D9 12              	   127: 	DB	012H,092H,021H,001H,02CH,0BCH,03BH,0ACH
+00:08DA 92
+00:08DB 21
+00:08DC 01
+00:08DD 2C
+00:08DE BC
+00:08DF 3B
+00:08E0 AC
+00:08E1 AC              	   128: 	DB	0ACH,054H,0D3H,044H,023H,0A5H,0DBH,020H
+00:08E2 54
+00:08E3 D3
+00:08E4 44
+00:08E5 23
+00:08E6 A5
+00:08E7 DB
+00:08E8 20
+00:08E9 B4              	   129: 	DB	0B4H,0CBH,034H,0C9H,034H,0C3H,0DBH,049H
+00:08EA CB
+00:08EB 34
+00:08EC C9
+00:08ED 34
+00:08EE C3
+00:08EF DB
+00:08F0 49
+00:08F1 2B              	   130: 	DB	02BH,0B3H,05CH,02BH,021H,04CH,0C4H,0C9H
+00:08F2 B3
+00:08F3 5C
+00:08F4 2B
+00:08F5 21
+00:08F6 4C
+00:08F7 C4
+00:08F8 C9
+00:08F9 4C              	   131: 	DB	04CH,033H,0A4H,042H,0B1H,0CCH,034H,0C0H
+00:08FA 33
+00:08FB A4
+00:08FC 42
+00:08FD B1
+00:08FE CC
+00:08FF 34
+00:0900 C0
+00:0901 C4              	   132: 	DB	0C4H,0B0H,04CH,02CH,05CH,0B3H,0ABH,03CH
+00:0902 B0
+00:0903 4C
+00:0904 2C
+00:0905 5C
+00:0906 B3
+00:0907 AB
+00:0908 3C
+00:0909 29              	   133: 	DB	029H,043H,03CH,024H,0C2H,0BBH,031H,0BAH
+00:090A 43
+00:090B 3C
+00:090C 24
+00:090D C2
+00:090E BB
+00:090F 31
+00:0910 BA
+00:0911 5D              	   134: 	DB	05DH,044H,04CH,03AH,0CBH,02BH,0CCH,0C5H
+00:0912 44
+00:0913 4C
+00:0914 3A
+00:0915 CB
+00:0916 2B
+00:0917 CC
+00:0918 C5
+00:0919 3C              	   135: 	DB	03CH,043H,0A3H,09BH,052H,0BBH,0D4H,03CH
+00:091A 43
+00:091B A3
+00:091C 9B
+00:091D 52
+00:091E BB
+00:091F D4
+00:0920 3C
+00:0921 2C              	   136: 	DB	02CH,044H,0C4H,0C3H,04AH,04CH,034H,0DAH
+00:0922 44
+00:0923 C4
+00:0924 C3
+00:0925 4A
+00:0926 4C
+00:0927 34
+00:0928 DA
+00:0929 13              	   137: 	DB	013H,093H,0AAH,0D3H,0CBH,02BH,05DH,032H
+00:092A 93
+00:092B AA
+00:092C D3
+00:092D CB
+00:092E 2B
+00:092F 5D
+00:0930 32
+00:0931 34              	   138: 	DB	034H,044H,094H,04DH,023H,0A0H,0ACH,03AH
+00:0932 44
+00:0933 94
+00:0934 4D
+00:0935 23
+00:0936 A0
+00:0937 AC
+00:0938 3A
+00:0939 CC              	   139: 	DB	0CCH,024H,0C3H,0AAH,04BH,03CH,0C3H,03BH
+00:093A 24
+00:093B C3
+00:093C AA
+00:093D 4B
+00:093E 3C
+00:093F C3
+00:0940 3B
+00:0941 4B              	   140: 	DB	04BH,0B3H,04CH,049H,034H,02AH,003H,0C3H
+00:0942 B3
+00:0943 4C
+00:0944 49
+00:0945 34
+00:0946 2A
+00:0947 03
+00:0948 C3
+00:0949 3C              	   141: 	DB	03CH,02BH,0BAH,02CH,01BH,0B3H,03CH,0B4H
+00:094A 2B
+00:094B BA
+00:094C 2C
+00:094D 1B
+00:094E B3
+00:094F 3C
+00:0950 B4
+00:0951 BB              	   142: 	DB	0BBH,042H,04AH,049H,032H,0BBH,033H,0CBH
+00:0952 42
+00:0953 4A
+00:0954 49
+00:0955 32
+00:0956 BB
+00:0957 33
+00:0958 CB
+00:0959 B4              	   143: 	DB	0B4H,00BH,049H,0C1H,03BH,0BAH,03BH,01AH
+00:095A 0B
+00:095B 49
+00:095C C1
+00:095D 3B
+00:095E BA
+00:095F 3B
+00:0960 1A
+00:0961 01              	   144: 	DB	001H,0C3H,034H,0A3H,0B3H,033H,032H,0CAH
+00:0962 C3
+00:0963 34
+00:0964 A3
+00:0965 B3
+00:0966 33
+00:0967 32
+00:0968 CA
+00:0969 AC              	   145: 	DB	0ACH,03CH,02AH,032H,02BH,0BBH,042H,0C3H
+00:096A 3C
+00:096B 2A
+00:096C 32
+00:096D 2B
+00:096E BB
+00:096F 42
+00:0970 C3
+00:0971 B2              	   146: 	DB	0B2H,093H,0B4H,0C3H,094H,024H,0B2H,01BH
+00:0972 93
+00:0973 B4
+00:0974 C3
+00:0975 94
+00:0976 24
+00:0977 B2
+00:0978 1B
+00:0979 4C              	   147: 	DB	04CH,0CBH,093H,009H,03BH,03BH,00BH,02BH
+00:097A CB
+00:097B 93
+00:097C 09
+00:097D 3B
+00:097E 3B
+00:097F 0B
+00:0980 2B
+00:0981 A3              	   148: 	DB	0A3H,0C3H,023H,03AH,02AH,024H,04BH,03CH
+00:0982 C3
+00:0983 23
+00:0984 3A
+00:0985 2A
+00:0986 24
+00:0987 4B
+00:0988 3C
+00:0989 4C              	   149: 	DB	04CH,091H,01CH,0A2H,00BH,03BH,0CAH,0A2H
+00:098A 91
+00:098B 1C
+00:098C A2
+00:098D 0B
+00:098E 3B
+00:098F CA
+00:0990 A2
+00:0991 C4              	   150: 	DB	0C4H,022H,033H,0B4H,094H,092H,03CH,02BH
+00:0992 22
+00:0993 33
+00:0994 B4
+00:0995 94
+00:0996 92
+00:0997 3C
+00:0998 2B
+00:0999 3B              	   151: 	DB	03BH,01AH,01CH,0C2H,093H,032H,020H,0B3H
+00:099A 1A
+00:099B 1C
+00:099C C2
+00:099D 93
+00:099E 32
+00:099F 20
+00:09A0 B3
+00:09A1 B2              	   152: 	DB	0B2H,0ABH,0A0H,03BH,023H,012H,01CH,03AH
+00:09A2 AB
+00:09A3 A0
+00:09A4 3B
+00:09A5 23
+00:09A6 12
+00:09A7 1C
+00:09A8 3A
+00:09A9 94              	   153: 	DB	094H,0B2H,094H,022H,01CH,03BH,019H,0B9H
+00:09AA B2
+00:09AB 94
+00:09AC 22
+00:09AD 1C
+00:09AE 3B
+00:09AF 19
+00:09B0 B9
+00:09B1 BC              	   154: 	DB	0BCH,03BH,0A1H,013H,0C5H,034H,0BAH,023H
+00:09B2 3B
+00:09B3 A1
+00:09B4 13
+00:09B5 C5
+00:09B6 34
+00:09B7 BA
+00:09B8 23
+00:09B9 BC              	   155: 	DB	0BCH,003H,0A0H,0B3H,0BAH,0B3H,03AH,000H
+00:09BA 03
+00:09BB A0
+00:09BC B3
+00:09BD BA
+00:09BE B3
+00:09BF 3A
+00:09C0 00
+00:09C1 AA              	   156: 	DB	0AAH,013H,000H,0B3H,0B0H,03AH,093H,004H
+00:09C2 13
+00:09C3 00
+00:09C4 B3
+00:09C5 B0
+00:09C6 3A
+00:09C7 93
+00:09C8 04
+00:09C9 BA              	   157: 	DB	0BAH,04BH,0BAH,04AH,0BCH,0A4H,0ABH,029H
+00:09CA 4B
+00:09CB BA
+00:09CC 4A
+00:09CD BC
+00:09CE A4
+00:09CF AB
+00:09D0 29
+00:09D1 11              	   158: 	DB	011H,02CH,042H,041H,0CAH,02BH,03CH,000H
+00:09D2 2C
+00:09D3 42
+00:09D4 41
+00:09D5 CA
+00:09D6 2B
+00:09D7 3C
+00:09D8 00
+00:09D9 20              	   159: 	DB	020H,01BH,090H,049H,03AH,02BH,04BH,02BH
+00:09DA 1B
+00:09DB 90
+00:09DC 49
+00:09DD 3A
+00:09DE 2B
+00:09DF 4B
+00:09E0 2B
+00:09E1 9C              	   160: 	DB	09CH,094H,020H,03AH,0B3H,0BAH,0B2H,021H
+00:09E2 94
+00:09E3 20
+00:09E4 3A
+00:09E5 B3
+00:09E6 BA
+00:09E7 B2
+00:09E8 21
+00:09E9 A9              	   161: 	DB	0A9H,0B3H,029H,04AH,0B4H,0B1H,02AH,009H
+00:09EA B3
+00:09EB 29
+00:09EC 4A
+00:09ED B4
+00:09EE B1
+00:09EF 2A
+00:09F0 09
+00:09F1 A0              	   162: 	DB	0A0H,09BH,03BH,022H,031H,0A3H,000H,0C3H
+00:09F2 9B
+00:09F3 3B
+00:09F4 22
+00:09F5 31
+00:09F6 A3
+00:09F7 00
+00:09F8 C3
+00:09F9 B1              	   163: 	DB	0B1H,093H,0C3H,02BH,003H,02BH,00BH,094H
+00:09FA 93
+00:09FB C3
+00:09FC 2B
+00:09FD 03
+00:09FE 2B
+00:09FF 0B
+00:0A00 94
+00:0A01 B3              	   164: 	DB	0B3H,093H,0A3H,0B2H,012H,0AAH,0B2H,01AH
+00:0A02 93
+00:0A03 A3
+00:0A04 B2
+00:0A05 12
+00:0A06 AA
+00:0A07 B2
+00:0A08 1A
+00:0A09 BA              	   165: 	DB	0BAH,0B2H,0B3H,002H,004H,0A1H,02AH,0A2H
+00:0A0A B2
+00:0A0B B3
+00:0A0C 02
+00:0A0D 04
+00:0A0E A1
+00:0A0F 2A
+00:0A10 A2
+00:0A11 2B              	   166: 	DB	02BH,033H,0B9H,03AH,0A9H,010H,009H,0ACH
+00:0A12 33
+00:0A13 B9
+00:0A14 3A
+00:0A15 A9
+00:0A16 10
+00:0A17 09
+00:0A18 AC
+00:0A19 34              	   167: 	DB	034H,0BBH,0B3H,090H,03AH,0A2H,029H,03AH
+00:0A1A BB
+00:0A1B B3
+00:0A1C 90
+00:0A1D 3A
+00:0A1E A2
+00:0A1F 29
+00:0A20 3A
+00:0A21 A4              	   168: 	DB	0A4H,09BH,031H,03BH,092H,002H,09BH,0A9H
+00:0A22 9B
+00:0A23 31
+00:0A24 3B
+00:0A25 92
+00:0A26 02
+00:0A27 9B
+00:0A28 A9
+00:0A29 B2              	   169: 	DB	0B2H,0B2H,0A1H,0B2H,021H,02CH,04AH,03AH
+00:0A2A B2
+00:0A2B A1
+00:0A2C B2
+00:0A2D 21
+00:0A2E 2C
+00:0A2F 4A
+00:0A30 3A
+00:0A31 A9              	   170: 	DB	0A9H,02AH,022H,0A3H,0A4H,0A3H,020H,02BH
+00:0A32 2A
+00:0A33 22
+00:0A34 A3
+00:0A35 A4
+00:0A36 A3
+00:0A37 20
+00:0A38 2B
+00:0A39 B3              	   171: 	DB	0B3H,0CBH,011H,0B1H,0BAH,0A3H,003H,0B1H
+00:0A3A CB
+00:0A3B 11
+00:0A3C B1
+00:0A3D BA
+00:0A3E A3
+00:0A3F 03
+00:0A40 B1
+00:0A41 3B              	   172: 	DB	03BH,033H,002H,020H,093H,0C3H,0A3H,0B2H
+00:0A42 33
+00:0A43 02
+00:0A44 20
+00:0A45 93
+00:0A46 C3
+00:0A47 A3
+00:0A48 B2
+00:0A49 B2              	   173: 	DB	0B2H,0A9H,01AH,02AH,021H,0C3H,0AAH,032H
+00:0A4A A9
+00:0A4B 1A
+00:0A4C 2A
+00:0A4D 21
+00:0A4E C3
+00:0A4F AA
+00:0A50 32
+00:0A51 AA              	   174: 	DB	0AAH,009H,041H,0B2H,0A3H,03CH,039H,001H
+00:0A52 09
+00:0A53 41
+00:0A54 B2
+00:0A55 A3
+00:0A56 3C
+00:0A57 39
+00:0A58 01
+00:0A59 BA              	   175: 	DB	0BAH,099H,022H,0A2H,021H,0C2H,032H,02BH
+00:0A5A 99
+00:0A5B 22
+00:0A5C A2
+00:0A5D 21
+00:0A5E C2
+00:0A5F 32
+00:0A60 2B
+00:0A61 A0              	   176: 	DB	0A0H,02AH,09BH,04BH,023H,0A1H,021H,092H
+00:0A62 2A
+00:0A63 9B
+00:0A64 4B
+00:0A65 23
+00:0A66 A1
+00:0A67 21
+00:0A68 92
+00:0A69 A0              	   177: 	DB	0A0H,09BH,01AH,0AAH,000H,013H,0B3H,0B3H
+00:0A6A 9B
+00:0A6B 1A
+00:0A6C AA
+00:0A6D 00
+00:0A6E 13
+00:0A6F B3
+00:0A70 B3
+00:0A71 B3              	   178: 	DB	0B3H,0A2H,03BH,022H,009H,010H,02AH,0A0H
+00:0A72 A2
+00:0A73 3B
+00:0A74 22
+00:0A75 09
+00:0A76 10
+00:0A77 2A
+00:0A78 A0
+00:0A79 3B              	   179: 	DB	03BH,019H,0AAH,03BH,092H,0ABH,039H,023H
+00:0A7A 19
+00:0A7B AA
+00:0A7C 3B
+00:0A7D 92
+00:0A7E AB
+00:0A7F 39
+00:0A80 23
+00:0A81 C2              	   180: 	DB	0C2H,032H,0A0H,011H,003H,0A9H,091H,009H
+00:0A82 32
+00:0A83 A0
+00:0A84 11
+00:0A85 03
+00:0A86 A9
+00:0A87 91
+00:0A88 09
+00:0A89 92              	   181: 	DB	092H,0A2H,0A2H,0B3H,0ABH,02AH,030H,0B2H
+00:0A8A A2
+00:0A8B A2
+00:0A8C B3
+00:0A8D AB
+00:0A8E 2A
+00:0A8F 30
+00:0A90 B2
+00:0A91 3A              	   182: 	DB	03AH,009H,092H,09AH,029H,00BH,031H,002H
+00:0A92 09
+00:0A93 92
+00:0A94 9A
+00:0A95 29
+00:0A96 0B
+00:0A97 31
+00:0A98 02
+00:0A99 B3              	   183: 	DB	0B3H,0A9H,0B2H,011H,002H,02BH,031H,09AH
+00:0A9A A9
+00:0A9B B2
+00:0A9C 11
+00:0A9D 02
+00:0A9E 2B
+00:0A9F 31
+00:0AA0 9A
+00:0AA1 10              	   184: 	DB	010H,0A0H,012H,00AH,011H,029H,02CH,03AH
+00:0AA2 A0
+00:0AA3 12
+00:0AA4 0A
+00:0AA5 11
+00:0AA6 29
+00:0AA7 2C
+00:0AA8 3A
+00:0AA9 92              	   185: 	DB	092H,002H,0B2H,0AAH,02BH,09AH,030H,032H
+00:0AAA 02
+00:0AAB B2
+00:0AAC AA
+00:0AAD 2B
+00:0AAE 9A
+00:0AAF 30
+00:0AB0 32
+00:0AB1 04              	   186: 	DB	004H,09BH,02AH,0B0H,090H,000H,00AH,0A3H
+00:0AB2 9B
+00:0AB3 2A
+00:0AB4 B0
+00:0AB5 90
+00:0AB6 00
+00:0AB7 0A
+00:0AB8 A3
+00:0AB9 2B              	   187: 	DB	02BH,01AH,002H,03BH,01AH,03AH,0A1H,0B3H
+00:0ABA 1A
+00:0ABB 02
+00:0ABC 3B
+00:0ABD 1A
+00:0ABE 3A
+00:0ABF A1
+00:0AC0 B3
+00:0AC1 21              	   188: 	DB	021H,019H,092H,002H,0A1H,0A0H,0A2H,0AAH
+00:0AC2 19
+00:0AC3 92
+00:0AC4 02
+00:0AC5 A1
+00:0AC6 A0
+00:0AC7 A2
+00:0AC8 AA
+00:0AC9 2B              	   189: 	DB	02BH,03AH,0B3H,0A2H,022H,091H,01AH,02AH
+00:0ACA 3A
+00:0ACB B3
+00:0ACC A2
+00:0ACD 22
+00:0ACE 91
+00:0ACF 1A
+00:0AD0 2A
+00:0AD1 99              	   190: 	DB	099H,009H,023H,0A9H,031H,0A2H,0ABH,021H
+00:0AD2 09
+00:0AD3 23
+00:0AD4 A9
+00:0AD5 31
+00:0AD6 A2
+00:0AD7 AB
+00:0AD8 21
+00:0AD9 1B              	   191: 	DB	01BH,01AH,099H,010H,0AAH,003H,010H,00AH
+00:0ADA 1A
+00:0ADB 99
+00:0ADC 10
+00:0ADD AA
+00:0ADE 03
+00:0ADF 10
+00:0AE0 0A
+00:0AE1 1A              	   192: 	DB	01AH,031H,019H,031H,0A2H,01AH,092H,0B0H
+00:0AE2 31
+00:0AE3 19
+00:0AE4 31
+00:0AE5 A2
+00:0AE6 1A
+00:0AE7 92
+00:0AE8 B0
+00:0AE9 9B              	   193: 	DB	09BH,03BH,093H,02BH,03BH,091H,02BH,03AH
+00:0AEA 3B
+00:0AEB 93
+00:0AEC 2B
+00:0AED 3B
+00:0AEE 91
+00:0AEF 2B
+00:0AF0 3A
+00:0AF1 A2              	   194: 	DB	0A2H,002H,020H,0A2H,001H,091H,0B2H,03BH
+00:0AF2 02
+00:0AF3 20
+00:0AF4 A2
+00:0AF5 01
+00:0AF6 91
+00:0AF7 B2
+00:0AF8 3B
+00:0AF9 2A              	   195: 	DB	02AH,0A1H,01BH,021H,00BH,020H,022H,012H
+00:0AFA A1
+00:0AFB 1B
+00:0AFC 21
+00:0AFD 0B
+00:0AFE 20
+00:0AFF 22
+00:0B00 12
+00:0B01 B0              	   196: 	DB	0B0H,021H,0B2H,009H,000H,0B2H,09AH,090H
+00:0B02 21
+00:0B03 B2
+00:0B04 09
+00:0B05 00
+00:0B06 B2
+00:0B07 9A
+00:0B08 90
+00:0B09 13              	   197: 	DB	013H,0A2H,023H,0A0H,00AH,02BH,0A1H,090H
+00:0B0A A2
+00:0B0B 23
+00:0B0C A0
+00:0B0D 0A
+00:0B0E 2B
+00:0B0F A1
+00:0B10 90
+00:0B11 93              	   198: 	DB	093H,091H,030H,0B0H,000H,0B3H,0A1H,0A2H
+00:0B12 91
+00:0B13 30
+00:0B14 B0
+00:0B15 00
+00:0B16 B3
+00:0B17 A1
+00:0B18 A2
+00:0B19 09              	   199: 	DB	009H,009H,003H,0B2H,020H,092H,091H,09AH
+00:0B1A 09
+00:0B1B 03
+00:0B1C B2
+00:0B1D 20
+00:0B1E 92
+00:0B1F 91
+00:0B20 9A
+00:0B21 2A              	   200: 	DB	02AH,009H,093H,0A9H,093H,0AAH,0B2H,032H
+00:0B22 09
+00:0B23 93
+00:0B24 A9
+00:0B25 93
+00:0B26 AA
+00:0B27 B2
+00:0B28 32
+00:0B29 A2              	   201: 	DB	0A2H,02AH,02AH,0A2H,00AH,030H,0A1H,0A2H
+00:0B2A 2A
+00:0B2B 2A
+00:0B2C A2
+00:0B2D 0A
+00:0B2E 30
+00:0B2F A1
+00:0B30 A2
+00:0B31 09              	   202: 	DB	009H,01AH,0B9H,023H,0B2H,0AAH,090H,02AH
+00:0B32 1A
+00:0B33 B9
+00:0B34 23
+00:0B35 B2
+00:0B36 AA
+00:0B37 90
+00:0B38 2A
+00:0B39 90              	   203: 	DB	090H,031H,021H,039H,02AH,00AH,019H,039H
+00:0B3A 31
+00:0B3B 21
+00:0B3C 39
+00:0B3D 2A
+00:0B3E 0A
+00:0B3F 19
+00:0B40 39
+00:0B41 A1              	   204: 	DB	0A1H,0AAH,01AH,0B9H,010H,092H,039H,091H
+00:0B42 AA
+00:0B43 1A
+00:0B44 B9
+00:0B45 10
+00:0B46 92
+00:0B47 39
+00:0B48 91
+00:0B49 29              	   205: 	DB	029H,0A0H,009H,02AH,093H,0A0H,023H,0A2H
+00:0B4A A0
+00:0B4B 09
+00:0B4C 2A
+00:0B4D 93
+00:0B4E A0
+00:0B4F 23
+00:0B50 A2
+00:0B51 A9              	   206: 	DB	0A9H,020H,01AH,0A0H,0A9H,09AH,031H,091H
+00:0B52 20
+00:0B53 1A
+00:0B54 A0
+00:0B55 A9
+00:0B56 9A
+00:0B57 31
+00:0B58 91
+00:0B59 00              	   207: 	DB	000H,00AH,002H,0B3H,0A9H,03AH,022H,092H
+00:0B5A 0A
+00:0B5B 02
+00:0B5C B3
+00:0B5D A9
+00:0B5E 3A
+00:0B5F 22
+00:0B60 92
+00:0B61 99              	   208: 	DB	099H,003H,0A2H,0AAH,021H,0BAH,0B2H,009H
+00:0B62 03
+00:0B63 A2
+00:0B64 AA
+00:0B65 21
+00:0B66 BA
+00:0B67 B2
+00:0B68 09
+00:0B69 99              	   209: 	DB	099H,001H,000H,093H,012H,002H,011H,010H
+00:0B6A 01
+00:0B6B 00
+00:0B6C 93
+00:0B6D 12
+00:0B6E 02
+00:0B6F 11
+00:0B70 10
+00:0B71 91              	   210: 	DB	091H,009H,01AH,0A0H,0B3H,0B9H,009H,011H
+00:0B72 09
+00:0B73 1A
+00:0B74 A0
+00:0B75 B3
+00:0B76 B9
+00:0B77 09
+00:0B78 11
+00:0B79 A0              	   211: 	DB	0A0H,020H,0A1H,03AH,002H,029H,0A3H,0AAH
+00:0B7A 20
+00:0B7B A1
+00:0B7C 3A
+00:0B7D 02
+00:0B7E 29
+00:0B7F A3
+00:0B80 AA
+00:0B81 22              	   212: 	DB	022H,099H,019H,012H,00AH,01BH,01BH,019H
+00:0B82 99
+00:0B83 19
+00:0B84 12
+00:0B85 0A
+00:0B86 1B
+00:0B87 1B
+00:0B88 19
+00:0B89 2A              	   213: 	DB	02AH,000H,020H,02AH,02AH,03AH,02AH,009H
+00:0B8A 00
+00:0B8B 20
+00:0B8C 2A
+00:0B8D 2A
+00:0B8E 3A
+00:0B8F 2A
+00:0B90 09
+00:0B91 2B              	   214: 	DB	02BH,03AH,019H,009H,039H,010H,0A0H,00AH
+00:0B92 3A
+00:0B93 19
+00:0B94 09
+00:0B95 39
+00:0B96 10
+00:0B97 A0
+00:0B98 0A
+00:0B99 2A              	   215: 	DB	02AH,02AH,099H,039H,010H,0A9H,010H,0A0H
+00:0B9A 2A
+00:0B9B 99
+00:0B9C 39
+00:0B9D 10
+00:0B9E A9
+00:0B9F 10
+00:0BA0 A0
+00:0BA1 03              	   216: 	DB	003H,02AH,03AH,00BH,010H,009H,009H,002H
+00:0BA2 2A
+00:0BA3 3A
+00:0BA4 0B
+00:0BA5 10
+00:0BA6 09
+00:0BA7 09
+00:0BA8 02
+00:0BA9 92              	   217: 	DB	092H,0A2H,01AH,021H,02AH,090H,02AH,0A9H
+00:0BAA A2
+00:0BAB 1A
+00:0BAC 21
+00:0BAD 2A
+00:0BAE 90
+00:0BAF 2A
+00:0BB0 A9
+00:0BB1 B0              	   218: 	DB	0B0H,029H,020H,039H,019H,02AH,092H,099H
+00:0BB2 29
+00:0BB3 20
+00:0BB4 39
+00:0BB5 19
+00:0BB6 2A
+00:0BB7 92
+00:0BB8 99
+00:0BB9 01              	   219: 	DB	001H,029H,021H,0A9H,091H,0A0H,0A2H,0A9H
+00:0BBA 29
+00:0BBB 21
+00:0BBC A9
+00:0BBD 91
+00:0BBE A0
+00:0BBF A2
+00:0BC0 A9
+00:0BC1 10              	   220: 	DB	010H,0A2H,010H,029H,021H,001H,000H,0B2H
+00:0BC2 A2
+00:0BC3 10
+00:0BC4 29
+00:0BC5 21
+00:0BC6 01
+00:0BC7 00
+00:0BC8 B2
+00:0BC9 A9              	   221: 	DB	0A9H,000H,03AH,019H,000H,09AH,090H,020H
+00:0BCA 00
+00:0BCB 3A
+00:0BCC 19
+00:0BCD 00
+00:0BCE 9A
+00:0BCF 90
+00:0BD0 20
+00:0BD1 91              	   222: 	DB	091H,000H,021H,0AAH,039H,02AH,010H,01AH
+00:0BD2 00
+00:0BD3 21
+00:0BD4 AA
+00:0BD5 39
+00:0BD6 2A
+00:0BD7 10
+00:0BD8 1A
+00:0BD9 01              	   223: 	DB	001H,0B1H,000H,010H,020H,009H,00AH,091H
+00:0BDA B1
+00:0BDB 00
+00:0BDC 10
+00:0BDD 20
+00:0BDE 09
+00:0BDF 0A
+00:0BE0 91
+00:0BE1 A2              	   224: 	DB	0A2H,010H,002H,0A2H,092H,0A9H,03AH,099H
+00:0BE2 10
+00:0BE3 02
+00:0BE4 A2
+00:0BE5 92
+00:0BE6 A9
+00:0BE7 3A
+00:0BE8 99
+00:0BE9 01              	   225: 	DB	001H,000H,00AH,013H,09AH,019H,019H,01AH
+00:0BEA 00
+00:0BEB 0A
+00:0BEC 13
+00:0BED 9A
+00:0BEE 19
+00:0BEF 19
+00:0BF0 1A
+00:0BF1 0A              	   226: 	DB	00AH,010H,0B2H,019H,002H,021H,0A9H,012H
+00:0BF2 10
+00:0BF3 B2
+00:0BF4 19
+00:0BF5 02
+00:0BF6 21
+00:0BF7 A9
+00:0BF8 12
+00:0BF9 0A              	   227: 	DB	00AH,001H,029H,020H,000H,090H,0A9H,099H
+00:0BFA 01
+00:0BFB 29
+00:0BFC 20
+00:0BFD 00
+00:0BFE 90
+00:0BFF A9
+00:0C00 99
+00:0C01 0A              	   228: 	DB	00AH,003H,099H,0A2H,002H,092H,020H,0A0H
+00:0C02 03
+00:0C03 99
+00:0C04 A2
+00:0C05 02
+00:0C06 92
+00:0C07 20
+00:0C08 A0
+00:0C09 20              	   229: 	DB	020H,000H,0A1H,009H,009H,002H,00AH,010H
+00:0C0A 00
+00:0C0B A1
+00:0C0C 09
+00:0C0D 09
+00:0C0E 02
+00:0C0F 0A
+00:0C10 10
+00:0C11 19              	   230: 	DB	019H,0A2H,099H,009H,092H,090H,002H,0A2H
+00:0C12 A2
+00:0C13 99
+00:0C14 09
+00:0C15 92
+00:0C16 90
+00:0C17 02
+00:0C18 A2
+00:0C19 19              	   231: 	DB	019H,009H,012H,019H,002H,091H,009H,0A2H
+00:0C1A 09
+00:0C1B 12
+00:0C1C 19
+00:0C1D 02
+00:0C1E 91
+00:0C1F 09
+00:0C20 A2
+00:0C21 AA              	   232: 	DB	0AAH,002H,009H,0A2H,001H,001H,090H,00AH
+00:0C22 02
+00:0C23 09
+00:0C24 A2
+00:0C25 01
+00:0C26 01
+00:0C27 90
+00:0C28 0A
+00:0C29 0A              	   233: 	DB	00AH,091H,011H,010H,019H,020H,019H,099H
+00:0C2A 91
+00:0C2B 11
+00:0C2C 10
+00:0C2D 19
+00:0C2E 20
+00:0C2F 19
+00:0C30 99
+00:0C31 10              	   234: 	DB	010H,010H,092H,091H,009H,0A1H,0A1H,091H
+00:0C32 10
+00:0C33 92
+00:0C34 91
+00:0C35 09
+00:0C36 A1
+00:0C37 A1
+00:0C38 91
+00:0C39 00              	   235: 	DB	000H,091H,099H,001H,099H,011H,092H,019H
+00:0C3A 91
+00:0C3B 99
+00:0C3C 01
+00:0C3D 99
+00:0C3E 11
+00:0C3F 92
+00:0C40 19
+00:0C41 1A              	   236: 	DB	01AH,010H,00AH,012H,092H,002H,092H,0B2H
+00:0C42 10
+00:0C43 0A
+00:0C44 12
+00:0C45 92
+00:0C46 02
+00:0C47 92
+00:0C48 B2
+00:0C49 A9              	   237: 	DB	0A9H,000H,029H,090H,000H,019H,091H,092H
+00:0C4A 00
+00:0C4B 29
+00:0C4C 90
+00:0C4D 00
+00:0C4E 19
+00:0C4F 91
+00:0C50 92
+00:0C51 01              	   238: 	DB	001H,090H,0A2H,09AH,029H,0A2H,001H,001H
+00:0C52 90
+00:0C53 A2
+00:0C54 9A
+00:0C55 29
+00:0C56 A2
+00:0C57 01
+00:0C58 01
+00:0C59 09              	   239: 	DB	009H,011H,090H,010H,02AH,020H,0B0H,000H
+00:0C5A 11
+00:0C5B 90
+00:0C5C 10
+00:0C5D 2A
+00:0C5E 20
+00:0C5F B0
+00:0C60 00
+00:0C61 09              	   240: 	DB	009H,029H,092H,099H,002H,09AH,000H,012H
+00:0C62 29
+00:0C63 92
+00:0C64 99
+00:0C65 02
+00:0C66 9A
+00:0C67 00
+00:0C68 12
+00:0C69 01              	   241: 	DB	001H,000H,092H,09AH,019H,001H,01AH,010H
+00:0C6A 00
+00:0C6B 92
+00:0C6C 9A
+00:0C6D 19
+00:0C6E 01
+00:0C6F 1A
+00:0C70 10
+00:0C71 A1              	   242: 	DB	0A1H,010H,00AH,020H,019H,02AH,090H,029H
+00:0C72 10
+00:0C73 0A
+00:0C74 20
+00:0C75 19
+00:0C76 2A
+00:0C77 90
+00:0C78 29
+00:0C79 90              	   243: 	DB	090H,090H,001H,000H,019H,009H,010H,009H
+00:0C7A 90
+00:0C7B 01
+00:0C7C 00
+00:0C7D 19
+00:0C7E 09
+00:0C7F 10
+00:0C80 09
+00:0C81 29              	   244: 	DB	029H,02AH,000H,019H,029H,009H,029H,00AH
+00:0C82 2A
+00:0C83 00
+00:0C84 19
+00:0C85 29
+00:0C86 09
+00:0C87 29
+00:0C88 0A
+00:0C89 11              	   245: 	DB	011H,000H,019H,010H,092H,09AH,009H,009H
+00:0C8A 00
+00:0C8B 19
+00:0C8C 10
+00:0C8D 92
+00:0C8E 9A
+00:0C8F 09
+00:0C90 09
+00:0C91 10              	   246: 	DB	010H,091H,002H,01AH,000H,01AH,002H,0A1H
+00:0C92 91
+00:0C93 02
+00:0C94 1A
+00:0C95 00
+00:0C96 1A
+00:0C97 02
+00:0C98 A1
+00:0C99 29              	   247: 	DB	029H,019H,000H,020H,029H,00AH,009H,009H
+00:0C9A 19
+00:0C9B 00
+00:0C9C 20
+00:0C9D 29
+00:0C9E 0A
+00:0C9F 09
+00:0CA0 09
+00:0CA1 91              	   248: 	DB	091H,09AH,010H,0A1H,011H,001H,091H,000H
+00:0CA2 9A
+00:0CA3 10
+00:0CA4 A1
+00:0CA5 11
+00:0CA6 01
+00:0CA7 91
+00:0CA8 00
+00:0CA9 01              	   249: 	DB	001H,010H,000H,01AH,091H,019H,009H,029H
+00:0CAA 10
+00:0CAB 00
+00:0CAC 1A
+00:0CAD 91
+00:0CAE 19
+00:0CAF 09
+00:0CB0 29
+00:0CB1 00              	   250: 	DB	000H,019H,019H,090H,099H,092H,009H,012H
+00:0CB2 19
+00:0CB3 19
+00:0CB4 90
+00:0CB5 99
+00:0CB6 92
+00:0CB7 09
+00:0CB8 12
+00:0CB9 99              	   251: 	DB	099H,01AH,021H,0A2H,019H,002H,091H,090H
+00:0CBA 1A
+00:0CBB 21
+00:0CBC A2
+00:0CBD 19
+00:0CBE 02
+00:0CBF 91
+00:0CC0 90
+00:0CC1 19              	   252: 	DB	019H,019H,099H,009H,019H,0A0H,019H,010H
+00:0CC2 19
+00:0CC3 99
+00:0CC4 09
+00:0CC5 19
+00:0CC6 A0
+00:0CC7 19
+00:0CC8 10
+00:0CC9 00              	   253: 	DB	000H,021H,001H,090H,091H,090H,020H,000H
+00:0CCA 21
+00:0CCB 01
+00:0CCC 90
+00:0CCD 91
+00:0CCE 90
+00:0CCF 20
+00:0CD0 00
+00:0CD1 01              	   254: 	DB	001H,091H,099H,099H,019H,010H,00AH,002H
+00:0CD2 91
+00:0CD3 99
+00:0CD4 99
+00:0CD5 19
+00:0CD6 10
+00:0CD7 0A
+00:0CD8 02
+00:0CD9 99              	   255: 	DB	099H,001H,0A1H,021H,091H,092H,091H,000H
+00:0CDA 01
+00:0CDB A1
+00:0CDC 21
+00:0CDD 91
+00:0CDE 92
+00:0CDF 91
+00:0CE0 00
+00:0CE1 91              	   256: 	DB	091H,002H,0A0H,009H,000H,009H,001H,0A1H
+00:0CE2 02
+00:0CE3 A0
+00:0CE4 09
+00:0CE5 00
+00:0CE6 09
+00:0CE7 01
+00:0CE8 A1
+00:0CE9 90              	   257: 	DB	090H,091H,090H,000H,021H,091H,092H,0A1H
+00:0CEA 91
+00:0CEB 90
+00:0CEC 00
+00:0CED 21
+00:0CEE 91
+00:0CEF 92
+00:0CF0 A1
+                        	   258: 
+
+Source: "mddt11.src"
+                        	    92: HCLTOP::
+                        	    93: 		INCLUDE				HANDCLAP.HHH		; 83
+
+Source: "HANDCLAP.HHH"
+                        	     1: ;B:CP1.ABS/CP1.HHH/A/U2
+00:0CF1 37              	     2: 	DB	037H,0F8H,088H,086H,0DEH,025H,0E6H,07FH
+00:0CF2 F8
+00:0CF3 88
+00:0CF4 86
+00:0CF5 DE
+00:0CF6 25
+00:0CF7 E6
+00:0CF8 7F
+00:0CF9 F5              	     3: 	DB	0F5H,07EH,0E6H,0D5H,05AH,052H,0EEH,060H
+00:0CFA 7E
+00:0CFB E6
+00:0CFC D5
+00:0CFD 5A
+00:0CFE 52
+00:0CFF EE
+00:0D00 60
+00:0D01 6B              	     4: 	DB	06BH,0EBH,042H,035H,0DCH,054H,0E5H,03DH
+00:0D02 EB
+00:0D03 42
+00:0D04 35
+00:0D05 DC
+00:0D06 54
+00:0D07 E5
+00:0D08 3D
+00:0D09 6A              	     5: 	DB	06AH,0DBH,0A3H,04BH,020H,0B3H,00AH,03BH
+00:0D0A DB
+00:0D0B A3
+00:0D0C 4B
+00:0D0D 20
+00:0D0E B3
+00:0D0F 0A
+00:0D10 3B
+00:0D11 AA              	     6: 	DB	0AAH,030H,0B3H,0AAH,032H,0A6H,085H,088H
+00:0D12 30
+00:0D13 B3
+00:0D14 AA
+00:0D15 32
+00:0D16 A6
+00:0D17 85
+00:0D18 88
+00:0D19 76              	     7: 	DB	076H,078H,047H,0FFH,077H,04AH,02FH,044H
+00:0D1A 78
+00:0D1B 47
+00:0D1C FF
+00:0D1D 77
+00:0D1E 4A
+00:0D1F 2F
+00:0D20 44
+00:0D21 6E              	     8: 	DB	06EH,054H,0EDH,066H,04FH,05CH,06DH,00CH
+00:0D22 54
+00:0D23 ED
+00:0D24 66
+00:0D25 4F
+00:0D26 5C
+00:0D27 6D
+00:0D28 0C
+00:0D29 55              	     9: 	DB	055H,00DH,02CH,0B5H,032H,0CCH,022H,0D5H
+00:0D2A 0D
+00:0D2B 2C
+00:0D2C B5
+00:0D2D 32
+00:0D2E CC
+00:0D2F 22
+00:0D30 D5
+00:0D31 5D              	    10: 	DB	05DH,02AH,0C4H,0AAH,03AH,0C3H,044H,0C0H
+00:0D32 2A
+00:0D33 C4
+00:0D34 AA
+00:0D35 3A
+00:0D36 C3
+00:0D37 44
+00:0D38 C0
+00:0D39 AC              	    11: 	DB	0ACH,033H,03BH,0B1H,032H,00CH,0A3H,03FH
+00:0D3A 33
+00:0D3B 3B
+00:0D3C B1
+00:0D3D 32
+00:0D3E 0C
+00:0D3F A3
+00:0D40 3F
+00:0D41 77              	    12: 	DB	077H,0EFH,0D6H,07EH,0F6H,066H,06FH,04EH
+00:0D42 EF
+00:0D43 D6
+00:0D44 7E
+00:0D45 F6
+00:0D46 66
+00:0D47 6F
+00:0D48 4E
+00:0D49 E6              	    13: 	DB	0E6H,07FH,03CH,07EH,0EDH,054H,063H,0EEH
+00:0D4A 7F
+00:0D4B 3C
+00:0D4C 7E
+00:0D4D ED
+00:0D4E 54
+00:0D4F 63
+00:0D50 EE
+00:0D51 52              	    14: 	DB	052H,06DH,0D5H,0C1H,025H,0DBH,04BH,0C1H
+00:0D52 6D
+00:0D53 D5
+00:0D54 C1
+00:0D55 25
+00:0D56 DB
+00:0D57 4B
+00:0D58 C1
+00:0D59 05              	    15: 	DB	005H,03BH,09CH,03CH,040H,04CH,00CH,078H
+00:0D5A 3B
+00:0D5B 9C
+00:0D5C 3C
+00:0D5D 40
+00:0D5E 4C
+00:0D5F 0C
+00:0D60 78
+00:0D61 77              	    16: 	DB	077H,0E6H,0FFH,077H,0FEH,005H,064H,02DH
+00:0D62 E6
+00:0D63 FF
+00:0D64 77
+00:0D65 FE
+00:0D66 05
+00:0D67 64
+00:0D68 2D
+00:0D69 E5              	    17: 	DB	0E5H,05BH,096H,0E5H,06EH,0AEH,05DH,0C6H
+00:0D6A 5B
+00:0D6B 96
+00:0D6C E5
+00:0D6D 6E
+00:0D6E AE
+00:0D6F 5D
+00:0D70 C6
+00:0D71 54              	    18: 	DB	054H,0E6H,0D2H,06FH,065H,0E3H,0D4H,095H
+00:0D72 E6
+00:0D73 D2
+00:0D74 6F
+00:0D75 65
+00:0D76 E3
+00:0D77 D4
+00:0D78 95
+00:0D79 D3              	    19: 	DB	0D3H,0A6H,0EBH,05CH,05EH,07EH,0E5H,0E4H
+00:0D7A A6
+00:0D7B EB
+00:0D7C 5C
+00:0D7D 5E
+00:0D7E 7E
+00:0D7F E5
+00:0D80 E4
+00:0D81 6B              	    20: 	DB	06BH,036H,0F6H,0BDH,051H,0EAH,056H,0D9H
+00:0D82 36
+00:0D83 F6
+00:0D84 BD
+00:0D85 51
+00:0D86 EA
+00:0D87 56
+00:0D88 D9
+00:0D89 2E              	    21: 	DB	02EH,05BH,06DH,0E6H,06DH,0F6H,0D5H,063H
+00:0D8A 5B
+00:0D8B 6D
+00:0D8C E6
+00:0D8D 6D
+00:0D8E F6
+00:0D8F D5
+00:0D90 63
+00:0D91 5E              	    22: 	DB	05EH,03CH,0DAH,0C6H,04EH,06EH,07FH,045H
+00:0D92 3C
+00:0D93 DA
+00:0D94 C6
+00:0D95 4E
+00:0D96 6E
+00:0D97 7F
+00:0D98 45
+00:0D99 C5              	    23: 	DB	0C5H,0E5H,0DCH,066H,0EDH,0C4H,065H,0F5H
+00:0D9A E5
+00:0D9B DC
+00:0D9C 66
+00:0D9D ED
+00:0D9E C4
+00:0D9F 65
+00:0DA0 F5
+00:0DA1 D6              	    24: 	DB	0D6H,0A6H,0B5H,0EDH,0EBH,065H,099H,0E6H
+00:0DA2 A6
+00:0DA3 B5
+00:0DA4 ED
+00:0DA5 EB
+00:0DA6 65
+00:0DA7 99
+00:0DA8 E6
+00:0DA9 D5              	    25: 	DB	0D5H,0E4H,063H,06FH,0E0H,063H,064H,0AEH
+00:0DAA E4
+00:0DAB 63
+00:0DAC 6F
+00:0DAD E0
+00:0DAE 63
+00:0DAF 64
+00:0DB0 AE
+00:0DB1 DD              	    26: 	DB	0DDH,046H,06EH,0D4H,0C6H,0E2H,0C2H,06BH
+00:0DB2 46
+00:0DB3 6E
+00:0DB4 D4
+00:0DB5 C6
+00:0DB6 E2
+00:0DB7 C2
+00:0DB8 6B
+00:0DB9 F6              	    27: 	DB	0F6H,06CH,03EH,05DH,06EH,06DH,095H,0DBH
+00:0DBA 6C
+00:0DBB 3E
+00:0DBC 5D
+00:0DBD 6E
+00:0DBE 6D
+00:0DBF 95
+00:0DC0 DB
+00:0DC1 35              	    28: 	DB	035H,0C5H,0DDH,094H,04BH,04CH,0ACH,046H
+00:0DC2 C5
+00:0DC3 DD
+00:0DC4 94
+00:0DC5 4B
+00:0DC6 4C
+00:0DC7 AC
+00:0DC8 46
+00:0DC9 E5              	    29: 	DB	0E5H,0DBH,06DH,0BDH,0C5H,045H,0BDH,0ADH
+00:0DCA DB
+00:0DCB 6D
+00:0DCC BD
+00:0DCD C5
+00:0DCE 45
+00:0DCF BD
+00:0DD0 AD
+00:0DD1 5C              	    30: 	DB	05CH,055H,0EBH,05DH,040H,00CH,062H,0EBH
+00:0DD2 55
+00:0DD3 EB
+00:0DD4 5D
+00:0DD5 40
+00:0DD6 0C
+00:0DD7 62
+00:0DD8 EB
+00:0DD9 C5              	    31: 	DB	0C5H,054H,0CDH,0C4H,0B6H,0ACH,0E3H,052H
+00:0DDA 54
+00:0DDB CD
+00:0DDC C4
+00:0DDD B6
+00:0DDE AC
+00:0DDF E3
+00:0DE0 52
+00:0DE1 5B              	    32: 	DB	05BH,0E4H,05DH,045H,0D4H,05EH,0D6H,0ADH
+00:0DE2 E4
+00:0DE3 5D
+00:0DE4 45
+00:0DE5 D4
+00:0DE6 5E
+00:0DE7 D6
+00:0DE8 AD
+00:0DE9 44              	    33: 	DB	044H,011H,0C4H,01DH,043H,05DH,0ACH,095H
+00:0DEA 11
+00:0DEB C4
+00:0DEC 1D
+00:0DED 43
+00:0DEE 5D
+00:0DEF AC
+00:0DF0 95
+00:0DF1 4D              	    34: 	DB	04DH,0BBH,051H,0B3H,0BDH,054H,0BAH,0D5H
+00:0DF2 BB
+00:0DF3 51
+00:0DF4 B3
+00:0DF5 BD
+00:0DF6 54
+00:0DF7 BA
+00:0DF8 D5
+00:0DF9 CC              	    35: 	DB	0CCH,05DH,053H,0CCH,032H,05DH,0B0H,0A4H
+00:0DFA 5D
+00:0DFB 53
+00:0DFC CC
+00:0DFD 32
+00:0DFE 5D
+00:0DFF B0
+00:0E00 A4
+00:0E01 43              	    36: 	DB	043H,0CDH,043H,0C3H,05DH,02BH,031H,0BCH
+00:0E02 CD
+00:0E03 43
+00:0E04 C3
+00:0E05 5D
+00:0E06 2B
+00:0E07 31
+00:0E08 BC
+00:0E09 34              	    37: 	DB	034H,04BH,0AAH,0ACH,034H,02CH,03AH,0D5H
+00:0E0A 4B
+00:0E0B AA
+00:0E0C AC
+00:0E0D 34
+00:0E0E 2C
+00:0E0F 3A
+00:0E10 D5
+00:0E11 24              	    38: 	DB	024H,03DH,0C5H,03CH,091H,000H,03BH,092H
+00:0E12 3D
+00:0E13 C5
+00:0E14 3C
+00:0E15 91
+00:0E16 00
+00:0E17 3B
+00:0E18 92
+00:0E19 BB              	    39: 	DB	0BBH,041H,033H,0D4H,00BH,00CH,050H,0CAH
+00:0E1A 41
+00:0E1B 33
+00:0E1C D4
+00:0E1D 0B
+00:0E1E 0C
+00:0E1F 50
+00:0E20 CA
+00:0E21 30              	    40: 	DB	030H,00DH,053H,0B1H,0C3H,04CH,02BH,04BH
+00:0E22 0D
+00:0E23 53
+00:0E24 B1
+00:0E25 C3
+00:0E26 4C
+00:0E27 2B
+00:0E28 4B
+00:0E29 03              	    41: 	DB	003H,0C1H,00AH,049H,04CH,03AH,0C1H,033H
+00:0E2A C1
+00:0E2B 0A
+00:0E2C 49
+00:0E2D 4C
+00:0E2E 3A
+00:0E2F C1
+00:0E30 33
+00:0E31 BB              	    42: 	DB	0BBH,0A3H,021H,0B1H,013H,0BAH,033H,0A9H
+00:0E32 A3
+00:0E33 21
+00:0E34 B1
+00:0E35 13
+00:0E36 BA
+00:0E37 33
+00:0E38 A9
+00:0E39 CA              	    43: 	DB	0CAH,044H,0CCH,04AH,04CH,02AH,02BH,02AH
+00:0E3A 44
+00:0E3B CC
+00:0E3C 4A
+00:0E3D 4C
+00:0E3E 2A
+00:0E3F 2B
+00:0E40 2A
+00:0E41 A3              	    44: 	DB	0A3H,03AH,0B2H,032H,0BBH,014H,00BH,0C3H
+00:0E42 3A
+00:0E43 B2
+00:0E44 32
+00:0E45 BB
+00:0E46 14
+00:0E47 0B
+00:0E48 C3
+00:0E49 23              	    45: 	DB	023H,09AH,029H,0A2H,0B2H,093H,03BH,0ABH
+00:0E4A 9A
+00:0E4B 29
+00:0E4C A2
+00:0E4D B2
+00:0E4E 93
+00:0E4F 3B
+00:0E50 AB
+00:0E51 33              	    46: 	DB	033H,0B1H,0AAH,012H,03BH,01CH,041H,03BH
+00:0E52 B1
+00:0E53 AA
+00:0E54 12
+00:0E55 3B
+00:0E56 1C
+00:0E57 41
+00:0E58 3B
+00:0E59 C0              	    47: 	DB	0C0H,033H,02BH,0AAH,033H,01AH,0C2H,030H
+00:0E5A 33
+00:0E5B 2B
+00:0E5C AA
+00:0E5D 33
+00:0E5E 1A
+00:0E5F C2
+00:0E60 30
+00:0E61 B0              	    48: 	DB	0B0H,029H,013H,00BH,020H,02AH,0B2H,093H
+00:0E62 29
+00:0E63 13
+00:0E64 0B
+00:0E65 20
+00:0E66 2A
+00:0E67 B2
+00:0E68 93
+00:0E69 19              	    49: 	DB	019H,0BBH,03AH,023H,00AH,0AAH,039H,030H
+00:0E6A BB
+00:0E6B 3A
+00:0E6C 23
+00:0E6D 0A
+00:0E6E AA
+00:0E6F 39
+00:0E70 30
+00:0E71 B9              	    50: 	DB	0B9H,001H,011H,009H,019H,0A2H,019H,0A9H
+00:0E72 01
+00:0E73 11
+00:0E74 09
+00:0E75 19
+00:0E76 A2
+00:0E77 19
+00:0E78 A9
+00:0E79 39              	    51: 	DB	039H,02AH,0A1H,03BH,02BH,093H,090H,012H
+00:0E7A 2A
+00:0E7B A1
+00:0E7C 3B
+00:0E7D 2B
+00:0E7E 93
+00:0E7F 90
+00:0E80 12
+00:0E81 A0              	    52: 	DB	0A0H,0A0H,029H,02BH,022H,0A0H,0B3H,022H
+00:0E82 A0
+00:0E83 29
+00:0E84 2B
+00:0E85 22
+00:0E86 A0
+00:0E87 B3
+00:0E88 22
+00:0E89 BA              	    53: 	DB	0BAH,022H,02BH,021H,0ABH,002H,013H,0ABH
+00:0E8A 22
+00:0E8B 2B
+00:0E8C 21
+00:0E8D AB
+00:0E8E 02
+00:0E8F 13
+00:0E90 AB
+00:0E91 30              	    54: 	DB	030H,009H,0A3H,0AAH,0A3H,02AH,02BH,0A3H
+00:0E92 09
+00:0E93 A3
+00:0E94 AA
+00:0E95 A3
+00:0E96 2A
+00:0E97 2B
+00:0E98 A3
+00:0E99 10              	    55: 	DB	010H,029H,0A9H,099H,029H,013H,01BH,0AAH
+00:0E9A 29
+00:0E9B A9
+00:0E9C 99
+00:0E9D 29
+00:0E9E 13
+00:0E9F 1B
+00:0EA0 AA
+00:0EA1 A3              	    56: 	DB	0A3H,030H,02BH,0B2H,02AH,002H,011H,0B9H
+00:0EA2 30
+00:0EA3 2B
+00:0EA4 B2
+00:0EA5 2A
+00:0EA6 02
+00:0EA7 11
+00:0EA8 B9
+00:0EA9 03              	    57: 	DB	003H,02AH,09AH,0A2H,011H,092H,00AH,010H
+00:0EAA 2A
+00:0EAB 9A
+00:0EAC A2
+00:0EAD 11
+00:0EAE 92
+00:0EAF 0A
+00:0EB0 10
+00:0EB1 11              	    58: 	DB	011H,0A1H,0B0H,022H,091H,00AH,0A0H,031H
+00:0EB2 A1
+00:0EB3 B0
+00:0EB4 22
+00:0EB5 91
+00:0EB6 0A
+00:0EB7 A0
+00:0EB8 31
+00:0EB9 2B              	    59: 	DB	02BH,09AH,012H,091H,0A2H,02AH,0A1H,011H
+00:0EBA 9A
+00:0EBB 12
+00:0EBC 91
+00:0EBD A2
+00:0EBE 2A
+00:0EBF A1
+00:0EC0 11
+00:0EC1 20              	    60: 	DB	020H,0AAH,00AH,02AH,020H,029H,090H,02AH
+00:0EC2 AA
+00:0EC3 0A
+00:0EC4 2A
+00:0EC5 20
+00:0EC6 29
+00:0EC7 90
+00:0EC8 2A
+00:0EC9 02              	    61: 	DB	002H,091H,0B9H,023H,02AH,0AAH,0A9H,041H
+00:0ECA 91
+00:0ECB B9
+00:0ECC 23
+00:0ECD 2A
+00:0ECE AA
+00:0ECF A9
+00:0ED0 41
+00:0ED1 AB              	    62: 	DB	0ABH,021H,0A1H,0A1H,010H,012H,0AAH,099H
+00:0ED2 21
+00:0ED3 A1
+00:0ED4 A1
+00:0ED5 10
+00:0ED6 12
+00:0ED7 AA
+00:0ED8 99
+00:0ED9 03              	    63: 	DB	003H,091H,00AH,0A1H,03AH,0A2H,099H,022H
+00:0EDA 91
+00:0EDB 0A
+00:0EDC A1
+00:0EDD 3A
+00:0EDE A2
+00:0EDF 99
+00:0EE0 22
+00:0EE1 B1              	    64: 	DB	0B1H,001H,002H,09BH,010H,002H,009H,001H
+00:0EE2 01
+00:0EE3 02
+00:0EE4 9B
+00:0EE5 10
+00:0EE6 02
+00:0EE7 09
+00:0EE8 01
+00:0EE9 0A              	    65: 	DB	00AH,021H,019H,0ABH,030H,002H,090H,00AH
+00:0EEA 21
+00:0EEB 19
+00:0EEC AB
+00:0EED 30
+00:0EEE 02
+00:0EEF 90
+00:0EF0 0A
+00:0EF1 11              	    66: 	DB	011H,01AH,019H,020H,0B9H,030H,000H,099H
+00:0EF2 1A
+00:0EF3 19
+00:0EF4 20
+00:0EF5 B9
+00:0EF6 30
+00:0EF7 00
+00:0EF8 99
+00:0EF9 2A              	    67: 	DB	02AH,020H,02AH,090H,029H,0B0H,023H,00AH
+00:0EFA 20
+00:0EFB 2A
+00:0EFC 90
+00:0EFD 29
+00:0EFE B0
+00:0EFF 23
+00:0F00 0A
+00:0F01 09              	    68: 	DB	009H,011H,099H,0A9H,023H,099H,002H,09BH
+00:0F02 11
+00:0F03 99
+00:0F04 A9
+00:0F05 23
+00:0F06 99
+00:0F07 02
+00:0F08 9B
+00:0F09 21              	    69: 	DB	021H,011H,0B9H,021H,092H,0A1H,0B2H,039H
+00:0F0A 11
+00:0F0B B9
+00:0F0C 21
+00:0F0D 92
+00:0F0E A1
+00:0F0F B2
+00:0F10 39
+00:0F11 09              	    70: 	DB	009H,0A9H,002H,010H,012H,09BH,019H,02AH
+00:0F12 A9
+00:0F13 02
+00:0F14 10
+00:0F15 12
+00:0F16 9B
+00:0F17 19
+00:0F18 2A
+00:0F19 11              	    71: 	DB	011H,019H,0A1H,091H,020H,0A1H,02AH,0A1H
+00:0F1A 19
+00:0F1B A1
+00:0F1C 91
+00:0F1D 20
+00:0F1E A1
+00:0F1F 2A
+00:0F20 A1
+00:0F21 92              	    72: 	DB	092H,011H,0A9H,09AH,021H,002H,009H,0A1H
+00:0F22 11
+00:0F23 A9
+00:0F24 9A
+00:0F25 21
+00:0F26 02
+00:0F27 09
+00:0F28 A1
+00:0F29 09              	    73: 	DB	009H,010H,002H,019H,0A9H,002H,0AAH,032H
+00:0F2A 10
+00:0F2B 02
+00:0F2C 19
+00:0F2D A9
+00:0F2E 02
+00:0F2F AA
+00:0F30 32
+00:0F31 1A              	    74: 	DB	01AH,0BAH,023H,010H,09BH,010H,002H,011H
+00:0F32 BA
+00:0F33 23
+00:0F34 10
+00:0F35 9B
+00:0F36 10
+00:0F37 02
+00:0F38 11
+00:0F39 AB              	    75: 	DB	0ABH,020H,011H,02AH,0A1H,090H,020H,090H
+00:0F3A 20
+00:0F3B 11
+00:0F3C 2A
+00:0F3D A1
+00:0F3E 90
+00:0F3F 20
+00:0F40 90
+00:0F41 92              	    76: 	DB	092H,000H,000H,000H,00AH,092H,029H,090H
+00:0F42 00
+00:0F43 00
+00:0F44 00
+00:0F45 0A
+00:0F46 92
+00:0F47 29
+00:0F48 90
+00:0F49 10              	    77: 	DB	010H,000H,009H,001H,001H,090H,009H,001H
+00:0F4A 00
+00:0F4B 09
+00:0F4C 01
+00:0F4D 01
+00:0F4E 90
+00:0F4F 09
+00:0F50 01
+00:0F51 90              	    78: 	DB	090H,011H,00AH,091H,000H,011H,090H,01AH
+00:0F52 11
+00:0F53 0A
+00:0F54 91
+00:0F55 00
+00:0F56 11
+00:0F57 90
+00:0F58 1A
+00:0F59 99              	    79: 	DB	099H,022H,099H,009H,020H,090H,009H,012H
+00:0F5A 22
+00:0F5B 99
+00:0F5C 09
+00:0F5D 20
+00:0F5E 90
+00:0F5F 09
+00:0F60 12
+00:0F61 90              	    80: 	DB	090H,000H,090H,011H,09AH,011H,091H,001H
+00:0F62 00
+00:0F63 90
+00:0F64 11
+00:0F65 9A
+00:0F66 11
+00:0F67 91
+00:0F68 01
+00:0F69 9A              	    81: 	DB	09AH,010H,019H,019H,009H,092H,020H,009H
+00:0F6A 10
+00:0F6B 19
+00:0F6C 19
+00:0F6D 09
+00:0F6E 92
+00:0F6F 20
+00:0F70 09
+00:0F71 A0              	    82: 	DB	0A0H,002H,009H,092H,00AH,020H,02AH,090H
+00:0F72 02
+00:0F73 09
+00:0F74 92
+00:0F75 0A
+00:0F76 20
+00:0F77 2A
+00:0F78 90
+00:0F79 A0              	    83: 	DB	0A0H,011H,039H,09AH,0A1H,009H,012H,010H
+00:0F7A 11
+00:0F7B 39
+00:0F7C 9A
+00:0F7D A1
+00:0F7E 09
+00:0F7F 12
+00:0F80 10
+00:0F81 99              	    84: 	DB	099H,002H,0AAH,022H,000H,09AH,000H,002H
+00:0F82 02
+00:0F83 AA
+00:0F84 22
+00:0F85 00
+00:0F86 9A
+00:0F87 00
+00:0F88 02
+00:0F89 01              	    85: 	DB	001H,099H,01AH,010H,01AH,012H,009H,0A0H
+00:0F8A 99
+00:0F8B 1A
+00:0F8C 10
+00:0F8D 1A
+00:0F8E 12
+00:0F8F 09
+00:0F90 A0
+00:0F91 20              	    86: 	DB	020H,000H,099H,021H,01AH,090H,091H,019H
+00:0F92 00
+00:0F93 99
+00:0F94 21
+00:0F95 1A
+00:0F96 90
+00:0F97 91
+00:0F98 19
+00:0F99 12              	    87: 	DB	012H,099H,0A9H,022H,009H,090H,009H,011H
+00:0F9A 99
+00:0F9B A9
+00:0F9C 22
+00:0F9D 09
+00:0F9E 90
+00:0F9F 09
+00:0FA0 11
+00:0FA1 91              	    88: 	DB	091H,01AH,010H,090H,000H,020H,0AAH,021H
+00:0FA2 1A
+00:0FA3 10
+00:0FA4 90
+00:0FA5 00
+00:0FA6 20
+00:0FA7 AA
+00:0FA8 21
+00:0FA9 1A              	    89: 	DB	01AH,091H,020H,099H,010H,0A1H,020H,00AH
+00:0FAA 91
+00:0FAB 20
+00:0FAC 99
+00:0FAD 10
+00:0FAE A1
+00:0FAF 20
+00:0FB0 0A
+00:0FB1 A2              	    90: 	DB	0A2H,001H,000H,019H,009H,091H,001H,019H
+00:0FB2 01
+00:0FB3 00
+00:0FB4 19
+00:0FB5 09
+00:0FB6 91
+00:0FB7 01
+00:0FB8 19
+00:0FB9 99              	    91: 	DB	099H,020H,009H,000H,000H,010H,009H,010H
+00:0FBA 20
+00:0FBB 09
+00:0FBC 00
+00:0FBD 00
+00:0FBE 10
+00:0FBF 09
+00:0FC0 10
+00:0FC1 91              	    92: 	DB	091H,090H,009H,012H,009H,0A9H,021H,019H
+00:0FC2 90
+00:0FC3 09
+00:0FC4 12
+00:0FC5 09
+00:0FC6 A9
+00:0FC7 21
+00:0FC8 19
+00:0FC9 09              	    93: 	DB	009H,092H,000H,090H,000H,019H,001H,000H
+00:0FCA 92
+00:0FCB 00
+00:0FCC 90
+00:0FCD 00
+00:0FCE 19
+00:0FCF 01
+00:0FD0 00
+00:0FD1 00              	    94: 	DB	000H,090H,000H,029H,090H,002H,099H,000H
+00:0FD2 90
+00:0FD3 00
+00:0FD4 29
+00:0FD5 90
+00:0FD6 02
+00:0FD7 99
+00:0FD8 00
+00:0FD9 10              	    95: 	DB	010H,000H,090H,0A2H,019H,029H,000H,01AH
+00:0FDA 00
+00:0FDB 90
+00:0FDC A2
+00:0FDD 19
+00:0FDE 29
+00:0FDF 00
+00:0FE0 1A
+00:0FE1 91              	    96: 	DB	091H,011H,090H,00AH,002H,010H,099H,000H
+00:0FE2 11
+00:0FE3 90
+00:0FE4 0A
+00:0FE5 02
+00:0FE6 10
+00:0FE7 99
+00:0FE8 00
+00:0FE9 02              	    97: 	DB	002H,0A0H,090H,022H,09AH,009H,010H,020H
+00:0FEA A0
+00:0FEB 90
+00:0FEC 22
+00:0FED 9A
+00:0FEE 09
+00:0FEF 10
+00:0FF0 20
+                        	    98: 
+
+Source: "mddt11.src"
+                        	    94: OHITOP::
+                        	    95: 		INCLUDE 		OPEN_HAT.HHH		; 84
+
+Source: "OPEN_HAT.HHH"
+                        	     1: ;808ho.abs/808ho.hhh/a/u3
+00:0FF1 04              	     2: 	DB	004H,0D7H,0DFH,0D6H,0B9H,045H,03DH,0C4H
+00:0FF2 D7
+00:0FF3 DF
+00:0FF4 D6
+00:0FF5 B9
+00:0FF6 45
+00:0FF7 3D
+00:0FF8 C4
+00:0FF9 6E              	     3: 	DB	06EH,06EH,0D6H,0E6H,0C4H,06FH,0D6H,0D6H
+00:0FFA 6E
+00:0FFB D6
+00:0FFC E6
+00:0FFD C4
+00:0FFE 6F
+00:0FFF D6
+00:1000 D6
+00:1001 E6              	     4: 	DB	0E6H,05EH,0C3H,0A6H,0DEH,055H,06FH,07EH
+00:1002 5E
+00:1003 C3
+00:1004 A6
+00:1005 DE
+00:1006 55
+00:1007 6F
+00:1008 7E
+00:1009 C5              	     5: 	DB	0C5H,0D2H,04DH,0D5H,0D6H,0E6H,06EH,03EH
+00:100A D2
+00:100B 4D
+00:100C D5
+00:100D D6
+00:100E E6
+00:100F 6E
+00:1010 3E
+00:1011 6D              	     6: 	DB	06DH,0A5H,04EH,05BH,04CH,035H,0CDH,0D6H
+00:1012 A5
+00:1013 4E
+00:1014 5B
+00:1015 4C
+00:1016 35
+00:1017 CD
+00:1018 D6
+00:1019 E6              	     7: 	DB	0E6H,0D5H,0CEH,06EH,0D7H,04FH,0C6H,025H
+00:101A D5
+00:101B CE
+00:101C 6E
+00:101D D7
+00:101E 4F
+00:101F C6
+00:1020 25
+00:1021 24              	     8: 	DB	024H,05FH,055H,0D5H,032H,05FH,0C7H,05FH
+00:1022 5F
+00:1023 55
+00:1024 D5
+00:1025 32
+00:1026 5F
+00:1027 C7
+00:1028 5F
+00:1029 63              	     9: 	DB	063H,0C5H,0ACH,03CH,0D6H,0C5H,0CDH,044H
+00:102A C5
+00:102B AC
+00:102C 3C
+00:102D D6
+00:102E C5
+00:102F CD
+00:1030 44
+00:1031 E4              	    10: 	DB	0E4H,046H,0BFH,0A7H,0E5H,0C5H,06EH,05FH
+00:1032 46
+00:1033 BF
+00:1034 A7
+00:1035 E5
+00:1036 C5
+00:1037 6E
+00:1038 5F
+00:1039 56              	    11: 	DB	056H,0D2H,044H,0DDH,045H,04EH,0D6H,03DH
+00:103A D2
+00:103B 44
+00:103C DD
+00:103D 45
+00:103E 4E
+00:103F D6
+00:1040 3D
+00:1041 D5              	    12: 	DB	0D5H,0B4H,03DH,0A6H,0D4H,0C5H,0CCH,043H
+00:1042 B4
+00:1043 3D
+00:1044 A6
+00:1045 D4
+00:1046 C5
+00:1047 CC
+00:1048 43
+00:1049 E6              	    13: 	DB	0E6H,0E7H,0E4H,0CBH,0C3H,0D6H,04CH,0D4H
+00:104A E7
+00:104B E4
+00:104C CB
+00:104D C3
+00:104E D6
+00:104F 4C
+00:1050 D4
+00:1051 6E              	    14: 	DB	06EH,0D5H,05EH,0C5H,0D7H,0EDH,04CH,0C4H
+00:1052 D5
+00:1053 5E
+00:1054 C5
+00:1055 D7
+00:1056 ED
+00:1057 4C
+00:1058 C4
+00:1059 D4              	    15: 	DB	0D4H,06EH,0A4H,043H,05FH,047H,0CEH,0E6H
+00:105A 6E
+00:105B A4
+00:105C 43
+00:105D 5F
+00:105E 47
+00:105F CE
+00:1060 E6
+00:1061 4C              	    16: 	DB	04CH,0D5H,05DH,0B4H,0A5H,0D5H,05DH,0D3H
+00:1062 D5
+00:1063 5D
+00:1064 B4
+00:1065 A5
+00:1066 D5
+00:1067 5D
+00:1068 D3
+00:1069 5B              	    17: 	DB	05BH,0E6H,05EH,034H,03DH,04DH,0C5H,0A5H
+00:106A E6
+00:106B 5E
+00:106C 34
+00:106D 3D
+00:106E 4D
+00:106F C5
+00:1070 A5
+00:1071 6F              	    18: 	DB	06FH,06DH,0C3H,053H,06EH,0D5H,0D5H,0BEH
+00:1072 6D
+00:1073 C3
+00:1074 53
+00:1075 6E
+00:1076 D5
+00:1077 D5
+00:1078 BE
+00:1079 B6              	    19: 	DB	0B6H,0D6H,05EH,0D4H,0C6H,0CAH,05DH,0DCH
+00:107A D6
+00:107B 5E
+00:107C D4
+00:107D C6
+00:107E CA
+00:107F 5D
+00:1080 DC
+00:1081 45              	    20: 	DB	045H,06EH,0B4H,0D5H,0DBH,05EH,0C7H,02EH
+00:1082 6E
+00:1083 B4
+00:1084 D5
+00:1085 DB
+00:1086 5E
+00:1087 C7
+00:1088 2E
+00:1089 D3              	    21: 	DB	0D3H,05DH,043H,044H,0DCH,0D4H,0D7H,0DDH
+00:108A 5D
+00:108B 43
+00:108C 44
+00:108D DC
+00:108E D4
+00:108F D7
+00:1090 DD
+00:1091 B4              	    22: 	DB	0B4H,04FH,064H,05CH,054H,0DCH,04DH,025H
+00:1092 4F
+00:1093 64
+00:1094 5C
+00:1095 54
+00:1096 DC
+00:1097 4D
+00:1098 25
+00:1099 4B              	    23: 	DB	04BH,0E6H,0CCH,05DH,0D6H,0D5H,0E5H,05EH
+00:109A E6
+00:109B CC
+00:109C 5D
+00:109D D6
+00:109E D5
+00:109F E5
+00:10A0 5E
+00:10A1 B5              	    24: 	DB	0B5H,0B5H,043H,00EH,0C6H,05EH,0C5H,0D6H
+00:10A2 B5
+00:10A3 43
+00:10A4 0E
+00:10A5 C6
+00:10A6 5E
+00:10A7 C5
+00:10A8 D6
+00:10A9 C3              	    25: 	DB	0C3H,04EH,046H,0E3H,0D5H,05EH,054H,05DH
+00:10AA 4E
+00:10AB 46
+00:10AC E3
+00:10AD D5
+00:10AE 5E
+00:10AF 54
+00:10B0 5D
+00:10B1 5E              	    26: 	DB	05EH,0A6H,0D5H,04EH,06FH,06DH,06EH,016H
+00:10B2 A6
+00:10B3 D5
+00:10B4 4E
+00:10B5 6F
+00:10B6 6D
+00:10B7 6E
+00:10B8 16
+00:10B9 3E              	    27: 	DB	03EH,0B3H,04BH,05DH,055H,02EH,06DH,03EH
+00:10BA B3
+00:10BB 4B
+00:10BC 5D
+00:10BD 55
+00:10BE 2E
+00:10BF 6D
+00:10C0 3E
+00:10C1 96              	    28: 	DB	096H,0E6H,0E5H,03CH,04CH,05BH,0BCH,054H
+00:10C2 E6
+00:10C3 E5
+00:10C4 3C
+00:10C5 4C
+00:10C6 5B
+00:10C7 BC
+00:10C8 54
+00:10C9 5E              	    29: 	DB	05EH,0A5H,04EH,0D6H,0D5H,04DH,05DH,0E6H
+00:10CA A5
+00:10CB 4E
+00:10CC D6
+00:10CD D5
+00:10CE 4D
+00:10CF 5D
+00:10D0 E6
+00:10D1 4C              	    30: 	DB	04CH,03CH,06EH,0D6H,06EH,0DCH,0C7H,0DDH
+00:10D2 3C
+00:10D3 6E
+00:10D4 D6
+00:10D5 6E
+00:10D6 DC
+00:10D7 C7
+00:10D8 DD
+00:10D9 5E              	    31: 	DB	05EH,0C5H,0D6H,00DH,0D5H,049H,0A3H,06EH
+00:10DA C5
+00:10DB D6
+00:10DC 0D
+00:10DD D5
+00:10DE 49
+00:10DF A3
+00:10E0 6E
+00:10E1 E6              	    32: 	DB	0E6H,0BBH,02DH,05CH,0A5H,0D3H,03DH,0C5H
+00:10E2 BB
+00:10E3 2D
+00:10E4 5C
+00:10E5 A5
+00:10E6 D3
+00:10E7 3D
+00:10E8 C5
+00:10E9 C6              	    33: 	DB	0C6H,0BDH,04DH,0D5H,0A7H,09FH,06DH,0E6H
+00:10EA BD
+00:10EB 4D
+00:10EC D5
+00:10ED A7
+00:10EE 9F
+00:10EF 6D
+00:10F0 E6
+00:10F1 BA              	    34: 	DB	0BAH,0E7H,0E5H,03DH,0D5H,042H,0E7H,0EAH
+00:10F2 E7
+00:10F3 E5
+00:10F4 3D
+00:10F5 D5
+00:10F6 42
+00:10F7 E7
+00:10F8 EA
+00:10F9 BD              	    35: 	DB	0BDH,035H,0C5H,0ABH,0D5H,0BDH,0D7H,0DDH
+00:10FA 35
+00:10FB C5
+00:10FC AB
+00:10FD D5
+00:10FE BD
+00:10FF D7
+00:1100 DD
+00:1101 B3              	    36: 	DB	0B3H,0C3H,05EH,02AH,0C7H,0DCH,0DBH,003H
+00:1102 C3
+00:1103 5E
+00:1104 2A
+00:1105 C7
+00:1106 DC
+00:1107 DB
+00:1108 03
+00:1109 AD              	    37: 	DB	0ADH,0A5H,0D5H,014H,0D5H,05EH,05EH,044H
+00:110A A5
+00:110B D5
+00:110C 14
+00:110D D5
+00:110E 5E
+00:110F 5E
+00:1110 44
+00:1111 25              	    38: 	DB	025H,0CBH,05EH,0E7H,0A4H,0E5H,0E7H,0DEH
+00:1112 CB
+00:1113 5E
+00:1114 E7
+00:1115 A4
+00:1116 E5
+00:1117 E7
+00:1118 DE
+00:1119 5C              	    39: 	DB	05CH,0B2H,0D6H,0D4H,0C4H,0C3H,0AAH,0D6H
+00:111A B2
+00:111B D6
+00:111C D4
+00:111D C4
+00:111E C3
+00:111F AA
+00:1120 D6
+00:1121 BD              	    40: 	DB	0BDH,04DH,04CH,044H,0D4H,04CH,0A4H,04CH
+00:1122 4D
+00:1123 4C
+00:1124 44
+00:1125 D4
+00:1126 4C
+00:1127 A4
+00:1128 4C
+00:1129 4C              	    41: 	DB	04CH,0E7H,0D4H,0D4H,0BCH,0E6H,04DH,0E7H
+00:112A E7
+00:112B D4
+00:112C D4
+00:112D BC
+00:112E E6
+00:112F 4D
+00:1130 E7
+00:1131 CD              	    42: 	DB	0CDH,05EH,033H,095H,0D4H,0B5H,02EH,0C7H
+00:1132 5E
+00:1133 33
+00:1134 95
+00:1135 D4
+00:1136 B5
+00:1137 2E
+00:1138 C7
+00:1139 ED              	    43: 	DB	0EDH,05DH,009H,05CH,04DH,0B5H,04BH,03BH
+00:113A 5D
+00:113B 09
+00:113C 5C
+00:113D 4D
+00:113E B5
+00:113F 4B
+00:1140 3B
+00:1141 6E              	    44: 	DB	06EH,0B1H,095H,0CDH,0D5H,0B5H,0ADH,04CH
+00:1142 B1
+00:1143 95
+00:1144 CD
+00:1145 D5
+00:1146 B5
+00:1147 AD
+00:1148 4C
+00:1149 5D              	    45: 	DB	05DH,0A5H,04DH,05BH,02CH,025H,0D4H,029H
+00:114A A5
+00:114B 4D
+00:114C 5B
+00:114D 2C
+00:114E 25
+00:114F D4
+00:1150 29
+00:1151 CC              	    46: 	DB	0CCH,0C6H,0BDH,0D5H,0C5H,04EH,055H,0D4H
+00:1152 C6
+00:1153 BD
+00:1154 D5
+00:1155 C5
+00:1156 4E
+00:1157 55
+00:1158 D4
+00:1159 B3              	    47: 	DB	0B3H,05EH,06DH,0C4H,0D5H,05EH,033H,023H
+00:115A 5E
+00:115B 6D
+00:115C C4
+00:115D D5
+00:115E 5E
+00:115F 33
+00:1160 23
+00:1161 C1              	    48: 	DB	0C1H,05DH,093H,06EH,0D5H,0B5H,05EH,05CH
+00:1162 5D
+00:1163 93
+00:1164 6E
+00:1165 D5
+00:1166 B5
+00:1167 5E
+00:1168 5C
+00:1169 4D              	    49: 	DB	04DH,0C5H,0D6H,0CDH,03BH,0C4H,04DH,05DH
+00:116A C5
+00:116B D6
+00:116C CD
+00:116D 3B
+00:116E C4
+00:116F 4D
+00:1170 5D
+00:1171 54              	    50: 	DB	054H,05EH,0D6H,0D5H,0D6H,01EH,002H,0A4H
+00:1172 5E
+00:1173 D6
+00:1174 D5
+00:1175 D6
+00:1176 1E
+00:1177 02
+00:1178 A4
+00:1179 C9              	    51: 	DB	0C9H,035H,0BBH,04DH,0C5H,039H,0C1H,004H
+00:117A 35
+00:117B BB
+00:117C 4D
+00:117D C5
+00:117E 39
+00:117F C1
+00:1180 04
+00:1181 D5              	    52: 	DB	0D5H,0BDH,0C6H,0D1H,02BH,0ACH,035H,0D6H
+00:1182 BD
+00:1183 C6
+00:1184 D1
+00:1185 2B
+00:1186 AC
+00:1187 35
+00:1188 D6
+00:1189 4F              	    53: 	DB	04FH,036H,0C6H,0CCH,0DAH,0D6H,0BDH,05CH
+00:118A 36
+00:118B C6
+00:118C CC
+00:118D DA
+00:118E D6
+00:118F BD
+00:1190 5C
+00:1191 5E              	    54: 	DB	05EH,0C6H,091H,0ACH,023H,0D6H,0BDH,0E7H
+00:1192 C6
+00:1193 91
+00:1194 AC
+00:1195 23
+00:1196 D6
+00:1197 BD
+00:1198 E7
+00:1199 E6              	    55: 	DB	0E6H,0E4H,04DH,0BBH,035H,01DH,04CH,024H
+00:119A E4
+00:119B 4D
+00:119C BB
+00:119D 35
+00:119E 1D
+00:119F 4C
+00:11A0 24
+00:11A1 5E              	    56: 	DB	05EH,054H,0D4H,0C5H,0DDH,054H,05EH,043H
+00:11A2 54
+00:11A3 D4
+00:11A4 C5
+00:11A5 DD
+00:11A6 54
+00:11A7 5E
+00:11A8 43
+00:11A9 D5              	    57: 	DB	0D5H,09CH,0A5H,0C6H,0DDH,0E6H,052H,0D4H
+00:11AA 9C
+00:11AB A5
+00:11AC C6
+00:11AD DD
+00:11AE E6
+00:11AF 52
+00:11B0 D4
+00:11B1 C4              	    58: 	DB	0C4H,0DCH,043H,001H,0A5H,0D4H,05EH,06CH
+00:11B2 DC
+00:11B3 43
+00:11B4 01
+00:11B5 A5
+00:11B6 D4
+00:11B7 5E
+00:11B8 6C
+00:11B9 D6              	    59: 	DB	0D6H,0DCH,0E6H,024H,05EH,095H,03EH,0D6H
+00:11BA DC
+00:11BB E6
+00:11BC 24
+00:11BD 5E
+00:11BE 95
+00:11BF 3E
+00:11C0 D6
+00:11C1 4D              	    60: 	DB	04DH,05DH,04BH,0D6H,02DH,0A5H,0C1H,0E5H
+00:11C2 5D
+00:11C3 4B
+00:11C4 D6
+00:11C5 2D
+00:11C6 A5
+00:11C7 C1
+00:11C8 E5
+00:11C9 43              	    61: 	DB	043H,03DH,003H,0C9H,0C5H,0A5H,0C4H,0C5H
+00:11CA 3D
+00:11CB 03
+00:11CC C9
+00:11CD C5
+00:11CE A5
+00:11CF C4
+00:11D0 C5
+00:11D1 D4              	    62: 	DB	0D4H,03CH,0C5H,04DH,0E6H,03DH,044H,04EH
+00:11D2 3C
+00:11D3 C5
+00:11D4 4D
+00:11D5 E6
+00:11D6 3D
+00:11D7 44
+00:11D8 4E
+00:11D9 C6              	    63: 	DB	0C6H,0ACH,05CH,04CH,05BH,0D2H,02CH,04CH
+00:11DA AC
+00:11DB 5C
+00:11DC 4C
+00:11DD 5B
+00:11DE D2
+00:11DF 2C
+00:11E0 4C
+00:11E1 C5              	    64: 	DB	0C5H,03EH,044H,0B5H,04DH,05CH,09DH,05CH
+00:11E2 3E
+00:11E3 44
+00:11E4 B5
+00:11E5 4D
+00:11E6 5C
+00:11E7 9D
+00:11E8 5C
+00:11E9 4B              	    65: 	DB	04BH,05EH,035H,0C5H,05EH,0C4H,0C4H,0D4H
+00:11EA 5E
+00:11EB 35
+00:11EC C5
+00:11ED 5E
+00:11EE C4
+00:11EF C4
+00:11F0 D4
+00:11F1 6D              	    66: 	DB	06DH,04EH,055H,03EH,052H,0D6H,0C4H,02EH
+00:11F2 4E
+00:11F3 55
+00:11F4 3E
+00:11F5 52
+00:11F6 D6
+00:11F7 C4
+00:11F8 2E
+00:11F9 D6              	    67: 	DB	0D6H,0C5H,0DAH,0C5H,05EH,015H,05EH,053H
+00:11FA C5
+00:11FB DA
+00:11FC C5
+00:11FD 5E
+00:11FE 15
+00:11FF 5E
+00:1200 53
+00:1201 AB              	    68: 	DB	0ABH,05EH,036H,0D2H,04BH,0D4H,05EH,0B3H
+00:1202 5E
+00:1203 36
+00:1204 D2
+00:1205 4B
+00:1206 D4
+00:1207 5E
+00:1208 B3
+00:1209 44              	    69: 	DB	044H,05EH,06EH,04CH,045H,0D5H,0ACH,05DH
+00:120A 5E
+00:120B 6E
+00:120C 4C
+00:120D 45
+00:120E D5
+00:120F AC
+00:1210 5D
+00:1211 4D              	    70: 	DB	04DH,04CH,0D5H,059H,04EH,045H,05EH,095H
+00:1212 4C
+00:1213 D5
+00:1214 59
+00:1215 4E
+00:1216 45
+00:1217 5E
+00:1218 95
+00:1219 3D              	    71: 	DB	03DH,049H,04CH,0D5H,05EH,0C5H,05DH,04DH
+00:121A 49
+00:121B 4C
+00:121C D5
+00:121D 5E
+00:121E C5
+00:121F 5D
+00:1220 4D
+00:1221 33              	    72: 	DB	033H,044H,04EH,026H,0DAH,03DH,0B5H,002H
+00:1222 44
+00:1223 4E
+00:1224 26
+00:1225 DA
+00:1226 3D
+00:1227 B5
+00:1228 02
+00:1229 D5              	    73: 	DB	0D5H,033H,03EH,044H,0B5H,0C2H,004H,0CBH
+00:122A 33
+00:122B 3E
+00:122C 44
+00:122D B5
+00:122E C2
+00:122F 04
+00:1230 CB
+00:1231 D6              	    74: 	DB	0D6H,0CBH,049H,0E6H,04EH,0C4H,0B5H,04DH
+00:1232 CB
+00:1233 49
+00:1234 E6
+00:1235 4E
+00:1236 C4
+00:1237 B5
+00:1238 4D
+00:1239 42              	    75: 	DB	042H,04EH,053H,0B4H,03CH,04AH,0C5H,02DH
+00:123A 4E
+00:123B 53
+00:123C B4
+00:123D 3C
+00:123E 4A
+00:123F C5
+00:1240 2D
+00:1241 D5              	    76: 	DB	0D5H,03CH,0C6H,0CCH,0B2H,0C5H,02DH,032H
+00:1242 3C
+00:1243 C6
+00:1244 CC
+00:1245 B2
+00:1246 C5
+00:1247 2D
+00:1248 32
+00:1249 D6              	    77: 	DB	0D6H,04EH,051H,0D4H,024H,01DH,0C5H,0CBH
+00:124A 4E
+00:124B 51
+00:124C D4
+00:124D 24
+00:124E 1D
+00:124F C5
+00:1250 CB
+00:1251 4C              	    78: 	DB	04CH,043H,0A2H,04DH,04DH,025H,0C4H,05EH
+00:1252 43
+00:1253 A2
+00:1254 4D
+00:1255 4D
+00:1256 25
+00:1257 C4
+00:1258 5E
+00:1259 A1              	    79: 	DB	0A1H,0B5H,0D5H,0B2H,0B5H,0CCH,0A6H,0CDH
+00:125A B5
+00:125B D5
+00:125C B2
+00:125D B5
+00:125E CC
+00:125F A6
+00:1260 CD
+00:1261 B6              	    80: 	DB	0B6H,0E4H,0C5H,05EH,013H,03CH,0B5H,03EH
+00:1262 E4
+00:1263 C5
+00:1264 5E
+00:1265 13
+00:1266 3C
+00:1267 B5
+00:1268 3E
+00:1269 5C              	    81: 	DB	05CH,05DH,04CH,05BH,03CH,0B5H,0BDH,0C6H
+00:126A 5D
+00:126B 4C
+00:126C 5B
+00:126D 3C
+00:126E B5
+00:126F BD
+00:1270 C6
+00:1271 D4              	    82: 	DB	0D4H,03DH,03AH,0C5H,0A4H,05EH,004H,02DH
+00:1272 3D
+00:1273 3A
+00:1274 C5
+00:1275 A4
+00:1276 5E
+00:1277 04
+00:1278 2D
+00:1279 05              	    83: 	DB	005H,03CH,03DH,0D6H,0C3H,02BH,0C5H,01DH
+00:127A 3C
+00:127B 3D
+00:127C D6
+00:127D C3
+00:127E 2B
+00:127F C5
+00:1280 1D
+00:1281 D5              	    84: 	DB	0D5H,095H,05FH,056H,03DH,0D6H,03BH,04EH
+00:1282 95
+00:1283 5F
+00:1284 56
+00:1285 3D
+00:1286 D6
+00:1287 3B
+00:1288 4E
+00:1289 5C              	    85: 	DB	05CH,0D6H,0D5H,0CBH,05DH,02CH,0B4H,0C5H
+00:128A D6
+00:128B D5
+00:128C CB
+00:128D 5D
+00:128E 2C
+00:128F B4
+00:1290 C5
+00:1291 22              	    86: 	DB	022H,0BBH,02CH,0A5H,0D5H,04DH,0BCH,035H
+00:1292 BB
+00:1293 2C
+00:1294 A5
+00:1295 D5
+00:1296 4D
+00:1297 BC
+00:1298 35
+00:1299 0D              	    87: 	DB	00DH,04AH,0C3H,033H,030H,0C5H,0C3H,0E6H
+00:129A 4A
+00:129B C3
+00:129C 33
+00:129D 30
+00:129E C5
+00:129F C3
+00:12A0 E6
+00:12A1 4E              	    88: 	DB	04EH,0B6H,0C3H,0CCH,0B5H,0D4H,043H,03DH
+00:12A2 B6
+00:12A3 C3
+00:12A4 CC
+00:12A5 B5
+00:12A6 D4
+00:12A7 43
+00:12A8 3D
+00:12A9 B0              	    89: 	DB	0B0H,0A5H,04EH,06CH,0D5H,03DH,02CH,06EH
+00:12AA A5
+00:12AB 4E
+00:12AC 6C
+00:12AD D5
+00:12AE 3D
+00:12AF 2C
+00:12B0 6E
+00:12B1 43              	    90: 	DB	043H,03DH,039H,032H,039H,03DH,033H,04DH
+00:12B2 3D
+00:12B3 39
+00:12B4 32
+00:12B5 39
+00:12B6 3D
+00:12B7 33
+00:12B8 4D
+00:12B9 A5              	    91: 	DB	0A5H,0C3H,0CAH,0A4H,033H,04DH,0C5H,03CH
+00:12BA C3
+00:12BB CA
+00:12BC A4
+00:12BD 33
+00:12BE 4D
+00:12BF C5
+00:12C0 3C
+00:12C1 3B              	    92: 	DB	03BH,05BH,0D4H,05DH,0C4H,03CH,0D5H,04DH
+00:12C2 5B
+00:12C3 D4
+00:12C4 5D
+00:12C5 C4
+00:12C6 3C
+00:12C7 D5
+00:12C8 4D
+00:12C9 4C              	    93: 	DB	04CH,05DH,042H,0D5H,0B0H,04DH,053H,04EH
+00:12CA 5D
+00:12CB 42
+00:12CC D5
+00:12CD B0
+00:12CE 4D
+00:12CF 53
+00:12D0 4E
+00:12D1 B5              	    94: 	DB	0B5H,04DH,05DH,025H,0CBH,04DH,04BH,035H
+00:12D2 4D
+00:12D3 5D
+00:12D4 25
+00:12D5 CB
+00:12D6 4D
+00:12D7 4B
+00:12D8 35
+00:12D9 9C              	    95: 	DB	09CH,0D6H,02EH,035H,0BCH,003H,03CH,014H
+00:12DA D6
+00:12DB 2E
+00:12DC 35
+00:12DD BC
+00:12DE 03
+00:12DF 3C
+00:12E0 14
+00:12E1 5E              	    96: 	DB	05EH,003H,04CH,02AH,044H,01DH,0C5H,0B2H
+00:12E2 03
+00:12E3 4C
+00:12E4 2A
+00:12E5 44
+00:12E6 1D
+00:12E7 C5
+00:12E8 B2
+00:12E9 5E              	    97: 	DB	05EH,0B6H,0BDH,0B5H,0C4H,02BH,010H,02BH
+00:12EA B6
+00:12EB BD
+00:12EC B5
+00:12ED C4
+00:12EE 2B
+00:12EF 10
+00:12F0 2B
+00:12F1 5E              	    98: 	DB	05EH,053H,0BAH,04CH,0AAH,013H,02AH,0D5H
+00:12F2 53
+00:12F3 BA
+00:12F4 4C
+00:12F5 AA
+00:12F6 13
+00:12F7 2A
+00:12F8 D5
+00:12F9 4D              	    99: 	DB	04DH,0B4H,04BH,0D5H,031H,00DH,0B5H,0C6H
+00:12FA B4
+00:12FB 4B
+00:12FC D5
+00:12FD 31
+00:12FE 0D
+00:12FF B5
+00:1300 C6
+00:1301 CD              	   100: 	DB	0CDH,0A2H,0D5H,0B5H,0D4H,01AH,0C4H,0B4H
+00:1302 A2
+00:1303 D5
+00:1304 B5
+00:1305 D4
+00:1306 1A
+00:1307 C4
+00:1308 B4
+00:1309 4D              	   101: 	DB	04DH,0B5H,00DH,04CH,0A4H,0C4H,00AH,04DH
+00:130A B5
+00:130B 0D
+00:130C 4C
+00:130D A4
+00:130E C4
+00:130F 0A
+00:1310 4D
+00:1311 5D              	   102: 	DB	05DH,0C5H,04CH,01CH,0B5H,09BH,0A3H,0C4H
+00:1312 C5
+00:1313 4C
+00:1314 1C
+00:1315 B5
+00:1316 9B
+00:1317 A3
+00:1318 C4
+00:1319 AB              	   103: 	DB	0ABH,0A4H,0D6H,0CDH,0D5H,041H,01CH,0B4H
+00:131A A4
+00:131B D6
+00:131C CD
+00:131D D5
+00:131E 41
+00:131F 1C
+00:1320 B4
+00:1321 3B              	   104: 	DB	03BH,0BBH,04AH,0B3H,0C5H,0CBH,04CH,0C4H
+00:1322 BB
+00:1323 4A
+00:1324 B3
+00:1325 C5
+00:1326 CB
+00:1327 4C
+00:1328 C4
+00:1329 34              	   105: 	DB	034H,04EH,0A6H,0CCH,0C6H,0CDH,0B4H,03AH
+00:132A 4E
+00:132B A6
+00:132C CC
+00:132D C6
+00:132E CD
+00:132F B4
+00:1330 3A
+00:1331 2C              	   106: 	DB	02CH,0D6H,0D3H,03DH,0B5H,02AH,023H,0CCH
+00:1332 D6
+00:1333 D3
+00:1334 3D
+00:1335 B5
+00:1336 2A
+00:1337 23
+00:1338 CC
+00:1339 5C              	   107: 	DB	05CH,0B5H,04DH,04EH,045H,0BCH,042H,0B3H
+00:133A B5
+00:133B 4D
+00:133C 4E
+00:133D 45
+00:133E BC
+00:133F 42
+00:1340 B3
+00:1341 4D              	   108: 	DB	04DH,04BH,03BH,0AAH,0D6H,02CH,0C4H,0C5H
+00:1342 4B
+00:1343 3B
+00:1344 AA
+00:1345 D6
+00:1346 2C
+00:1347 C4
+00:1348 C5
+00:1349 BD              	   109: 	DB	0BDH,0A4H,04DH,04BH,0C5H,03DH,05AH,0D5H
+00:134A A4
+00:134B 4D
+00:134C 4B
+00:134D C5
+00:134E 3D
+00:134F 5A
+00:1350 D5
+00:1351 4D              	   110: 	DB	04DH,032H,033H,02DH,04BH,0C5H,09BH,04DH
+00:1352 32
+00:1353 33
+00:1354 2D
+00:1355 4B
+00:1356 C5
+00:1357 9B
+00:1358 4D
+00:1359 93              	   111: 	DB	093H,012H,03DH,05CH,04AH,0A3H,05EH,0B5H
+00:135A 12
+00:135B 3D
+00:135C 5C
+00:135D 4A
+00:135E A3
+00:135F 5E
+00:1360 B5
+00:1361 B5              	   112: 	DB	0B5H,0CBH,023H,0C9H,024H,0BBH,03BH,092H
+00:1362 CB
+00:1363 23
+00:1364 C9
+00:1365 24
+00:1366 BB
+00:1367 3B
+00:1368 92
+00:1369 34              	   113: 	DB	034H,0D3H,0C5H,09CH,05DH,0C5H,0BBH,030H
+00:136A D3
+00:136B C5
+00:136C 9C
+00:136D 5D
+00:136E C5
+00:136F BB
+00:1370 30
+00:1371 5E              	   114: 	DB	05EH,044H,0D6H,00EH,04BH,040H,03CH,0D6H
+00:1372 44
+00:1373 D6
+00:1374 0E
+00:1375 4B
+00:1376 40
+00:1377 3C
+00:1378 D6
+00:1379 2D              	   115: 	DB	02DH,009H,024H,0D3H,0C5H,0B2H,05DH,0B1H
+00:137A 09
+00:137B 24
+00:137C D3
+00:137D C5
+00:137E B2
+00:137F 5D
+00:1380 B1
+00:1381 C4              	   116: 	DB	0C4H,0D5H,0B5H,05EH,0C5H,012H,00CH,004H
+00:1382 D5
+00:1383 B5
+00:1384 5E
+00:1385 C5
+00:1386 12
+00:1387 0C
+00:1388 04
+00:1389 C5              	   117: 	DB	0C5H,0ADH,01CH,04AH,015H,0CBH,0C4H,0A3H
+00:138A AD
+00:138B 1C
+00:138C 4A
+00:138D 15
+00:138E CB
+00:138F C4
+00:1390 A3
+00:1391 34              	   118: 	DB	034H,0CCH,0C6H,0CDH,04BH,023H,0A2H,0D5H
+00:1392 CC
+00:1393 C6
+00:1394 CD
+00:1395 4B
+00:1396 23
+00:1397 A2
+00:1398 D5
+00:1399 3D              	   119: 	DB	03DH,05CH,0B4H,03DH,0B4H,05DH,04DH,033H
+00:139A 5C
+00:139B B4
+00:139C 3D
+00:139D B4
+00:139E 5D
+00:139F 4D
+00:13A0 33
+00:13A1 B2              	   120: 	DB	0B2H,04CH,0B3H,032H,0B0H,000H,04BH,0C4H
+00:13A2 4C
+00:13A3 B3
+00:13A4 32
+00:13A5 B0
+00:13A6 00
+00:13A7 4B
+00:13A8 C4
+00:13A9 B5              	   121: 	DB	0B5H,03EH,095H,0B3H,0A3H,0B3H,0ACH,040H
+00:13AA 3E
+00:13AB 95
+00:13AC B3
+00:13AD A3
+00:13AE B3
+00:13AF AC
+00:13B0 40
+00:13B1 B5              	   122: 	DB	0B5H,0ADH,0C5H,033H,01DH,034H,0CCH,04BH
+00:13B2 AD
+00:13B3 C5
+00:13B4 33
+00:13B5 1D
+00:13B6 34
+00:13B7 CC
+00:13B8 4B
+00:13B9 5D              	   123: 	DB	05DH,05DH,0C5H,0B0H,033H,00BH,04CH,0C0H
+00:13BA 5D
+00:13BB C5
+00:13BC B0
+00:13BD 33
+00:13BE 0B
+00:13BF 4C
+00:13C0 C0
+00:13C1 03              	   124: 	DB	003H,0A3H,0C4H,05EH,014H,0C5H,01CH,0A3H
+00:13C2 A3
+00:13C3 C4
+00:13C4 5E
+00:13C5 14
+00:13C6 C5
+00:13C7 1C
+00:13C8 A3
+00:13C9 2B              	   125: 	DB	02BH,04AH,0C5H,0B4H,01EH,043H,0A1H,0C6H
+00:13CA 4A
+00:13CB C5
+00:13CC B4
+00:13CD 1E
+00:13CE 43
+00:13CF A1
+00:13D0 C6
+00:13D1 DA              	   126: 	DB	0DAH,0C3H,04CH,0B4H,04BH,0D5H,01DH,041H
+00:13D2 C3
+00:13D3 4C
+00:13D4 B4
+00:13D5 4B
+00:13D6 D5
+00:13D7 1D
+00:13D8 41
+00:13D9 B5              	   127: 	DB	0B5H,0CCH,093H,029H,03CH,0B5H,0BBH,03AH
+00:13DA CC
+00:13DB 93
+00:13DC 29
+00:13DD 3C
+00:13DE B5
+00:13DF BB
+00:13E0 3A
+00:13E1 2C              	   128: 	DB	02CH,05CH,0B3H,0AAH,0AAH,0B6H,0D3H,00DH
+00:13E2 5C
+00:13E3 B3
+00:13E4 AA
+00:13E5 AA
+00:13E6 B6
+00:13E7 D3
+00:13E8 0D
+00:13E9 B3              	   129: 	DB	0B3H,004H,0B5H,0ADH,04CH,033H,03DH,0C5H
+00:13EA 04
+00:13EB B5
+00:13EC AD
+00:13ED 4C
+00:13EE 33
+00:13EF 3D
+00:13F0 C5
+00:13F1 C5              	   130: 	DB	0C5H,02CH,02BH,039H,0B2H,022H,02DH,05CH
+00:13F2 2C
+00:13F3 2B
+00:13F4 39
+00:13F5 B2
+00:13F6 22
+00:13F7 2D
+00:13F8 5C
+00:13F9 B5              	   131: 	DB	0B5H,04EH,015H,0B4H,0ACH,0B4H,04DH,0C5H
+00:13FA 4E
+00:13FB 15
+00:13FC B4
+00:13FD AC
+00:13FE B4
+00:13FF 4D
+00:1400 C5
+00:1401 3B              	   132: 	DB	03BH,05EH,0B5H,00BH,04CH,033H,0C4H,01CH
+00:1402 5E
+00:1403 B5
+00:1404 0B
+00:1405 4C
+00:1406 33
+00:1407 C4
+00:1408 1C
+00:1409 C5              	   133: 	DB	0C5H,094H,0CAH,04CH,02CH,043H,0BCH,022H
+00:140A 94
+00:140B CA
+00:140C 4C
+00:140D 2C
+00:140E 43
+00:140F BC
+00:1410 22
+00:1411 03              	   134: 	DB	003H,03BH,0C5H,0C2H,0B3H,03DH,042H,0BBH
+00:1412 3B
+00:1413 C5
+00:1414 C2
+00:1415 B3
+00:1416 3D
+00:1417 42
+00:1418 BB
+00:1419 13              	   135: 	DB	013H,05EH,050H,03BH,02CH,04BH,0D5H,043H
+00:141A 5E
+00:141B 50
+00:141C 3B
+00:141D 2C
+00:141E 4B
+00:141F D5
+00:1420 43
+00:1421 CB              	   136: 	DB	0CBH,0B4H,0C1H,0A3H,02AH,0C5H,03CH,04CH
+00:1422 B4
+00:1423 C1
+00:1424 A3
+00:1425 2A
+00:1426 C5
+00:1427 3C
+00:1428 4C
+00:1429 B4              	   137: 	DB	0B4H,01CH,004H,0A1H,01BH,0B2H,022H,09CH
+00:142A 1C
+00:142B 04
+00:142C A1
+00:142D 1B
+00:142E B2
+00:142F 22
+00:1430 9C
+00:1431 B5              	   138: 	DB	0B5H,09AH,02CH,095H,0CBH,014H,0C0H,094H
+00:1432 9A
+00:1433 2C
+00:1434 95
+00:1435 CB
+00:1436 14
+00:1437 C0
+00:1438 94
+00:1439 D5              	   139: 	DB	0D5H,0C5H,0BEH,035H,05EH,035H,02BH,0A0H
+00:143A C5
+00:143B BE
+00:143C 35
+00:143D 5E
+00:143E 35
+00:143F 2B
+00:1440 A0
+00:1441 2B              	   140: 	DB	02BH,04DH,015H,0C4H,04DH,01CH,0A4H,03BH
+00:1442 4D
+00:1443 15
+00:1444 C4
+00:1445 4D
+00:1446 1C
+00:1447 A4
+00:1448 3B
+00:1449 92              	   141: 	DB	092H,04CH,03CH,05DH,0B3H,035H,0BCH,02BH
+00:144A 4C
+00:144B 3C
+00:144C 5D
+00:144D B3
+00:144E 35
+00:144F BC
+00:1450 2B
+00:1451 D5              	   142: 	DB	0D5H,02BH,092H,0A3H,099H,000H,04CH,0A3H
+00:1452 2B
+00:1453 92
+00:1454 A3
+00:1455 99
+00:1456 00
+00:1457 4C
+00:1458 A3
+00:1459 4C              	   143: 	DB	04CH,00AH,03BH,013H,00CH,039H,0C4H,033H
+00:145A 0A
+00:145B 3B
+00:145C 13
+00:145D 0C
+00:145E 39
+00:145F C4
+00:1460 33
+00:1461 AC              	   144: 	DB	0ACH,04DH,04CH,034H,03CH,04CH,0D5H,090H
+00:1462 4D
+00:1463 4C
+00:1464 34
+00:1465 3C
+00:1466 4C
+00:1467 D5
+00:1468 90
+00:1469 C5              	   145: 	DB	0C5H,0B3H,0ADH,0B4H,05CH,0B4H,0C5H,0BDH
+00:146A B3
+00:146B AD
+00:146C B4
+00:146D 5C
+00:146E B4
+00:146F C5
+00:1470 BD
+00:1471 05              	   146: 	DB	005H,0C4H,010H,0C4H,00DH,04BH,0B4H,04CH
+00:1472 C4
+00:1473 10
+00:1474 C4
+00:1475 0D
+00:1476 4B
+00:1477 B4
+00:1478 4C
+00:1479 C4              	   147: 	DB	0C4H,03AH,02CH,020H,00BH,03AH,0B5H,0C9H
+00:147A 3A
+00:147B 2C
+00:147C 20
+00:147D 0B
+00:147E 3A
+00:147F B5
+00:1480 C9
+00:1481 A4              	   148: 	DB	0A4H,0BCH,0A5H,0C3H,03BH,00CH,0C5H,04DH
+00:1482 BC
+00:1483 A5
+00:1484 C3
+00:1485 3B
+00:1486 0C
+00:1487 C5
+00:1488 4D
+00:1489 33              	   149: 	DB	033H,03CH,0B4H,0C5H,0BAH,09AH,0BBH,03BH
+00:148A 3C
+00:148B B4
+00:148C C5
+00:148D BA
+00:148E 9A
+00:148F BB
+00:1490 3B
+00:1491 A3              	   150: 	DB	0A3H,094H,03CH,0B4H,0A9H,0A4H,0C4H,0BBH
+00:1492 94
+00:1493 3C
+00:1494 B4
+00:1495 A9
+00:1496 A4
+00:1497 C4
+00:1498 BB
+00:1499 4C              	   151: 	DB	04CH,0B4H,03AH,03DH,0C5H,03CH,05CH,02CH
+00:149A B4
+00:149B 3A
+00:149C 3D
+00:149D C5
+00:149E 3C
+00:149F 5C
+00:14A0 2C
+00:14A1 C5              	   152: 	DB	0C5H,0B4H,02DH,0C5H,0C3H,04CH,02CH,04CH
+00:14A2 B4
+00:14A3 2D
+00:14A4 C5
+00:14A5 C3
+00:14A6 4C
+00:14A7 2C
+00:14A8 4C
+00:14A9 5D              	   153: 	DB	05DH,0A3H,04CH,0B4H,04CH,09BH,0A4H,0A3H
+00:14AA A3
+00:14AB 4C
+00:14AC B4
+00:14AD 4C
+00:14AE 9B
+00:14AF A4
+00:14B0 A3
+00:14B1 13              	   154: 	DB	013H,0C0H,0AAH,0A0H,04BH,02AH,0B5H,0ACH
+00:14B2 C0
+00:14B3 AA
+00:14B4 A0
+00:14B5 4B
+00:14B6 2A
+00:14B7 B5
+00:14B8 AC
+00:14B9 3B              	   155: 	DB	03BH,024H,0BCH,0C5H,0BBH,04CH,030H,02BH
+00:14BA 24
+00:14BB BC
+00:14BC C5
+00:14BD BB
+00:14BE 4C
+00:14BF 30
+00:14C0 2B
+00:14C1 A0              	   156: 	DB	0A0H,0B4H,05EH,034H,029H,009H,04BH,0B1H
+00:14C2 B4
+00:14C3 5E
+00:14C4 34
+00:14C5 29
+00:14C6 09
+00:14C7 4B
+00:14C8 B1
+00:14C9 B4              	   157: 	DB	0B4H,0C3H,0B4H,0A2H,03DH,04BH,0B4H,034H
+00:14CA C3
+00:14CB B4
+00:14CC A2
+00:14CD 3D
+00:14CE 4B
+00:14CF B4
+00:14D0 34
+00:14D1 0D              	   158: 	DB	00DH,0C5H,0B3H,00BH,0A4H,0ABH,00BH,04CH
+00:14D2 C5
+00:14D3 B3
+00:14D4 0B
+00:14D5 A4
+00:14D6 AB
+00:14D7 0B
+00:14D8 4C
+00:14D9 14              	   159: 	DB	014H,0AAH,02BH,0B4H,0B4H,02CH,03AH,0B3H
+00:14DA AA
+00:14DB 2B
+00:14DC B4
+00:14DD B4
+00:14DE 2C
+00:14DF 3A
+00:14E0 B3
+00:14E1 B4              	   160: 	DB	0B4H,0B3H,0C3H,01AH,0B2H,05DH,0B4H,0A3H
+00:14E2 B3
+00:14E3 C3
+00:14E4 1A
+00:14E5 B2
+00:14E6 5D
+00:14E7 B4
+00:14E8 A3
+00:14E9 B2              	   161: 	DB	0B2H,003H,0C3H,009H,0C4H,04DH,04BH,0B4H
+00:14EA 03
+00:14EB C3
+00:14EC 09
+00:14ED C4
+00:14EE 4D
+00:14EF 4B
+00:14F0 B4
+00:14F1 4D              	   162: 	DB	04DH,03AH,04CH,03AH,0A4H,01DH,0B5H,04DH
+00:14F2 3A
+00:14F3 4C
+00:14F4 3A
+00:14F5 A4
+00:14F6 1D
+00:14F7 B5
+00:14F8 4D
+00:14F9 4C              	   163: 	DB	04CH,094H,0A3H,03CH,0B4H,04CH,0A2H,03CH
+00:14FA 94
+00:14FB A3
+00:14FC 3C
+00:14FD B4
+00:14FE 4C
+00:14FF A2
+00:1500 3C
+00:1501 A3              	   164: 	DB	0A3H,0B4H,01AH,03CH,022H,00CH,04CH,013H
+00:1502 B4
+00:1503 1A
+00:1504 3C
+00:1505 22
+00:1506 0C
+00:1507 4C
+00:1508 13
+00:1509 3B              	   165: 	DB	03BH,03BH,009H,01AH,012H,02BH,0C4H,0B4H
+00:150A 3B
+00:150B 09
+00:150C 1A
+00:150D 12
+00:150E 2B
+00:150F C4
+00:1510 B4
+00:1511 B1              	   166: 	DB	0B1H,04DH,0A4H,039H,0ABH,013H,092H,0B4H
+00:1512 4D
+00:1513 A4
+00:1514 39
+00:1515 AB
+00:1516 13
+00:1517 92
+00:1518 B4
+00:1519 2C              	   167: 	DB	02CH,023H,0A9H,0A9H,011H,0B2H,03AH,092H
+00:151A 23
+00:151B A9
+00:151C A9
+00:151D 11
+00:151E B2
+00:151F 3A
+00:1520 92
+00:1521 0C              	   168: 	DB	00CH,0B5H,0ABH,03BH,0B3H,003H,0ABH,004H
+00:1522 B5
+00:1523 AB
+00:1524 3B
+00:1525 B3
+00:1526 03
+00:1527 AB
+00:1528 04
+00:1529 AC              	   169: 	DB	0ACH,0B4H,02CH,015H,0CAH,04DH,013H,0B5H
+00:152A B4
+00:152B 2C
+00:152C 15
+00:152D CA
+00:152E 4D
+00:152F 13
+00:1530 B5
+00:1531 BC              	   170: 	DB	0BCH,0B3H,023H,04DH,0A4H,00BH,001H,0A2H
+00:1532 B3
+00:1533 23
+00:1534 4D
+00:1535 A4
+00:1536 0B
+00:1537 01
+00:1538 A2
+00:1539 3C              	   171: 	DB	03CH,022H,020H,05DH,0B4H,02CH,0C4H,094H
+00:153A 22
+00:153B 20
+00:153C 5D
+00:153D B4
+00:153E 2C
+00:153F C4
+00:1540 94
+00:1541 B0              	   172: 	DB	0B0H,0B2H,03CH,029H,023H,02CH,014H,0BBH
+00:1542 B2
+00:1543 3C
+00:1544 29
+00:1545 23
+00:1546 2C
+00:1547 14
+00:1548 BB
+00:1549 4C              	   173: 	DB	04CH,002H,003H,0ABH,003H,0AAH,03BH,01BH
+00:154A 02
+00:154B 03
+00:154C AB
+00:154D 03
+00:154E AA
+00:154F 3B
+00:1550 1B
+00:1551 3B              	   174: 	DB	03BH,04CH,04CH,04BH,0A3H,0B4H,0BAH,0A4H
+00:1552 4C
+00:1553 4C
+00:1554 4B
+00:1555 A3
+00:1556 B4
+00:1557 BA
+00:1558 A4
+00:1559 B0              	   175: 	DB	0B0H,0B2H,0B4H,02BH,01AH,09AH,012H,0B4H
+00:155A B2
+00:155B B4
+00:155C 2B
+00:155D 1A
+00:155E 9A
+00:155F 12
+00:1560 B4
+00:1561 3C              	   176: 	DB	03CH,02BH,0B4H,00AH,0A0H,02AH,03BH,03CH
+00:1562 2B
+00:1563 B4
+00:1564 0A
+00:1565 A0
+00:1566 2A
+00:1567 3B
+00:1568 3C
+00:1569 14              	   177: 	DB	014H,03BH,0B1H,03CH,0B4H,021H,01BH,0C4H
+00:156A 3B
+00:156B B1
+00:156C 3C
+00:156D B4
+00:156E 21
+00:156F 1B
+00:1570 C4
+00:1571 0A              	   178: 	DB	00AH,0B3H,003H,0AAH,003H,01CH,04AH,0B3H
+00:1572 B3
+00:1573 03
+00:1574 AA
+00:1575 03
+00:1576 1C
+00:1577 4A
+00:1578 B3
+00:1579 A3              	   179: 	DB	0A3H,0ABH,093H,022H,0C4H,09BH,0A0H,013H
+00:157A AB
+00:157B 93
+00:157C 22
+00:157D C4
+00:157E 9B
+00:157F A0
+00:1580 13
+00:1581 3C              	   180: 	DB	03CH,02AH,0B3H,03AH,029H,0A2H,02CH,0A4H
+00:1582 2A
+00:1583 B3
+00:1584 3A
+00:1585 29
+00:1586 A2
+00:1587 2C
+00:1588 A4
+00:1589 2C              	   181: 	DB	02CH,0A4H,0B4H,0BCH,033H,0A3H,02CH,0B4H
+00:158A A4
+00:158B B4
+00:158C BC
+00:158D 33
+00:158E A3
+00:158F 2C
+00:1590 B4
+00:1591 03              	   182: 	DB	003H,01AH,0AAH,02BH,093H,011H,01CH,033H
+00:1592 1A
+00:1593 AA
+00:1594 2B
+00:1595 93
+00:1596 11
+00:1597 1C
+00:1598 33
+00:1599 BA              	   183: 	DB	0BAH,04DH,024H,002H,0B1H,0C4H,03BH,0B4H
+00:159A 4D
+00:159B 24
+00:159C 02
+00:159D B1
+00:159E C4
+00:159F 3B
+00:15A0 B4
+00:15A1 92              	   184: 	DB	092H,09CH,004H,02CH,04BH,00BH,02AH,039H
+00:15A2 9C
+00:15A3 04
+00:15A4 2C
+00:15A5 4B
+00:15A6 0B
+00:15A7 2A
+00:15A8 39
+00:15A9 93              	   185: 	DB	093H,009H,0B2H,04CH,01AH,0C5H,0BBH,04DH
+00:15AA 09
+00:15AB B2
+00:15AC 4C
+00:15AD 1A
+00:15AE C5
+00:15AF BB
+00:15B0 4D
+00:15B1 24              	   186: 	DB	024H,0B3H,01AH,02CH,033H,0B4H,0ABH,0C4H
+00:15B2 B3
+00:15B3 1A
+00:15B4 2C
+00:15B5 33
+00:15B6 B4
+00:15B7 AB
+00:15B8 C4
+00:15B9 2A              	   187: 	DB	02AH,02BH,091H,029H,013H,0A9H,04DH,0A5H
+00:15BA 2B
+00:15BB 91
+00:15BC 29
+00:15BD 13
+00:15BE A9
+00:15BF 4D
+00:15C0 A5
+00:15C1 BA              	   188: 	DB	0BAH,04CH,0C4H,003H,0B9H,002H,00BH,03BH
+00:15C2 4C
+00:15C3 C4
+00:15C4 03
+00:15C5 B9
+00:15C6 02
+00:15C7 0B
+00:15C8 3B
+00:15C9 A3              	   189: 	DB	0A3H,09BH,04BH,03BH,0A4H,0ABH,03AH,03CH
+00:15CA 9B
+00:15CB 4B
+00:15CC 3B
+00:15CD A4
+00:15CE AB
+00:15CF 3A
+00:15D0 3C
+00:15D1 A4              	   190: 	DB	0A4H,00BH,0C5H,0C3H,0A3H,0C3H,03CH,020H
+00:15D2 0B
+00:15D3 C5
+00:15D4 C3
+00:15D5 A3
+00:15D6 C3
+00:15D7 3C
+00:15D8 20
+00:15D9 B4              	   191: 	DB	0B4H,092H,09CH,014H,0B2H,0B2H,0A3H,0AAH
+00:15DA 92
+00:15DB 9C
+00:15DC 14
+00:15DD B2
+00:15DE B2
+00:15DF A3
+00:15E0 AA
+00:15E1 30              	   192: 	DB	030H,03CH,023H,0B1H,03CH,094H,0B2H,0B4H
+00:15E2 3C
+00:15E3 23
+00:15E4 B1
+00:15E5 3C
+00:15E6 94
+00:15E7 B2
+00:15E8 B4
+00:15E9 C4              	   193: 	DB	0C4H,0ACH,0B4H,020H,03DH,034H,02BH,020H
+00:15EA AC
+00:15EB B4
+00:15EC 20
+00:15ED 3D
+00:15EE 34
+00:15EF 2B
+00:15F0 20
+00:15F1 B3              	   194: 	DB	0B3H,03CH,02AH,0B4H,03CH,0A3H,03CH,093H
+00:15F2 3C
+00:15F3 2A
+00:15F4 B4
+00:15F5 3C
+00:15F6 A3
+00:15F7 3C
+00:15F8 93
+00:15F9 3B              	   195: 	DB	03BH,02BH,039H,03CH,003H,0B4H,0B2H,0A0H
+00:15FA 2B
+00:15FB 39
+00:15FC 3C
+00:15FD 03
+00:15FE B4
+00:15FF B2
+00:1600 A0
+00:1601 B4              	   196: 	DB	0B4H,0B3H,0ABH,013H,00CH,003H,02BH,023H
+00:1602 B3
+00:1603 AB
+00:1604 13
+00:1605 0C
+00:1606 03
+00:1607 2B
+00:1608 23
+00:1609 AB              	   197: 	DB	0ABH,002H,093H,0B3H,02CH,003H,03BH,092H
+00:160A 02
+00:160B 93
+00:160C B3
+00:160D 2C
+00:160E 03
+00:160F 3B
+00:1610 92
+00:1611 2B              	   198: 	DB	02BH,0A2H,03AH,01AH,03BH,0A3H,00BH,010H
+00:1612 A2
+00:1613 3A
+00:1614 1A
+00:1615 3B
+00:1616 A3
+00:1617 0B
+00:1618 10
+00:1619 B4              	   199: 	DB	0B4H,099H,00BH,022H,09AH,03AH,000H,0A2H
+00:161A 99
+00:161B 0B
+00:161C 22
+00:161D 9A
+00:161E 3A
+00:161F 00
+00:1620 A2
+00:1621 B4              	   200: 	DB	0B4H,00BH,04CH,0B3H,03CH,0A3H,030H,01CH
+00:1622 0B
+00:1623 4C
+00:1624 B3
+00:1625 3C
+00:1626 A3
+00:1627 30
+00:1628 1C
+00:1629 13              	   201: 	DB	013H,090H,00AH,032H,02CH,04BH,0B3H,02BH
+00:162A 90
+00:162B 0A
+00:162C 32
+00:162D 2C
+00:162E 4B
+00:162F B3
+00:1630 2B
+00:1631 A3              	   202: 	DB	0A3H,02BH,0B3H,012H,01BH,02BH,094H,01CH
+00:1632 2B
+00:1633 B3
+00:1634 12
+00:1635 1B
+00:1636 2B
+00:1637 94
+00:1638 1C
+00:1639 24              	   203: 	DB	024H,00CH,0B4H,03CH,03CH,0A4H,02BH,0A3H
+00:163A 0C
+00:163B B4
+00:163C 3C
+00:163D 3C
+00:163E A4
+00:163F 2B
+00:1640 A3
+00:1641 9A              	   204: 	DB	09AH,021H,0B4H,0B0H,0A9H,03AH,00BH,003H
+00:1642 21
+00:1643 B4
+00:1644 B0
+00:1645 A9
+00:1646 3A
+00:1647 0B
+00:1648 03
+00:1649 C4              	   205: 	DB	0C4H,01AH,000H,0B4H,0B3H,09BH,04BH,02BH
+00:164A 1A
+00:164B 00
+00:164C B4
+00:164D B3
+00:164E 9B
+00:164F 4B
+00:1650 2B
+00:1651 A4              	   206: 	DB	0A4H,0BAH,029H,03CH,030H,0A2H,0B4H,03DH
+00:1652 BA
+00:1653 29
+00:1654 3C
+00:1655 30
+00:1656 A2
+00:1657 B4
+00:1658 3D
+00:1659 32              	   207: 	DB	032H,03BH,01BH,023H,03CH,0A3H,0A3H,02CH
+00:165A 3B
+00:165B 1B
+00:165C 23
+00:165D 3C
+00:165E A3
+00:165F A3
+00:1660 2C
+00:1661 03              	   208: 	DB	003H,0B4H,09BH,0B4H,02CH,03BH,023H,0ABH
+00:1662 B4
+00:1663 9B
+00:1664 B4
+00:1665 2C
+00:1666 3B
+00:1667 23
+00:1668 AB
+00:1669 94              	   209: 	DB	094H,00AH,02BH,0C4H,0B4H,01BH,0A2H,01AH
+00:166A 0A
+00:166B 2B
+00:166C C4
+00:166D B4
+00:166E 1B
+00:166F A2
+00:1670 1A
+00:1671 A9              	   210: 	DB	0A9H,04BH,0AAH,094H,02CH,0B4H,0A3H,0ABH
+00:1672 4B
+00:1673 AA
+00:1674 94
+00:1675 2C
+00:1676 B4
+00:1677 A3
+00:1678 AB
+00:1679 13              	   211: 	DB	013H,0C4H,0ABH,023H,0AAH,0B3H,01AH,03BH
+00:167A C4
+00:167B AB
+00:167C 23
+00:167D AA
+00:167E B3
+00:167F 1A
+00:1680 3B
+00:1681 94              	   212: 	DB	094H,0ABH,0A2H,020H,0B3H,01AH,0B3H,03CH
+00:1682 AB
+00:1683 A2
+00:1684 20
+00:1685 B3
+00:1686 1A
+00:1687 B3
+00:1688 3C
+00:1689 12              	   213: 	DB	012H,03BH,009H,0A3H,002H,03CH,013H,0C3H
+00:168A 3B
+00:168B 09
+00:168C A3
+00:168D 02
+00:168E 3C
+00:168F 13
+00:1690 C3
+00:1691 04              	   214: 	DB	004H,0BAH,092H,03CH,02AH,03BH,003H,0A3H
+00:1692 BA
+00:1693 92
+00:1694 3C
+00:1695 2A
+00:1696 3B
+00:1697 03
+00:1698 A3
+00:1699 9C              	   215: 	DB	09CH,032H,0B3H,019H,0A0H,03CH,093H,03BH
+00:169A 32
+00:169B B3
+00:169C 19
+00:169D A0
+00:169E 3C
+00:169F 93
+00:16A0 3B
+00:16A1 01              	   216: 	DB	001H,0A4H,09BH,0A2H,093H,09BH,020H,01BH
+00:16A2 A4
+00:16A3 9B
+00:16A4 A2
+00:16A5 93
+00:16A6 9B
+00:16A7 20
+00:16A8 1B
+00:16A9 03              	   217: 	DB	003H,0B3H,01BH,020H,03CH,03AH,092H,04CH
+00:16AA B3
+00:16AB 1B
+00:16AC 20
+00:16AD 3C
+00:16AE 3A
+00:16AF 92
+00:16B0 4C
+00:16B1 11              	   218: 	DB	011H,011H,00CH,032H,01BH,0A3H,009H,03CH
+00:16B2 11
+00:16B3 0C
+00:16B4 32
+00:16B5 1B
+00:16B6 A3
+00:16B7 09
+00:16B8 3C
+00:16B9 22              	   219: 	DB	022H,012H,01BH,093H,0A0H,03CH,094H,0AAH
+00:16BA 12
+00:16BB 1B
+00:16BC 93
+00:16BD A0
+00:16BE 3C
+00:16BF 94
+00:16C0 AA
+00:16C1 3B              	   220: 	DB	03BH,02BH,029H,020H,0B3H,0A4H,0ABH,04CH
+00:16C2 2B
+00:16C3 29
+00:16C4 20
+00:16C5 B3
+00:16C6 A4
+00:16C7 AB
+00:16C8 4C
+00:16C9 B3              	   221: 	DB	0B3H,0A4H,0ABH,009H,0A3H,00AH,003H,0AAH
+00:16CA A4
+00:16CB AB
+00:16CC 09
+00:16CD A3
+00:16CE 0A
+00:16CF 03
+00:16D0 AA
+00:16D1 2A              	   222: 	DB	02AH,01AH,03BH,001H,029H,02BH,012H,0B2H
+00:16D2 1A
+00:16D3 3B
+00:16D4 01
+00:16D5 29
+00:16D6 2B
+00:16D7 12
+00:16D8 B2
+00:16D9 A3              	   223: 	DB	0A3H,0A3H,00BH,021H,0B2H,03BH,0A2H,0A3H
+00:16DA A3
+00:16DB 0B
+00:16DC 21
+00:16DD B2
+00:16DE 3B
+00:16DF A2
+00:16E0 A3
+00:16E1 0B              	   224: 	DB	00BH,0A4H,09BH,003H,0B2H,0A1H,019H,02BH
+00:16E2 A4
+00:16E3 9B
+00:16E4 03
+00:16E5 B2
+00:16E6 A1
+00:16E7 19
+00:16E8 2B
+00:16E9 3B              	   225: 	DB	03BH,0B4H,029H,01BH,092H,02BH,0B4H,0B3H
+00:16EA B4
+00:16EB 29
+00:16EC 1B
+00:16ED 92
+00:16EE 2B
+00:16EF B4
+00:16F0 B3
+00:16F1 9B              	   226: 	DB	09BH,094H,09BH,02AH,0A3H,01AH,009H,01AH
+00:16F2 94
+00:16F3 9B
+00:16F4 2A
+00:16F5 A3
+00:16F6 1A
+00:16F7 09
+00:16F8 1A
+00:16F9 92              	   227: 	DB	092H,02BH,03BH,012H,009H,009H,029H,01BH
+00:16FA 2B
+00:16FB 3B
+00:16FC 12
+00:16FD 09
+00:16FE 09
+00:16FF 29
+00:1700 1B
+00:1701 4C              	   228: 	DB	04CH,012H,01AH,093H,0A9H,019H,092H,009H
+00:1702 12
+00:1703 1A
+00:1704 93
+00:1705 A9
+00:1706 19
+00:1707 92
+00:1708 09
+00:1709 A3              	   229: 	DB	0A3H,02BH,0A3H,090H,00AH,093H,011H,0AAH
+00:170A 2B
+00:170B A3
+00:170C 90
+00:170D 0A
+00:170E 93
+00:170F 11
+00:1710 AA
+00:1711 29              	   230: 	DB	029H,0A2H,011H,0B3H,01BH,02AH,002H,0A2H
+00:1712 A2
+00:1713 11
+00:1714 B3
+00:1715 1B
+00:1716 2A
+00:1717 02
+00:1718 A2
+00:1719 09              	   231: 	DB	009H,03CH,04CH,03AH,092H,03AH,099H,0A4H
+00:171A 3C
+00:171B 4C
+00:171C 3A
+00:171D 92
+00:171E 3A
+00:171F 99
+00:1720 A4
+00:1721 BA              	   232: 	DB	0BAH,02BH,003H,0A1H,0B4H,09CH,023H,090H
+00:1722 2B
+00:1723 03
+00:1724 A1
+00:1725 B4
+00:1726 9C
+00:1727 23
+00:1728 90
+00:1729 3C              	   233: 	DB	03CH,093H,029H,03CH,031H,00AH,0A3H,01AH
+00:172A 93
+00:172B 29
+00:172C 3C
+00:172D 31
+00:172E 0A
+00:172F A3
+00:1730 1A
+00:1731 2A              	   234: 	DB	02AH,092H,00AH,019H,0A4H,0B2H,0B0H,0B4H
+00:1732 92
+00:1733 0A
+00:1734 19
+00:1735 A4
+00:1736 B2
+00:1737 B0
+00:1738 B4
+00:1739 B3              	   235: 	DB	0B3H,0A2H,02CH,003H,001H,01BH,029H,099H
+00:173A A2
+00:173B 2C
+00:173C 03
+00:173D 01
+00:173E 1B
+00:173F 29
+00:1740 99
+00:1741 3A              	   236: 	DB	03AH,092H,012H,09BH,092H,02BH,012H,0B4H
+00:1742 92
+00:1743 12
+00:1744 9B
+00:1745 92
+00:1746 2B
+00:1747 12
+00:1748 B4
+00:1749 B0              	   237: 	DB	0B0H,01BH,010H,012H,00BH,020H,0A2H,001H
+00:174A 1B
+00:174B 10
+00:174C 12
+00:174D 0B
+00:174E 20
+00:174F A2
+00:1750 01
+00:1751 9A              	   238: 	DB	09AH,093H,009H,090H,021H,0A1H,02AH,0A3H
+00:1752 93
+00:1753 09
+00:1754 90
+00:1755 21
+00:1756 A1
+00:1757 2A
+00:1758 A3
+00:1759 A2              	   239: 	DB	0A2H,0A9H,02BH,012H,0A3H,01BH,09AH,011H
+00:175A A9
+00:175B 2B
+00:175C 12
+00:175D A3
+00:175E 1B
+00:175F 9A
+00:1760 11
+00:1761 29              	   240: 	DB	029H,03BH,02BH,029H,02BH,021H,0A2H,091H
+00:1762 3B
+00:1763 2B
+00:1764 29
+00:1765 2B
+00:1766 21
+00:1767 A2
+00:1768 91
+00:1769 09              	   241: 	DB	009H,000H,013H,0ABH,093H,0A1H,029H,0B3H
+00:176A 00
+00:176B 13
+00:176C AB
+00:176D 93
+00:176E A1
+00:176F 29
+00:1770 B3
+00:1771 2B              	   242: 	DB	02BH,0A3H,092H,0A2H,0B3H,00AH,0A2H,02AH
+00:1772 A3
+00:1773 92
+00:1774 A2
+00:1775 B3
+00:1776 0A
+00:1777 A2
+00:1778 2A
+00:1779 3C              	   243: 	DB	03CH,023H,09AH,019H,003H,01CH,022H,009H
+00:177A 23
+00:177B 9A
+00:177C 19
+00:177D 03
+00:177E 1C
+00:177F 22
+00:1780 09
+00:1781 03              	   244: 	DB	003H,0AAH,02AH,092H,002H,0A9H,011H,01AH
+00:1782 AA
+00:1783 2A
+00:1784 92
+00:1785 02
+00:1786 A9
+00:1787 11
+00:1788 1A
+00:1789 1A              	   245: 	DB	01AH,029H,0B3H,02BH,001H,020H,0A1H,092H
+00:178A 29
+00:178B B3
+00:178C 2B
+00:178D 01
+00:178E 20
+00:178F A1
+00:1790 92
+00:1791 9A              	   246: 	DB	09AH,03AH,02BH,002H,0A2H,0A2H,012H,0B2H
+00:1792 3A
+00:1793 2B
+00:1794 02
+00:1795 A2
+00:1796 A2
+00:1797 12
+00:1798 B2
+00:1799 A2              	   247: 	DB	0A2H,0A9H,093H,02BH,002H,02BH,02AH,012H
+00:179A A9
+00:179B 93
+00:179C 2B
+00:179D 02
+00:179E 2B
+00:179F 2A
+00:17A0 12
+00:17A1 1B              	   248: 	DB	01BH,093H,099H,02AH,02AH,02AH,03CH,022H
+00:17A2 93
+00:17A3 99
+00:17A4 2A
+00:17A5 2A
+00:17A6 2A
+00:17A7 3C
+00:17A8 22
+00:17A9 1A              	   249: 	DB	01AH,03BH,02AH,0A3H,009H,01AH,002H,0B3H
+00:17AA 3B
+00:17AB 2A
+00:17AC A3
+00:17AD 09
+00:17AE 1A
+00:17AF 02
+00:17B0 B3
+00:17B1 90              	   250: 	DB	090H,0A3H,0A2H,01BH,000H,029H,092H,0A2H
+00:17B2 A3
+00:17B3 A2
+00:17B4 1B
+00:17B5 00
+00:17B6 29
+00:17B7 92
+00:17B8 A2
+00:17B9 99              	   251: 	DB	099H,03BH,093H,01BH,02BH,012H,01AH,002H
+00:17BA 3B
+00:17BB 93
+00:17BC 1B
+00:17BD 2B
+00:17BE 12
+00:17BF 1A
+00:17C0 02
+00:17C1 2B              	   252: 	DB	02BH,0A2H,02AH,019H,012H,0A0H,002H,0A1H
+00:17C2 A2
+00:17C3 2A
+00:17C4 19
+00:17C5 12
+00:17C6 A0
+00:17C7 02
+00:17C8 A1
+00:17C9 0A              	   253: 	DB	00AH,0A3H,01BH,029H,0A3H,01AH,009H,011H
+00:17CA A3
+00:17CB 1B
+00:17CC 29
+00:17CD A3
+00:17CE 1A
+00:17CF 09
+00:17D0 11
+00:17D1 A2              	   254: 	DB	0A2H,009H,091H,000H,03BH,001H,0A2H,090H
+00:17D2 09
+00:17D3 91
+00:17D4 00
+00:17D5 3B
+00:17D6 01
+00:17D7 A2
+00:17D8 90
+00:17D9 2A              	   255: 	DB	02AH,092H,0A2H,00AH,010H,002H,0A0H,0A2H
+00:17DA 92
+00:17DB A2
+00:17DC 0A
+00:17DD 10
+00:17DE 02
+00:17DF A0
+00:17E0 A2
+00:17E1 91              	   256: 	DB	091H,092H,0A1H,000H,091H,010H,091H,000H
+00:17E2 92
+00:17E3 A1
+00:17E4 00
+00:17E5 91
+00:17E6 10
+00:17E7 91
+00:17E8 00
+00:17E9 B3              	   257: 	DB	0B3H,02BH,093H,0A1H,0A2H,099H,02AH,0A3H
+00:17EA 2B
+00:17EB 93
+00:17EC A1
+00:17ED A2
+00:17EE 99
+00:17EF 2A
+00:17F0 A3
+00:17F1 09              	   258: 	DB	009H,01AH,012H,01BH,001H,092H,01BH,093H
+00:17F2 1A
+00:17F3 12
+00:17F4 1B
+00:17F5 01
+00:17F6 92
+00:17F7 1B
+00:17F8 93
+00:17F9 9A              	   259: 	DB	09AH,093H,00AH,012H,09AH,002H,0A2H,01AH
+00:17FA 93
+00:17FB 0A
+00:17FC 12
+00:17FD 9A
+00:17FE 02
+00:17FF A2
+00:1800 1A
+00:1801 2B              	   260: 	DB	02BH,02AH,002H,091H,092H,0A2H,009H,02BH
+00:1802 2A
+00:1803 02
+00:1804 91
+00:1805 92
+00:1806 A2
+00:1807 09
+00:1808 2B
+00:1809 11              	   261: 	DB	011H,001H,090H,02BH,011H,019H,0A1H,092H
+00:180A 01
+00:180B 90
+00:180C 2B
+00:180D 11
+00:180E 19
+00:180F A1
+00:1810 92
+00:1811 00              	   262: 	DB	000H,001H,0B3H,0B3H,009H,01AH,011H,090H
+00:1812 01
+00:1813 B3
+00:1814 B3
+00:1815 09
+00:1816 1A
+00:1817 11
+00:1818 90
+00:1819 01              	   263: 	DB	001H,00AH,003H,0B2H,00AH,01AH,012H,01BH
+00:181A 0A
+00:181B 03
+00:181C B2
+00:181D 0A
+00:181E 1A
+00:181F 12
+00:1820 1B
+00:1821 12              	   264: 	DB	012H,099H,029H,02AH,0A2H,001H,01AH,010H
+00:1822 99
+00:1823 29
+00:1824 2A
+00:1825 A2
+00:1826 01
+00:1827 1A
+00:1828 10
+00:1829 0A              	   265: 	DB	00AH,093H,0A1H,00AH,001H,001H,02BH,002H
+00:182A 93
+00:182B A1
+00:182C 0A
+00:182D 01
+00:182E 01
+00:182F 2B
+00:1830 02
+00:1831 2B              	   266: 	DB	02BH,002H,090H,0A3H,00BH,021H,01AH,0A3H
+00:1832 02
+00:1833 90
+00:1834 A3
+00:1835 0B
+00:1836 21
+00:1837 1A
+00:1838 A3
+00:1839 A1              	   267: 	DB	0A1H,02BH,092H,019H,0A2H,019H,000H,092H
+00:183A 2B
+00:183B 92
+00:183C 19
+00:183D A2
+00:183E 19
+00:183F 00
+00:1840 92
+00:1841 90              	   268: 	DB	090H,00AH,012H,00AH,002H
+00:1842 0A
+00:1843 12
+00:1844 0A
+00:1845 02
+                        	   269: 
+
+Source: "mddt11.src"
+                        	    96: TOMTOP::
+                        	    97: 		INCLUDE 		TOMTOM.HHH		; 85
+
+Source: "TOMTOM.HHH"
+                        	     1: ;B:TM1.ABS/TM1.HHH/A/U2
+00:1846 92              	     2: 	DB	092H,023H,054H,056H,0E4H,0F5H,0E5H,0CFH
+00:1847 23
+00:1848 54
+00:1849 56
+00:184A E4
+00:184B F5
+00:184C E5
+00:184D CF
+00:184E D5              	     3: 	DB	0D5H,06CH,0D7H,06DH,0BCH,046H,0CAH,0F7H
+00:184F 6C
+00:1850 D7
+00:1851 6D
+00:1852 BC
+00:1853 46
+00:1854 CA
+00:1855 F7
+00:1856 6F              	     4: 	DB	06FH,074H,0C5H,025H,06DH,0DEH,02DH,0CEH
+00:1857 74
+00:1858 C5
+00:1859 25
+00:185A 6D
+00:185B DE
+00:185C 2D
+00:185D CE
+00:185E 5F              	     5: 	DB	05FH,0D5H,05EH,0C6H,00EH,0EDH,0C6H,0B4H
+00:185F D5
+00:1860 5E
+00:1861 C6
+00:1862 0E
+00:1863 ED
+00:1864 C6
+00:1865 B4
+00:1866 5C              	     6: 	DB	05CH,0C2H,063H,066H,044H,045H,04CH,055H
+00:1867 C2
+00:1868 63
+00:1869 66
+00:186A 44
+00:186B 45
+00:186C 4C
+00:186D 55
+00:186E 64              	     7: 	DB	064H,0BDH,0DDH,01DH,0ECH,02DH,0DEH,024H
+00:186F BD
+00:1870 DD
+00:1871 1D
+00:1872 EC
+00:1873 2D
+00:1874 DE
+00:1875 24
+00:1876 CC              	     8: 	DB	0CCH,0DDH,0C2H,023H,0C4H,044H,055H,06BH
+00:1877 DD
+00:1878 C2
+00:1879 23
+00:187A C4
+00:187B 44
+00:187C 55
+00:187D 6B
+00:187E E3              	     9: 	DB	0E3H,055H,0B6H,0B4H,055H,043H,0C0H,05CH
+00:187F 55
+00:1880 B6
+00:1881 B4
+00:1882 55
+00:1883 43
+00:1884 C0
+00:1885 5C
+00:1886 3D              	    10: 	DB	03DH,0BAH,0BCH,0DDH,09BH,0DDH,009H,0DDH
+00:1887 BA
+00:1888 BC
+00:1889 DD
+00:188A 9B
+00:188B DD
+00:188C 09
+00:188D DD
+00:188E D4              	    11: 	DB	0D4H,0BBH,039H,035H,09CH,0B5H,025H,0A5H
+00:188F BB
+00:1890 39
+00:1891 35
+00:1892 9C
+00:1893 B5
+00:1894 25
+00:1895 A5
+00:1896 53              	    12: 	DB	053H,055H,0CCH,0A6H,055H,03BH,0B4H,0BDH
+00:1897 55
+00:1898 CC
+00:1899 A6
+00:189A 55
+00:189B 3B
+00:189C B4
+00:189D BD
+00:189E 14              	    13: 	DB	014H,0EEH,0B4H,0DDH,0BDH,0D4H,0DDH,0D2H
+00:189F EE
+00:18A0 B4
+00:18A1 DD
+00:18A2 BD
+00:18A3 D4
+00:18A4 DD
+00:18A5 D2
+00:18A6 5A              	    14: 	DB	05AH,05DH,045H,053H,04AH,04DH,054H,055H
+00:18A7 5D
+00:18A8 45
+00:18A9 53
+00:18AA 4A
+00:18AB 4D
+00:18AC 54
+00:18AD 55
+00:18AE 39              	    15: 	DB	039H,023H,053H,0BBH,063H,0BEH,014H,0CEH
+00:18AF 23
+00:18B0 53
+00:18B1 BB
+00:18B2 63
+00:18B3 BE
+00:18B4 14
+00:18B5 CE
+00:18B6 55              	    16: 	DB	055H,0EEH,02DH,0C0H,03CH,034H,04BH,0D3H
+00:18B7 EE
+00:18B8 2D
+00:18B9 C0
+00:18BA 3C
+00:18BB 34
+00:18BC 4B
+00:18BD D3
+00:18BE C5              	    17: 	DB	0C5H,00BH,01AH,01DH,034H,045H,0A5H,0B5H
+00:18BF 0B
+00:18C0 1A
+00:18C1 1D
+00:18C2 34
+00:18C3 45
+00:18C4 A5
+00:18C5 B5
+00:18C6 55              	    18: 	DB	055H,053H,052H,04BH,0D2H,0D9H,0DCH,0CCH
+00:18C7 53
+00:18C8 52
+00:18C9 4B
+00:18CA D2
+00:18CB D9
+00:18CC DC
+00:18CD CC
+00:18CE D2              	    19: 	DB	0D2H,0CCH,0ACH,03CH,02CH,0D3H,04CH,054H
+00:18CF CC
+00:18D0 AC
+00:18D1 3C
+00:18D2 2C
+00:18D3 D3
+00:18D4 4C
+00:18D5 54
+00:18D6 12              	    20: 	DB	012H,0C3H,04CH,03AH,04BH,025H,044H,034H
+00:18D7 C3
+00:18D8 4C
+00:18D9 3A
+00:18DA 4B
+00:18DB 25
+00:18DC 44
+00:18DD 34
+00:18DE 44              	    21: 	DB	044H,00CH,0CBH,04CH,02CH,094H,0B3H,043H
+00:18DF 0C
+00:18E0 CB
+00:18E1 4C
+00:18E2 2C
+00:18E3 94
+00:18E4 B3
+00:18E5 43
+00:18E6 4C              	    22: 	DB	04CH,0DBH,0BCH,00BH,0CCH,0CDH,0C1H,044H
+00:18E7 DB
+00:18E8 BC
+00:18E9 0B
+00:18EA CC
+00:18EB CD
+00:18EC C1
+00:18ED 44
+00:18EE D4              	    23: 	DB	0D4H,0A5H,03BH,043H,04BH,053H,03AH,0CAH
+00:18EF A5
+00:18F0 3B
+00:18F1 43
+00:18F2 4B
+00:18F3 53
+00:18F4 3A
+00:18F5 CA
+00:18F6 03              	    24: 	DB	003H,013H,0B4H,0B3H,093H,05DH,049H,000H
+00:18F7 13
+00:18F8 B4
+00:18F9 B3
+00:18FA 93
+00:18FB 5D
+00:18FC 49
+00:18FD 00
+00:18FE B2              	    25: 	DB	0B2H,013H,0BBH,0CBH,0CCH,033H,0D2H,0ACH
+00:18FF 13
+00:1900 BB
+00:1901 CB
+00:1902 CC
+00:1903 33
+00:1904 D2
+00:1905 AC
+00:1906 B4              	    26: 	DB	0B4H,049H,0CDH,0A2H,034H,094H,0A3H,0C5H
+00:1907 49
+00:1908 CD
+00:1909 A2
+00:190A 34
+00:190B 94
+00:190C A3
+00:190D C5
+00:190E C4              	    27: 	DB	0C4H,05BH,0B1H,023H,035H,09CH,041H,02CH
+00:190F 5B
+00:1910 B1
+00:1911 23
+00:1912 35
+00:1913 9C
+00:1914 41
+00:1915 2C
+00:1916 42              	    28: 	DB	042H,0AAH,0CBH,03BH,0CAH,04BH,09BH,0BAH
+00:1917 AA
+00:1918 CB
+00:1919 3B
+00:191A CA
+00:191B 4B
+00:191C 9B
+00:191D BA
+00:191E CA              	    29: 	DB	0CAH,0C3H,0BCH,0A3H,020H,004H,093H,09BH
+00:191F C3
+00:1920 BC
+00:1921 A3
+00:1922 20
+00:1923 04
+00:1924 93
+00:1925 9B
+00:1926 A0              	    30: 	DB	0A0H,044H,092H,041H,012H,0B4H,03BH,0C4H
+00:1927 44
+00:1928 92
+00:1929 41
+00:192A 12
+00:192B B4
+00:192C 3B
+00:192D C4
+00:192E 03              	    31: 	DB	003H,0CCH,05BH,01AH,02AH,02BH,021H,033H
+00:192F CC
+00:1930 5B
+00:1931 1A
+00:1932 2A
+00:1933 2B
+00:1934 21
+00:1935 33
+00:1936 AC              	    32: 	DB	0ACH,0CDH,032H,0B3H,0ABH,014H,0B0H,03AH
+00:1937 CD
+00:1938 32
+00:1939 B3
+00:193A AB
+00:193B 14
+00:193C B0
+00:193D 3A
+00:193E B3              	    33: 	DB	0B3H,0B3H,0C9H,0BBH,043H,0A2H,034H,03AH
+00:193F B3
+00:1940 C9
+00:1941 BB
+00:1942 43
+00:1943 A2
+00:1944 34
+00:1945 3A
+00:1946 BB              	    34: 	DB	0BBH,004H,0B4H,03AH,0B9H,042H,03AH,034H
+00:1947 04
+00:1948 B4
+00:1949 3A
+00:194A B9
+00:194B 42
+00:194C 3A
+00:194D 34
+00:194E 31              	    35: 	DB	031H,0CBH,0C1H,0ACH,0C3H,0ACH,00AH,049H
+00:194F CB
+00:1950 C1
+00:1951 AC
+00:1952 C3
+00:1953 AC
+00:1954 0A
+00:1955 49
+00:1956 02              	    36: 	DB	002H,0ACH,0B2H,029H,029H,0BBH,0B3H,029H
+00:1957 AC
+00:1958 B2
+00:1959 29
+00:195A 29
+00:195B BB
+00:195C B3
+00:195D 29
+00:195E A4              	    37: 	DB	0A4H,010H,033H,034H,044H,0B3H,02AH,0B9H
+00:195F 10
+00:1960 33
+00:1961 34
+00:1962 44
+00:1963 B3
+00:1964 2A
+00:1965 B9
+00:1966 3C              	    38: 	DB	03CH,00AH,0A1H,03AH,092H,0B0H,0BBH,04BH
+00:1967 0A
+00:1968 A1
+00:1969 3A
+00:196A 92
+00:196B B0
+00:196C BB
+00:196D 4B
+00:196E 2B              	    39: 	DB	02BH,0ABH,092H,0CAH,0A3H,0CAH,0CAH,093H
+00:196F AB
+00:1970 92
+00:1971 CA
+00:1972 A3
+00:1973 CA
+00:1974 CA
+00:1975 93
+00:1976 B0              	    40: 	DB	0B0H,042H,024H,011H,033H,042H,0B2H,010H
+00:1977 42
+00:1978 24
+00:1979 11
+00:197A 33
+00:197B 42
+00:197C B2
+00:197D 10
+00:197E 12              	    41: 	DB	012H,092H,0A2H,023H,0A1H,043H,0B9H,0ACH
+00:197F 92
+00:1980 A2
+00:1981 23
+00:1982 A1
+00:1983 43
+00:1984 B9
+00:1985 AC
+00:1986 B3              	    42: 	DB	0B3H,09BH,0CBH,03AH,0C2H,0BBH,02BH,0BAH
+00:1987 9B
+00:1988 CB
+00:1989 3A
+00:198A C2
+00:198B BB
+00:198C 2B
+00:198D BA
+00:198E C3              	    43: 	DB	0C3H,020H,0A3H,040H,013H,013H,023H,0A0H
+00:198F 20
+00:1990 A3
+00:1991 40
+00:1992 13
+00:1993 13
+00:1994 23
+00:1995 A0
+00:1996 23              	    44: 	DB	023H,013H,0A1H,0A4H,0B3H,041H,029H,01AH
+00:1997 13
+00:1998 A1
+00:1999 A4
+00:199A B3
+00:199B 41
+00:199C 29
+00:199D 1A
+00:199E AB              	    45: 	DB	0ABH,0CBH,09AH,0A0H,01BH,09AH,0B9H,0AAH
+00:199F CB
+00:19A0 9A
+00:19A1 A0
+00:19A2 1B
+00:19A3 9A
+00:19A4 B9
+00:19A5 AA
+00:19A6 BB              	    46: 	DB	0BBH,0B9H,002H,042H,02AH,033H,034H,02AH
+00:19A7 B9
+00:19A8 02
+00:19A9 42
+00:19AA 2A
+00:19AB 33
+00:19AC 34
+00:19AD 2A
+00:19AE AB              	    47: 	DB	0ABH,0BBH,0B4H,002H,032H,003H,033H,093H
+00:19AF BB
+00:19B0 B4
+00:19B1 02
+00:19B2 32
+00:19B3 03
+00:19B4 33
+00:19B5 93
+00:19B6 B2              	    48: 	DB	0B2H,01BH,033H,0AAH,0BBH,0B9H,09AH,09CH
+00:19B7 1B
+00:19B8 33
+00:19B9 AA
+00:19BA BB
+00:19BB B9
+00:19BC 9A
+00:19BD 9C
+00:19BE 2A              	    49: 	DB	02AH,09AH,022H,0A2H,020H,02BH,012H,0ABH
+00:19BF 9A
+00:19C0 22
+00:19C1 A2
+00:19C2 20
+00:19C3 2B
+00:19C4 12
+00:19C5 AB
+00:19C6 0B              	    50: 	DB	00BH,012H,00AH,009H,039H,024H,0ABH,009H
+00:19C7 12
+00:19C8 0A
+00:19C9 09
+00:19CA 39
+00:19CB 24
+00:19CC AB
+00:19CD 09
+00:19CE 43              	    51: 	DB	043H,002H,013H,023H,03AH,012H,0BBH,00BH
+00:19CF 02
+00:19D0 13
+00:19D1 23
+00:19D2 3A
+00:19D3 12
+00:19D4 BB
+00:19D5 0B
+00:19D6 12              	    52: 	DB	012H,00CH,02AH,0AAH,09BH,0AAH,0AAH,012H
+00:19D7 0C
+00:19D8 2A
+00:19D9 AA
+00:19DA 9B
+00:19DB AA
+00:19DC AA
+00:19DD 12
+00:19DE 02              	    53: 	DB	002H,02BH,0AAH,00BH,0B9H,0B1H,013H,033H
+00:19DF 2B
+00:19E0 AA
+00:19E1 0B
+00:19E2 B9
+00:19E3 B1
+00:19E4 13
+00:19E5 33
+00:19E6 32              	    54: 	DB	032H,020H,033H,0A3H,023H,012H,034H,002H
+00:19E7 20
+00:19E8 33
+00:19E9 A3
+00:19EA 23
+00:19EB 12
+00:19EC 34
+00:19ED 02
+00:19EE 20              	    55: 	DB	020H,09BH,09AH,0CBH,09CH,0C1H,01BH,0BBH
+00:19EF 9B
+00:19F0 9A
+00:19F1 CB
+00:19F2 9C
+00:19F3 C1
+00:19F4 1B
+00:19F5 BB
+00:19F6 19              	    56: 	DB	019H,0C4H,0B0H,002H,00AH,002H,0A3H,0A9H
+00:19F7 C4
+00:19F8 B0
+00:19F9 02
+00:19FA 0A
+00:19FB 02
+00:19FC A3
+00:19FD A9
+00:19FE 31              	    57: 	DB	031H,032H,034H,094H,031H,021H,003H,00AH
+00:19FF 32
+00:1A00 34
+00:1A01 94
+00:1A02 31
+00:1A03 21
+00:1A04 03
+00:1A05 0A
+00:1A06 1B              	    58: 	DB	01BH,029H,0BAH,0B0H,0BBH,0A9H,0BAH,0A0H
+00:1A07 29
+00:1A08 BA
+00:1A09 B0
+00:1A0A BB
+00:1A0B A9
+00:1A0C BA
+00:1A0D A0
+00:1A0E 00              	    59: 	DB	000H,000H,030H,0B2H,0B0H,09AH,0A1H,023H
+00:1A0F 00
+00:1A10 30
+00:1A11 B2
+00:1A12 B0
+00:1A13 9A
+00:1A14 A1
+00:1A15 23
+00:1A16 2A              	    60: 	DB	02AH,022H,023H,023H,013H,092H,099H,011H
+00:1A17 22
+00:1A18 23
+00:1A19 23
+00:1A1A 13
+00:1A1B 92
+00:1A1C 99
+00:1A1D 11
+00:1A1E 99              	    61: 	DB	099H,09BH,0BAH,021H,02AH,0AAH,009H,0B3H
+00:1A1F 9B
+00:1A20 BA
+00:1A21 21
+00:1A22 2A
+00:1A23 AA
+00:1A24 09
+00:1A25 B3
+00:1A26 11              	    62: 	DB	011H,0C1H,019H,011H,039H,012H,001H,04BH
+00:1A27 C1
+00:1A28 19
+00:1A29 11
+00:1A2A 39
+00:1A2B 12
+00:1A2C 01
+00:1A2D 4B
+00:1A2E 01              	    63: 	DB	001H,0AAH,011H,0BAH,02AH,0AAH,0A3H,022H
+00:1A2F AA
+00:1A30 11
+00:1A31 BA
+00:1A32 2A
+00:1A33 AA
+00:1A34 A3
+00:1A35 22
+00:1A36 0B              	    64: 	DB	00BH,02AH,02AH,021H,01AH,001H,0B0H,0B1H
+00:1A37 2A
+00:1A38 2A
+00:1A39 21
+00:1A3A 1A
+00:1A3B 01
+00:1A3C B0
+00:1A3D B1
+00:1A3E 01              	    65: 	DB	001H,03AH,093H,003H,032H,00AH,002H,001H
+00:1A3F 3A
+00:1A40 93
+00:1A41 03
+00:1A42 32
+00:1A43 0A
+00:1A44 02
+00:1A45 01
+00:1A46 AA              	    66: 	DB	0AAH,091H,0B0H,0A1H,0B3H,032H,0A0H,0A1H
+00:1A47 91
+00:1A48 B0
+00:1A49 A1
+00:1A4A B3
+00:1A4B 32
+00:1A4C A0
+00:1A4D A1
+00:1A4E A0              	    67: 	DB	0A0H,0AAH,02BH,0ABH,01AH,092H,029H,02BH
+00:1A4F AA
+00:1A50 2B
+00:1A51 AB
+00:1A52 1A
+00:1A53 92
+00:1A54 29
+00:1A55 2B
+00:1A56 31              	    68: 	DB	031H,022H,029H,0A1H,030H,012H,032H,01AH
+00:1A57 22
+00:1A58 29
+00:1A59 A1
+00:1A5A 30
+00:1A5B 12
+00:1A5C 32
+00:1A5D 1A
+00:1A5E B9              	    69: 	DB	0B9H,0A0H,02AH,000H,092H,011H,021H,0A9H
+00:1A5F A0
+00:1A60 2A
+00:1A61 00
+00:1A62 92
+00:1A63 11
+00:1A64 21
+00:1A65 A9
+00:1A66 A9              	    70: 	DB	0A9H,02AH,020H,0BAH,0A9H,011H,02AH,0B0H
+00:1A67 2A
+00:1A68 20
+00:1A69 BA
+00:1A6A A9
+00:1A6B 11
+00:1A6C 2A
+00:1A6D B0
+00:1A6E 1A              	    71: 	DB	01AH,01AH,021H,0AAH,009H,013H,000H,021H
+00:1A6F 1A
+00:1A70 21
+00:1A71 AA
+00:1A72 09
+00:1A73 13
+00:1A74 00
+00:1A75 21
+00:1A76 11              	    72: 	DB	011H,01BH,012H,000H,012H,020H,022H,022H
+00:1A77 1B
+00:1A78 12
+00:1A79 00
+00:1A7A 12
+00:1A7B 20
+00:1A7C 22
+00:1A7D 22
+00:1A7E 21              	    73: 	DB	021H,022H,0AAH,0B9H,00AH,0BAH,0BAH,091H
+00:1A7F 22
+00:1A80 AA
+00:1A81 B9
+00:1A82 0A
+00:1A83 BA
+00:1A84 BA
+00:1A85 91
+00:1A86 AA              	    74: 	DB	0AAH,021H,0A1H,010H,00BH,0BAH,01BH,0A3H
+00:1A87 21
+00:1A88 A1
+00:1A89 10
+00:1A8A 0B
+00:1A8B BA
+00:1A8C 1B
+00:1A8D A3
+00:1A8E 1A              	    75: 	DB	01AH,022H,031H,03AH,033H,092H,023H,031H
+00:1A8F 22
+00:1A90 31
+00:1A91 3A
+00:1A92 33
+00:1A93 92
+00:1A94 23
+00:1A95 31
+00:1A96 29              	    76: 	DB	029H,030H,0A3H,099H,0B0H,0BAH,0AAH,0AAH
+00:1A97 30
+00:1A98 A3
+00:1A99 99
+00:1A9A B0
+00:1A9B BA
+00:1A9C AA
+00:1A9D AA
+00:1A9E A1              	    77: 	DB	0A1H,0B2H,0A2H,0A0H,0ABH,0A9H,0B2H,09AH
+00:1A9F B2
+00:1AA0 A2
+00:1AA1 A0
+00:1AA2 AB
+00:1AA3 A9
+00:1AA4 B2
+00:1AA5 9A
+00:1AA6 A2              	    78: 	DB	0A2H,02AH,02AH,022H,022H,022H,032H,031H
+00:1AA7 2A
+00:1AA8 2A
+00:1AA9 22
+00:1AAA 22
+00:1AAB 22
+00:1AAC 32
+00:1AAD 31
+00:1AAE 23              	    79: 	DB	023H,023H,0A0H,010H,020H,009H,00AH,0B9H
+00:1AAF 23
+00:1AB0 A0
+00:1AB1 10
+00:1AB2 20
+00:1AB3 09
+00:1AB4 0A
+00:1AB5 B9
+00:1AB6 9B              	    80: 	DB	09BH,0A9H,0A0H,0AAH,019H,019H,0A9H,09AH
+00:1AB7 A9
+00:1AB8 A0
+00:1AB9 AA
+00:1ABA 19
+00:1ABB 19
+00:1ABC A9
+00:1ABD 9A
+00:1ABE A9              	    81: 	DB	0A9H,090H,00BH,000H,012H,022H,020H,032H
+00:1ABF 90
+00:1AC0 0B
+00:1AC1 00
+00:1AC2 12
+00:1AC3 22
+00:1AC4 20
+00:1AC5 32
+00:1AC6 20              	    82: 	DB	020H,012H,022H,021H,011H,00AH,092H,0A0H
+00:1AC7 12
+00:1AC8 22
+00:1AC9 21
+00:1ACA 11
+00:1ACB 0A
+00:1ACC 92
+00:1ACD A0
+00:1ACE 00              	    83: 	DB	000H,091H,02AH,090H,01AH,0A0H,0A9H,099H
+00:1ACF 91
+00:1AD0 2A
+00:1AD1 90
+00:1AD2 1A
+00:1AD3 A0
+00:1AD4 A9
+00:1AD5 99
+00:1AD6 1A              	    84: 	DB	01AH,009H,00BH,0A0H,0A0H,091H,099H,011H
+00:1AD7 09
+00:1AD8 0B
+00:1AD9 A0
+00:1ADA A0
+00:1ADB 91
+00:1ADC 99
+00:1ADD 11
+00:1ADE 20              	    85: 	DB	020H,001H,001H,00AH,021H,021H,012H,012H
+00:1ADF 01
+00:1AE0 01
+00:1AE1 0A
+00:1AE2 21
+00:1AE3 21
+00:1AE4 12
+00:1AE5 12
+00:1AE6 22              	    86: 	DB	022H,031H,020H,0A0H,000H,00AH,09AH,02AH
+00:1AE7 31
+00:1AE8 20
+00:1AE9 A0
+00:1AEA 00
+00:1AEB 0A
+00:1AEC 9A
+00:1AED 2A
+00:1AEE A9              	    87: 	DB	0A9H,019H,02AH,0A1H,0ABH,099H,09AH,0B1H
+00:1AEF 19
+00:1AF0 2A
+00:1AF1 A1
+00:1AF2 AB
+00:1AF3 99
+00:1AF4 9A
+00:1AF5 B1
+00:1AF6 A0              	    88: 	DB	0A0H,091H,010H,093H,000H,092H,011H,002H
+00:1AF7 91
+00:1AF8 10
+00:1AF9 93
+00:1AFA 00
+00:1AFB 92
+00:1AFC 11
+00:1AFD 02
+00:1AFE 22              	    89: 	DB	022H,001H,030H,012H,000H,092H,029H,000H
+00:1AFF 01
+00:1B00 30
+00:1B01 12
+00:1B02 00
+00:1B03 92
+00:1B04 29
+00:1B05 00
+00:1B06 9A              	    90: 	DB	09AH,001H,00AH,0A1H,099H,0AAH,09BH,019H
+00:1B07 01
+00:1B08 0A
+00:1B09 A1
+00:1B0A 99
+00:1B0B AA
+00:1B0C 9B
+00:1B0D 19
+00:1B0E AA              	    91: 	DB	0AAH,02AH,090H,002H,021H,022H,010H,022H
+00:1B0F 2A
+00:1B10 90
+00:1B11 02
+00:1B12 21
+00:1B13 22
+00:1B14 10
+00:1B15 22
+00:1B16 19              	    92: 	DB	019H,099H,019H,010H,009H,009H,0A0H,019H
+00:1B17 99
+00:1B18 19
+00:1B19 10
+00:1B1A 09
+00:1B1B 09
+00:1B1C A0
+00:1B1D 19
+00:1B1E 99              	    93: 	DB	099H,02AH,01AH,001H,0A1H,021H,092H,023H
+00:1B1F 2A
+00:1B20 1A
+00:1B21 01
+00:1B22 A1
+00:1B23 21
+00:1B24 92
+00:1B25 23
+00:1B26 91              	    94: 	DB	091H,000H,090H,001H,00AH,002H,000H,099H
+00:1B27 00
+00:1B28 90
+00:1B29 01
+00:1B2A 0A
+00:1B2B 02
+00:1B2C 00
+00:1B2D 99
+00:1B2E 20              	    95: 	DB	020H,010H,0A9H,0A0H,09AH,0B9H,009H,0ABH
+00:1B2F 10
+00:1B30 A9
+00:1B31 A0
+00:1B32 9A
+00:1B33 B9
+00:1B34 09
+00:1B35 AB
+00:1B36 09              	    96: 	DB	009H,000H,029H,010H,023H,012H,022H,022H
+00:1B37 00
+00:1B38 29
+00:1B39 10
+00:1B3A 23
+00:1B3B 12
+00:1B3C 22
+00:1B3D 22
+00:1B3E 19              	    97: 	DB	019H,021H,011H,099H,092H,029H,011H,000H
+00:1B3F 21
+00:1B40 11
+00:1B41 99
+00:1B42 92
+00:1B43 29
+00:1B44 11
+00:1B45 00
+00:1B46 0A              	    98: 	DB	00AH,010H,0BAH,00AH,00AH,09AH,0BAH,000H
+00:1B47 10
+00:1B48 BA
+00:1B49 0A
+00:1B4A 0A
+00:1B4B 9A
+00:1B4C BA
+00:1B4D 00
+00:1B4E AA              	    99: 	DB	0AAH,002H,009H,019H,010H,022H,029H,0A0H
+00:1B4F 02
+00:1B50 09
+00:1B51 19
+00:1B52 10
+00:1B53 22
+00:1B54 29
+00:1B55 A0
+00:1B56 21              	   100: 	DB	021H,002H,022H,021H,020H,029H,011H,009H
+00:1B57 02
+00:1B58 22
+00:1B59 21
+00:1B5A 20
+00:1B5B 29
+00:1B5C 11
+00:1B5D 09
+00:1B5E 92              	   101: 	DB	092H,0A0H,092H,00AH,009H,090H,009H,0A0H
+00:1B5F A0
+00:1B60 92
+00:1B61 0A
+00:1B62 09
+00:1B63 90
+00:1B64 09
+00:1B65 A0
+00:1B66 9A              	   102: 	DB	09AH,00AH,0A9H,090H,0A0H,019H,001H,010H
+00:1B67 0A
+00:1B68 A9
+00:1B69 90
+00:1B6A A0
+00:1B6B 19
+00:1B6C 01
+00:1B6D 10
+00:1B6E 01              	   103: 	DB	001H,010H,011H,000H,011H,092H,010H,000H
+00:1B6F 10
+00:1B70 11
+00:1B71 00
+00:1B72 11
+00:1B73 92
+00:1B74 10
+00:1B75 00
+00:1B76 19              	   104: 	DB	019H,002H,020H,022H,011H,0A2H,0A0H,092H
+00:1B77 02
+00:1B78 20
+00:1B79 22
+00:1B7A 11
+00:1B7B A2
+00:1B7C A0
+00:1B7D 92
+00:1B7E 90              	   105: 	DB	090H,0AAH,009H,00AH,0A0H,0A0H,099H,091H
+00:1B7F AA
+00:1B80 09
+00:1B81 0A
+00:1B82 A0
+00:1B83 A0
+00:1B84 99
+00:1B85 91
+00:1B86 99              	   106: 	DB	099H,090H,090H,0A9H,0A2H,012H,012H,000H
+00:1B87 90
+00:1B88 90
+00:1B89 A9
+00:1B8A A2
+00:1B8B 12
+00:1B8C 12
+00:1B8D 00
+00:1B8E 12              	   107: 	DB	012H,020H,013H,009H,001H,010H,001H,000H
+00:1B8F 20
+00:1B90 13
+00:1B91 09
+00:1B92 01
+00:1B93 10
+00:1B94 01
+00:1B95 00
+00:1B96 29              	   108: 	DB	029H,020H,01AH,090H,090H,00AH,00AH,0A9H
+00:1B97 20
+00:1B98 1A
+00:1B99 90
+00:1B9A 90
+00:1B9B 0A
+00:1B9C 0A
+00:1B9D A9
+00:1B9E 9A              	   109: 	DB	09AH,090H,090H,0AAH,0A0H,001H,012H,010H
+00:1B9F 90
+00:1BA0 90
+00:1BA1 AA
+00:1BA2 A0
+00:1BA3 01
+00:1BA4 12
+00:1BA5 10
+00:1BA6 12              	   110: 	DB	012H,011H,090H,001H,000H,021H,010H,000H
+00:1BA7 11
+00:1BA8 90
+00:1BA9 01
+00:1BAA 00
+00:1BAB 21
+00:1BAC 10
+00:1BAD 00
+00:1BAE 20              	   111: 	DB	020H,029H,012H,099H,011H,09AH,099H,0A9H
+00:1BAF 29
+00:1BB0 12
+00:1BB1 99
+00:1BB2 11
+00:1BB3 9A
+00:1BB4 99
+00:1BB5 A9
+00:1BB6 99              	   112: 	DB	099H,00AH,009H,001H,01AH,000H,001H,011H
+00:1BB7 0A
+00:1BB8 09
+00:1BB9 01
+00:1BBA 1A
+00:1BBB 00
+00:1BBC 01
+00:1BBD 11
+00:1BBE 00              	   113: 	DB	000H,090H,000H,000H,011H,000H,019H,091H
+00:1BBF 90
+00:1BC0 00
+00:1BC1 00
+00:1BC2 11
+00:1BC3 00
+00:1BC4 19
+00:1BC5 91
+00:1BC6 20              	   114: 	DB	020H,010H,001H,019H,000H,00AH,09AH,090H
+00:1BC7 10
+00:1BC8 01
+00:1BC9 19
+00:1BCA 00
+00:1BCB 0A
+00:1BCC 9A
+00:1BCD 90
+00:1BCE 19              	   115: 	DB	019H,000H,009H,010H,009H,012H,001H,000H
+00:1BCF 00
+00:1BD0 09
+00:1BD1 10
+00:1BD2 09
+00:1BD3 12
+00:1BD4 01
+00:1BD5 00
+00:1BD6 21              	   116: 	DB	021H,010H,090H,009H,000H,001H,090H,0A9H
+00:1BD7 10
+00:1BD8 90
+00:1BD9 09
+00:1BDA 00
+00:1BDB 01
+00:1BDC 90
+00:1BDD A9
+00:1BDE 19              	   117: 	DB	019H,000H,000H,090H,0A2H,00AH,000H,000H
+00:1BDF 00
+00:1BE0 00
+00:1BE1 90
+00:1BE2 A2
+00:1BE3 0A
+00:1BE4 00
+00:1BE5 00
+00:1BE6 19              	   118: 	DB	019H,000H,010H,019H,019H,010H,010H,001H
+00:1BE7 00
+00:1BE8 10
+00:1BE9 19
+00:1BEA 19
+00:1BEB 10
+00:1BEC 10
+00:1BED 01
+00:1BEE 12              	   119: 	DB	012H,010H,000H,000H,009H,099H,019H,090H
+00:1BEF 10
+00:1BF0 00
+00:1BF1 00
+00:1BF2 09
+00:1BF3 99
+00:1BF4 19
+00:1BF5 90
+00:1BF6 09              	   120: 	DB	009H,009H,010H,001H,000H,090H,009H,009H
+00:1BF7 09
+00:1BF8 10
+00:1BF9 01
+00:1BFA 00
+00:1BFB 90
+00:1BFC 09
+00:1BFD 09
+00:1BFE 00              	   121: 	DB	000H,009H,010H,091H,010H,090H,001H,010H
+00:1BFF 09
+00:1C00 10
+00:1C01 91
+00:1C02 10
+00:1C03 90
+00:1C04 01
+00:1C05 10
+00:1C06 00              	   122: 	DB	000H,091H,001H,000H,000H,009H,010H,000H
+00:1C07 91
+00:1C08 01
+00:1C09 00
+00:1C0A 00
+00:1C0B 09
+00:1C0C 10
+00:1C0D 00
+00:1C0E 01              	   123: 	DB	001H,090H,001H,009H,019H,001H,010H,020H
+00:1C0F 90
+00:1C10 01
+00:1C11 09
+00:1C12 19
+00:1C13 01
+00:1C14 10
+00:1C15 20
+00:1C16 90              	   124: 	DB	090H,001H,0AAH,009H,000H,000H,090H,000H
+00:1C17 01
+00:1C18 AA
+00:1C19 09
+00:1C1A 00
+00:1C1B 00
+00:1C1C 90
+00:1C1D 00
+00:1C1E 90              	   125: 	DB	090H,099H,099H,001H,009H,000H,011H,010H
+00:1C1F 99
+00:1C20 99
+00:1C21 01
+00:1C22 09
+00:1C23 00
+00:1C24 11
+00:1C25 10
+00:1C26 21              	   126: 	DB	021H,021H,001H,001H,010H,090H,010H,000H
+00:1C27 21
+00:1C28 01
+00:1C29 01
+00:1C2A 10
+00:1C2B 90
+00:1C2C 10
+00:1C2D 00
+00:1C2E 19              	   127: 	DB	019H,009H,000H,099H,000H,099H,019H,099H
+00:1C2F 09
+00:1C30 00
+00:1C31 99
+00:1C32 00
+00:1C33 99
+00:1C34 19
+00:1C35 99
+00:1C36 1A              	   128: 	DB	01AH,09AH,099H,000H,000H,090H,011H,011H
+00:1C37 9A
+00:1C38 99
+00:1C39 00
+00:1C3A 00
+00:1C3B 90
+00:1C3C 11
+00:1C3D 11
+00:1C3E 01              	   129: 	DB	001H,010H,022H,001H,011H,000H,001H,091H
+00:1C3F 10
+00:1C40 22
+00:1C41 01
+00:1C42 11
+00:1C43 00
+00:1C44 01
+00:1C45 91
+00:1C46 19              	   130: 	DB	019H,000H,091H,090H,090H,099H,009H,000H
+00:1C47 00
+00:1C48 91
+00:1C49 90
+00:1C4A 90
+00:1C4B 99
+00:1C4C 09
+00:1C4D 00
+00:1C4E 0A              	   131: 	DB	00AH,009H,090H,090H,009H,010H,001H,009H
+00:1C4F 09
+00:1C50 90
+00:1C51 90
+00:1C52 09
+00:1C53 10
+00:1C54 01
+00:1C55 09
+00:1C56 11              	   132: 	DB	011H,091H,010H,010H,010H,000H,019H,010H
+00:1C57 91
+00:1C58 10
+00:1C59 10
+00:1C5A 10
+00:1C5B 00
+00:1C5C 19
+00:1C5D 10
+00:1C5E 90              	   133: 	DB	090H,090H,011H,001H,000H,010H,090H,000H
+00:1C5F 90
+00:1C60 11
+00:1C61 01
+00:1C62 00
+00:1C63 10
+00:1C64 90
+00:1C65 00
+00:1C66 91              	   134: 	DB	091H,090H,091H,009H,009H,091H,019H,001H
+00:1C67 90
+00:1C68 91
+00:1C69 09
+00:1C6A 09
+00:1C6B 91
+00:1C6C 19
+00:1C6D 01
+00:1C6E 90              	   135: 	DB	090H,000H,000H,090H,000H,0A0H,001H,001H
+00:1C6F 00
+00:1C70 00
+00:1C71 90
+00:1C72 00
+00:1C73 A0
+00:1C74 01
+00:1C75 01
+00:1C76 90              	   136: 	DB	090H,001H,000H,000H,009H,010H,001H,021H
+00:1C77 01
+00:1C78 00
+00:1C79 00
+00:1C7A 09
+00:1C7B 10
+00:1C7C 01
+00:1C7D 21
+00:1C7E 10              	   137: 	DB	010H,009H,010H,000H,099H,019H,019H,020H
+00:1C7F 09
+00:1C80 10
+00:1C81 00
+00:1C82 99
+00:1C83 19
+00:1C84 19
+00:1C85 20
+00:1C86 90              	   138: 	DB	090H,009H,009H,090H,009H,090H,000H,091H
+00:1C87 09
+00:1C88 09
+00:1C89 90
+00:1C8A 09
+00:1C8B 90
+00:1C8C 00
+00:1C8D 91
+00:1C8E 09              	   139: 	DB	009H,090H,000H,001H,010H,001H,010H,011H
+00:1C8F 90
+00:1C90 00
+00:1C91 01
+00:1C92 10
+00:1C93 01
+00:1C94 10
+00:1C95 11
+00:1C96 10              	   140: 	DB	010H,000H,000H,000H,009H,090H,009H,000H
+00:1C97 00
+00:1C98 00
+00:1C99 00
+00:1C9A 09
+00:1C9B 90
+00:1C9C 09
+00:1C9D 00
+00:1C9E 00              	   141: 	DB	000H,000H,001H,000H,010H,090H,000H,009H
+00:1C9F 00
+00:1CA0 01
+00:1CA1 00
+00:1CA2 10
+00:1CA3 90
+00:1CA4 00
+00:1CA5 09
+00:1CA6 19              	   142: 	DB	019H,000H,000H,009H,010H,019H,010H,000H
+00:1CA7 00
+00:1CA8 00
+00:1CA9 09
+00:1CAA 10
+00:1CAB 19
+00:1CAC 10
+00:1CAD 00
+00:1CAE 99              	   143: 	DB	099H,000H,091H,000H,010H,000H,000H,091H
+00:1CAF 00
+00:1CB0 91
+00:1CB1 00
+00:1CB2 10
+00:1CB3 00
+00:1CB4 00
+00:1CB5 91
+00:1CB6 09              	   144: 	DB	009H,009H,000H,011H,091H,000H,001H,010H
+00:1CB7 09
+00:1CB8 00
+00:1CB9 11
+00:1CBA 91
+00:1CBB 00
+00:1CBC 01
+00:1CBD 10
+00:1CBE 10              	   145: 	DB	010H,000H,000H,010H,090H,000H,000H,009H
+00:1CBF 00
+00:1CC0 00
+00:1CC1 10
+00:1CC2 90
+00:1CC3 00
+00:1CC4 00
+00:1CC5 09
+00:1CC6 09              	   146: 	DB	009H,091H,000H,009H,090H,099H,090H,000H
+00:1CC7 91
+00:1CC8 00
+00:1CC9 09
+00:1CCA 90
+00:1CCB 99
+00:1CCC 90
+00:1CCD 00
+00:1CCE 00              	   147: 	DB	000H,000H,011H,001H,001H,000H,010H,019H
+00:1CCF 00
+00:1CD0 11
+00:1CD1 01
+00:1CD2 01
+00:1CD3 00
+00:1CD4 10
+00:1CD5 19
+00:1CD6 10              	   148: 	DB	010H,000H,019H,010H,000H,000H,000H,091H
+00:1CD7 00
+00:1CD8 19
+00:1CD9 10
+00:1CDA 00
+00:1CDB 00
+00:1CDC 00
+00:1CDD 91
+00:1CDE 01              	   149: 	DB	001H,090H,000H,090H,009H,099H,009H,000H
+00:1CDF 90
+00:1CE0 00
+00:1CE1 90
+00:1CE2 09
+00:1CE3 99
+00:1CE4 09
+00:1CE5 00
+00:1CE6 00              	   150: 	DB	000H,000H,000H,090H,000H,000H,000H,010H
+00:1CE7 00
+00:1CE8 00
+00:1CE9 90
+00:1CEA 00
+00:1CEB 00
+00:1CEC 00
+00:1CED 10
+00:1CEE 10              	   151: 	DB	010H,010H,010H,019H,010H,000H,091H,000H
+00:1CEF 10
+00:1CF0 10
+00:1CF1 19
+00:1CF2 10
+00:1CF3 00
+00:1CF4 91
+00:1CF5 00
+00:1CF6 00              	   152: 	DB	000H,091H,000H,001H,091H,000H,000H,010H
+00:1CF7 91
+00:1CF8 00
+00:1CF9 01
+00:1CFA 91
+00:1CFB 00
+00:1CFC 00
+00:1CFD 10
+00:1CFE 91              	   153: 	DB	091H,099H,090H,090H,09AH,000H,090H,010H
+00:1CFF 99
+00:1D00 90
+00:1D01 90
+00:1D02 9A
+00:1D03 00
+00:1D04 90
+00:1D05 10
+00:1D06 00              	   154: 	DB	000H,010H,010H,019H,010H,009H,000H,000H
+00:1D07 10
+00:1D08 10
+00:1D09 19
+00:1D0A 10
+00:1D0B 09
+00:1D0C 00
+00:1D0D 00
+00:1D0E 00              	   155: 	DB	000H,001H,000H,011H,001H,000H,010H,000H
+00:1D0F 01
+00:1D10 00
+00:1D11 11
+00:1D12 01
+00:1D13 00
+00:1D14 10
+00:1D15 00
+00:1D16 00              	   156: 	DB	000H,009H,009H,019H,000H,090H,009H,019H
+00:1D17 09
+00:1D18 09
+00:1D19 19
+00:1D1A 00
+00:1D1B 90
+00:1D1C 09
+00:1D1D 19
+00:1D1E 00              	   157: 	DB	000H,090H,000H,090H,090H,010H,000H,091H
+00:1D1F 90
+00:1D20 00
+00:1D21 90
+00:1D22 90
+00:1D23 10
+00:1D24 00
+00:1D25 91
+00:1D26 00              	   158: 	DB	000H,000H,000H,091H,001H,001H,010H,010H
+00:1D27 00
+00:1D28 00
+00:1D29 91
+00:1D2A 01
+00:1D2B 01
+00:1D2C 10
+00:1D2D 10
+00:1D2E 10              	   159: 	DB	010H,010H,000H,019H,000H,090H,090H,009H
+00:1D2F 10
+00:1D30 00
+00:1D31 19
+00:1D32 00
+00:1D33 90
+00:1D34 90
+00:1D35 09
+00:1D36 00              	   160: 	DB	000H,000H,000H,009H,090H,009H,000H,000H
+00:1D37 00
+00:1D38 00
+00:1D39 09
+00:1D3A 90
+00:1D3B 09
+00:1D3C 00
+00:1D3D 00
+00:1D3E 00              	   161: 	DB	000H,010H,000H,000H,091H,000H,000H,001H
+00:1D3F 10
+00:1D40 00
+00:1D41 00
+00:1D42 91
+00:1D43 00
+00:1D44 00
+00:1D45 01
+00:1D46 00              	   162: 	DB	000H,001H,000H,000H,001H,000H,090H,000H
+00:1D47 01
+00:1D48 00
+00:1D49 00
+00:1D4A 01
+00:1D4B 00
+00:1D4C 90
+00:1D4D 00
+00:1D4E 00              	   163: 	DB	000H,019H,000H,000H,000H,000H,000H,000H
+00:1D4F 19
+00:1D50 00
+00:1D51 00
+00:1D52 00
+00:1D53 00
+00:1D54 00
+00:1D55 00
+00:1D56 00              	   164: 	DB	000H,000H,000H,019H,009H,000H,000H,090H
+00:1D57 00
+00:1D58 00
+00:1D59 19
+00:1D5A 09
+00:1D5B 00
+00:1D5C 00
+00:1D5D 90
+00:1D5E 00              	   165: 	DB	000H,000H,009H,019H,010H,000H,000H,000H
+00:1D5F 00
+00:1D60 09
+00:1D61 19
+00:1D62 10
+00:1D63 00
+00:1D64 00
+00:1D65 00
+00:1D66 19              	   166: 	DB	019H,000H,010H,001H,000H,000H,000H,001H
+00:1D67 00
+00:1D68 10
+00:1D69 01
+00:1D6A 00
+00:1D6B 00
+00:1D6C 00
+00:1D6D 01
+00:1D6E 00              	   167: 	DB	000H,001H,000H,000H,009H,009H,000H,000H
+00:1D6F 01
+00:1D70 00
+00:1D71 00
+00:1D72 09
+00:1D73 09
+00:1D74 00
+00:1D75 00
+00:1D76 00              	   168: 	DB	000H,090H,000H,009H,001H,090H,009H,001H
+00:1D77 90
+00:1D78 00
+00:1D79 09
+00:1D7A 01
+00:1D7B 90
+00:1D7C 09
+00:1D7D 01
+00:1D7E 00              	   169: 	DB	000H,090H,000H,000H,000H,010H,000H,010H
+00:1D7F 90
+00:1D80 00
+00:1D81 00
+00:1D82 00
+00:1D83 10
+00:1D84 00
+00:1D85 10
+00:1D86 10              	   170: 	DB	010H,010H,000H,019H,019H,019H,000H,090H
+00:1D87 10
+00:1D88 00
+00:1D89 19
+00:1D8A 19
+00:1D8B 19
+00:1D8C 00
+00:1D8D 90
+00:1D8E 01              	   171: 	DB	001H,000H,000H,090H,000H,000H,000H,000H
+00:1D8F 00
+00:1D90 00
+00:1D91 90
+00:1D92 00
+00:1D93 00
+00:1D94 00
+00:1D95 00
+00:1D96 00              	   172: 	DB	000H,009H,009H,000H,090H,000H,000H,091H
+00:1D97 09
+00:1D98 09
+00:1D99 00
+00:1D9A 90
+00:1D9B 00
+00:1D9C 00
+00:1D9D 91
+00:1D9E 00              	   173: 	DB	000H,000H,010H,001H,000H,001H,000H,000H
+00:1D9F 00
+00:1DA0 10
+00:1DA1 01
+00:1DA2 00
+00:1DA3 01
+00:1DA4 00
+00:1DA5 00
+00:1DA6 01              	   174: 	DB	001H,000H,000H,000H,010H,000H,000H,000H
+00:1DA7 00
+00:1DA8 00
+00:1DA9 00
+00:1DAA 10
+00:1DAB 00
+00:1DAC 00
+00:1DAD 00
+00:1DAE 90              	   175: 	DB	090H,000H,000H,009H,000H,090H,090H,090H
+00:1DAF 00
+00:1DB0 00
+00:1DB1 09
+00:1DB2 00
+00:1DB3 90
+00:1DB4 90
+00:1DB5 90
+00:1DB6 90              	   176: 	DB	090H,000H,001H,000H,000H,001H,000H,000H
+00:1DB7 00
+00:1DB8 01
+00:1DB9 00
+00:1DBA 00
+00:1DBB 01
+00:1DBC 00
+00:1DBD 00
+00:1DBE 00              	   177: 	DB	000H,010H,000H,010H,000H,010H,001H,000H
+00:1DBF 10
+00:1DC0 00
+00:1DC1 10
+00:1DC2 00
+00:1DC3 10
+00:1DC4 01
+00:1DC5 00
+00:1DC6 00              	   178: 	DB	000H,000H,000H,009H,009H,000H,000H,090H
+00:1DC7 00
+00:1DC8 00
+00:1DC9 09
+00:1DCA 09
+00:1DCB 00
+00:1DCC 00
+00:1DCD 90
+00:1DCE 00              	   179: 	DB	000H,000H,090H,009H,000H,000H,000H,000H
+00:1DCF 00
+00:1DD0 90
+00:1DD1 09
+00:1DD2 00
+00:1DD3 00
+00:1DD4 00
+00:1DD5 00
+00:1DD6 10              	   180: 	DB	010H,000H,019H,000H,001H,001H,091H,001H
+00:1DD7 00
+00:1DD8 19
+00:1DD9 00
+00:1DDA 01
+00:1DDB 01
+00:1DDC 91
+00:1DDD 01
+00:1DDE 00              	   181: 	DB	000H,000H,000H,000H,090H,010H,009H,000H
+00:1DDF 00
+00:1DE0 00
+00:1DE1 00
+00:1DE2 90
+00:1DE3 10
+00:1DE4 09
+00:1DE5 00
+00:1DE6 01              	   182: 	DB	001H,000H,090H,000H,090H,000H,000H,000H
+00:1DE7 00
+00:1DE8 90
+00:1DE9 00
+00:1DEA 90
+00:1DEB 00
+00:1DEC 00
+00:1DED 00
+00:1DEE 00              	   183: 	DB	000H,000H,000H,000H,000H,000H,000H,091H
+00:1DEF 00
+00:1DF0 00
+00:1DF1 00
+00:1DF2 00
+00:1DF3 00
+00:1DF4 00
+00:1DF5 91
+00:1DF6 09              	   184: 	DB	009H,010H,090H,001H,000H,000H,000H,010H
+00:1DF7 10
+00:1DF8 90
+00:1DF9 01
+00:1DFA 00
+00:1DFB 00
+00:1DFC 00
+00:1DFD 10
+00:1DFE 00              	   185: 	DB	000H,001H,000H,090H,000H,001H,090H,000H
+00:1DFF 01
+00:1E00 00
+00:1E01 90
+00:1E02 00
+00:1E03 01
+00:1E04 90
+00:1E05 00
+00:1E06 00              	   186: 	DB	000H,000H,000H,000H,000H,090H,000H,000H
+00:1E07 00
+00:1E08 00
+00:1E09 00
+00:1E0A 00
+00:1E0B 90
+00:1E0C 00
+00:1E0D 00
+00:1E0E 00              	   187: 	DB	000H,000H,000H,009H,000H,000H,000H,009H
+00:1E0F 00
+00:1E10 00
+00:1E11 09
+00:1E12 00
+00:1E13 00
+00:1E14 00
+00:1E15 09
+00:1E16 10              	   188: 	DB	010H,000H,001H,000H,000H,001H,000H,000H
+00:1E17 00
+00:1E18 01
+00:1E19 00
+00:1E1A 00
+00:1E1B 01
+00:1E1C 00
+00:1E1D 00
+00:1E1E 00              	   189: 	DB	000H,000H,010H,000H,000H,001H,000H,009H
+00:1E1F 00
+00:1E20 10
+00:1E21 00
+00:1E22 00
+00:1E23 01
+00:1E24 00
+00:1E25 09
+00:1E26 00              	   190: 	DB	000H,000H,090H,009H,009H,000H,000H,009H
+00:1E27 00
+00:1E28 90
+00:1E29 09
+00:1E2A 09
+00:1E2B 00
+00:1E2C 00
+00:1E2D 09
+00:1E2E 01              	   191: 	DB	001H,000H,000H,000H,000H,000H,000H,000H
+00:1E2F 00
+00:1E30 00
+00:1E31 00
+00:1E32 00
+00:1E33 00
+00:1E34 00
+00:1E35 00
+00:1E36 10              	   192: 	DB	010H,000H,000H,001H,000H,010H,000H,010H
+00:1E37 00
+00:1E38 00
+00:1E39 01
+00:1E3A 00
+00:1E3B 10
+00:1E3C 00
+00:1E3D 10
+00:1E3E 00              	   193: 	DB	000H,000H,009H,000H,090H,000H,000H,091H
+00:1E3F 00
+00:1E40 09
+00:1E41 00
+00:1E42 90
+00:1E43 00
+00:1E44 00
+00:1E45 91
+00:1E46 09              	   194: 	DB	009H,000H,090H,000H,000H,009H,001H,009H
+00:1E47 00
+00:1E48 90
+00:1E49 00
+00:1E4A 00
+00:1E4B 09
+00:1E4C 01
+00:1E4D 09
+00:1E4E 00              	   195: 	DB	000H,000H,000H,010H,001H,000H,010H,010H
+00:1E4F 00
+00:1E50 00
+00:1E51 10
+00:1E52 01
+00:1E53 00
+00:1E54 10
+00:1E55 10
+00:1E56 00              	   196: 	DB	000H,000H,000H,000H,000H,009H,000H,000H
+00:1E57 00
+00:1E58 00
+00:1E59 00
+00:1E5A 00
+00:1E5B 09
+00:1E5C 00
+00:1E5D 00
+00:1E5E 00              	   197: 	DB	000H,000H,000H,000H,000H,091H,090H,000H
+00:1E5F 00
+00:1E60 00
+00:1E61 00
+00:1E62 00
+00:1E63 91
+00:1E64 90
+00:1E65 00
+00:1E66 00              	   198: 	DB	000H,009H,000H,000H,000H,000H,000H,001H
+00:1E67 09
+00:1E68 00
+00:1E69 00
+00:1E6A 00
+00:1E6B 00
+00:1E6C 00
+00:1E6D 01
+00:1E6E 00              	   199: 	DB	000H,000H,000H,001H,000H,000H,000H,000H
+00:1E6F 00
+00:1E70 00
+00:1E71 01
+00:1E72 00
+00:1E73 00
+00:1E74 00
+00:1E75 00
+00:1E76 10              	   200: 	DB	010H,009H,000H,000H,000H,000H,000H,000H
+00:1E77 09
+00:1E78 00
+00:1E79 00
+00:1E7A 00
+00:1E7B 00
+00:1E7C 00
+00:1E7D 00
+00:1E7E 00              	   201: 	DB	000H,000H,000H,090H,000H,091H,009H,001H
+00:1E7F 00
+00:1E80 00
+00:1E81 90
+00:1E82 00
+00:1E83 91
+00:1E84 09
+00:1E85 01
+00:1E86 00              	   202: 	DB	000H,000H,000H,000H,000H,000H,000H,090H
+00:1E87 00
+00:1E88 00
+00:1E89 00
+00:1E8A 00
+00:1E8B 00
+00:1E8C 00
+00:1E8D 90
+00:1E8E 00              	   203: 	DB	000H,010H,000H,000H,010H,000H,000H,000H
+00:1E8F 10
+00:1E90 00
+00:1E91 00
+00:1E92 10
+00:1E93 00
+00:1E94 00
+00:1E95 00
+00:1E96 00              	   204: 	DB	000H,000H,019H,019H,000H,000H,000H,000H
+00:1E97 00
+00:1E98 19
+00:1E99 19
+00:1E9A 00
+00:1E9B 00
+00:1E9C 00
+00:1E9D 00
+00:1E9E 00              	   205: 	DB	000H,090H,000H,000H,000H,000H,000H,000H
+00:1E9F 90
+00:1EA0 00
+00:1EA1 00
+00:1EA2 00
+00:1EA3 00
+00:1EA4 00
+00:1EA5 00
+00:1EA6 90              	   206: 	DB	090H,001H,000H,009H,000H,010H,000H,000H
+00:1EA7 01
+00:1EA8 00
+00:1EA9 09
+00:1EAA 00
+00:1EAB 10
+00:1EAC 00
+00:1EAD 00
+00:1EAE 00              	   207: 	DB	000H,001H,000H,000H,000H,000H,000H,000H
+00:1EAF 01
+00:1EB0 00
+00:1EB1 00
+00:1EB2 00
+00:1EB3 00
+00:1EB4 00
+00:1EB5 00
+00:1EB6 00              	   208: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:1EB7 00
+00:1EB8 00
+00:1EB9 00
+00:1EBA 00
+00:1EBB 00
+00:1EBC 00
+00:1EBD 00
+00:1EBE 00              	   209: 	DB	000H,000H,090H,000H,000H,090H,000H,000H
+00:1EBF 00
+00:1EC0 90
+00:1EC1 00
+00:1EC2 00
+00:1EC3 90
+00:1EC4 00
+00:1EC5 00
+00:1EC6 00              	   210: 	DB	000H,000H,000H,001H,000H,000H,000H,010H
+00:1EC7 00
+00:1EC8 00
+00:1EC9 01
+00:1ECA 00
+00:1ECB 00
+00:1ECC 00
+00:1ECD 10
+00:1ECE 00              	   211: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:1ECF 00
+00:1ED0 00
+00:1ED1 00
+00:1ED2 00
+00:1ED3 00
+00:1ED4 00
+00:1ED5 00
+00:1ED6 00              	   212: 	DB	000H,000H,000H,000H,000H,000H,009H,019H
+00:1ED7 00
+00:1ED8 00
+00:1ED9 00
+00:1EDA 00
+00:1EDB 00
+00:1EDC 09
+00:1EDD 19
+00:1EDE 00              	   213: 	DB	000H,000H,000H,000H,090H,000H,000H,000H
+00:1EDF 00
+00:1EE0 00
+00:1EE1 00
+00:1EE2 90
+00:1EE3 00
+00:1EE4 00
+00:1EE5 00
+00:1EE6 01              	   214: 	DB	001H,000H,000H,000H,001H,000H,000H,000H
+00:1EE7 00
+00:1EE8 00
+00:1EE9 00
+00:1EEA 01
+00:1EEB 00
+00:1EEC 00
+00:1EED 00
+00:1EEE 00              	   215: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:1EEF 00
+00:1EF0 00
+00:1EF1 00
+00:1EF2 00
+00:1EF3 00
+00:1EF4 00
+00:1EF5 00
+00:1EF6 00              	   216: 	DB	000H,000H,090H,000H,000H,000H,000H,000H
+00:1EF7 00
+00:1EF8 90
+00:1EF9 00
+00:1EFA 00
+00:1EFB 00
+00:1EFC 00
+00:1EFD 00
+00:1EFE 00              	   217: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:1EFF 00
+00:1F00 00
+00:1F01 00
+00:1F02 00
+00:1F03 00
+00:1F04 00
+00:1F05 00
+00:1F06 00              	   218: 	DB	000H,000H,000H,000H,000H,000H,001H,000H
+00:1F07 00
+00:1F08 00
+00:1F09 00
+00:1F0A 00
+00:1F0B 00
+00:1F0C 01
+00:1F0D 00
+00:1F0E 00              	   219: 	DB	000H,000H,000H,001H,090H,000H,000H,000H
+00:1F0F 00
+00:1F10 00
+00:1F11 01
+00:1F12 90
+00:1F13 00
+00:1F14 00
+00:1F15 00
+00:1F16 00              	   220: 	DB	000H,000H,000H,000H,090H,000H,000H,000H
+00:1F17 00
+00:1F18 00
+00:1F19 00
+00:1F1A 90
+00:1F1B 00
+00:1F1C 00
+00:1F1D 00
+00:1F1E 00              	   221: 	DB	000H,009H,000H,000H,000H,000H,001H,000H
+00:1F1F 09
+00:1F20 00
+00:1F21 00
+00:1F22 00
+00:1F23 00
+00:1F24 01
+00:1F25 00
+00:1F26 00              	   222: 	DB	000H,000H,010H,000H,000H,000H,000H,000H
+00:1F27 00
+00:1F28 10
+00:1F29 00
+00:1F2A 00
+00:1F2B 00
+00:1F2C 00
+00:1F2D 00
+00:1F2E 00              	   223: 	DB	000H,000H,000H,000H,000H,000H,000H,000H
+00:1F2F 00
+00:1F30 00
+00:1F31 00
+00:1F32 00
+00:1F33 00
+00:1F34 00
+00:1F35 00
+00:1F36 09              	   224: 	DB	009H,000H,000H,000H,090H,000H,000H,000H
+00:1F37 00
+00:1F38 00
+00:1F39 00
+00:1F3A 90
+00:1F3B 00
+00:1F3C 00
+00:1F3D 00
+00:1F3E 00              	   225: 	DB	000H,010H,000H,000H,000H,000H,000H,000H
+00:1F3F 10
+00:1F40 00
+00:1F41 00
+00:1F42 00
+00:1F43 00
+00:1F44 00
+00:1F45 00
+                        	   226: 
+
+Source: "mddt11.src"
+                        	    98: DREND::
+                        	    99: 
+                        	   100: 
+
+
+Symbols by name:
+ADD_LOOP                         A:011F EXP
+BANKCHG                          E:6000
+BANKSET                          A:000A EXP
+BANK_STORE                       E:1FFA EXP
+BDTOP                            A:019F EXP
+BD_DL                            E:0008
+BD_DL_DT                         A:016E EXP
+BD_TB                            A:0163 EXP
+B_LOOP                           A:0016
+DLY_DT_OFS                       E:000B
+DREG                             E:002A
+DREND                            A:1F46 EXP
+DRST                             A:0031 EXP
+DRST_0                           A:0076
+DR_REQ                           E:1FFF EXP
+DSEL                             E:002B
+END_BYTE_OFS                     E:0008
+GET_BYTE                         A:0092
+HCLTOP                           A:0CF1 EXP
+HCL_DL                           E:0017
+HCL_DL_DT                        A:0186 EXP
+HCL_TB                           A:017B EXP
+HD_BYTE_OFS                      E:0002
+LOOP                             E:0080
+LOOP1                            A:00BB
+LOOP2                            A:00DD
+LOOP_BYTE_OFS                    E:0006
+LOOP_DATA_STR                    E:1FFC
+LOOP_END                         A:0136 EXP
+LOOP_FLG_OFS                     E:0004
+LOW                              E:001E
+LPBASE_BYTE_OFS                  E:000A
+NO_CHECK                         A:00F8 EXP
+NO_LOOP                          E:0000
+NO_PRIORITY                      E:0000
+OHITOP                           A:0FF1 EXP
+OHI_DL                           E:0001
+OHI_DL_DT                        A:0192 EXP
+OHI_TB                           A:0187 EXP
+OPNADDRESS                       E:4000
+OPNDATA                          E:4001
+PCM_END                          A:0156 EXP
+PCM_LOOP_GO                      A:010F EXP
+PCM_LOOP_SET                     A:010A EXP
+PRIORITY                         E:0080
+PRIORITY_OFS                     E:0005
+REPEAT_FLG                       E:1FFE EXP
+REQ_CHECK                        A:00EC EXP
+RYTHM_TB                         A:0163 EXP
+SNRTOP                           A:04F1 EXP
+SNR_DL                           E:0016
+SNR_DL_DT                        A:017A EXP
+SNR_TB                           A:016F EXP
+SPEECH                           A:00A2 EXP
+STACP                            E:1FF4 EXP
+START                            A:002E
+TOMTOP                           A:1846 EXP
+TOM_DL                           E:000A
+TOM_DL_DT                        A:019E EXP
+TOM_TB                           A:0193 EXP
+TOP_ADR_OFS                      E:0000
+TO_PCM_TB                        A:001E EXP
+USE_FLG                          E:1FF6
+VOICE_FLG                        E:1FF7
+VOICE_TB_ADR                     E:1FF8 EXP
+Z80_FLG                          E:1FFD
+
+Symbols by value:
+0000 NO_LOOP
+0000 NO_PRIORITY
+0000 TOP_ADR_OFS
+0001 OHI_DL
+0002 HD_BYTE_OFS
+0004 LOOP_FLG_OFS
+0005 PRIORITY_OFS
+0006 LOOP_BYTE_OFS
+0008 BD_DL
+0008 END_BYTE_OFS
+000A TOM_DL
+000A BANKSET
+000A LPBASE_BYTE_OFS
+000B DLY_DT_OFS
+0016 B_LOOP
+0016 SNR_DL
+0017 HCL_DL
+001E LOW
+001E TO_PCM_TB
+002A DREG
+002B DSEL
+002E START
+0031 DRST
+0076 DRST_0
+0080 PRIORITY
+0080 LOOP
+0092 GET_BYTE
+00A2 SPEECH
+00BB LOOP1
+00DD LOOP2
+00EC REQ_CHECK
+00F8 NO_CHECK
+010A PCM_LOOP_SET
+010F PCM_LOOP_GO
+011F ADD_LOOP
+0136 LOOP_END
+0156 PCM_END
+0163 BD_TB
+0163 RYTHM_TB
+016E BD_DL_DT
+016F SNR_TB
+017A SNR_DL_DT
+017B HCL_TB
+0186 HCL_DL_DT
+0187 OHI_TB
+0192 OHI_DL_DT
+0193 TOM_TB
+019E TOM_DL_DT
+019F BDTOP
+04F1 SNRTOP
+0CF1 HCLTOP
+0FF1 OHITOP
+1846 TOMTOP
+1F46 DREND
+1FF4 STACP
+1FF6 USE_FLG
+1FF7 VOICE_FLG
+1FF8 VOICE_TB_ADR
+1FFA BANK_STORE
+1FFC LOOP_DATA_STR
+1FFD Z80_FLG
+1FFE REPEAT_FLG
+1FFF DR_REQ
+4000 OPNADDRESS
+4001 OPNDATA
+6000 BANKCHG

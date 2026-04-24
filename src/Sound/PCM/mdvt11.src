@@ -1,0 +1,113 @@
+;=======================================================;
+;	    $$$VT.SRC  (Sound PCM Voice Data)		;
+;  			ORG. MDVT11.SRC			;
+;		'Sound-Source'				;
+;		 for Mega Drive (68K)			;
+;			Ver  1.1 / 1990.9.1		;
+;				      By  H.Kubota	;
+;=======================================================;
+
+;=======================================;
+;		 ASSIGN			;
+;=======================================;
+;---------------< FLAG >----------------;
+NO_LOOP		equ	0
+LOOP		equ	80H
+NO_PRIORITY	equ	0
+PRIORITY	equ	80H
+
+;---------------< DELAY >---------------;
+HATO_DL		EQU	03H
+
+;--------------< ADDRESS >--------------;
+VDT_TOP		EQU	8000H
+
+;=======================================;
+;					;
+;		VOICE DATA		;
+;					;
+;=======================================;
+
+	ORG	VDT_TOP
+
+;================  HATO  ===============;
+HATO_TB::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB1::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT1::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB2::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT2::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB3::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT3::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB4::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT4::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB5::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT5::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB6::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT6::	db	HATO_DL		; delay
+;================  HATO  ===============;
+HATO_TB7::	dw	HATOTOP-VDT_TOP	; data address top
+		dw	VDTEND-HATOTOP	; data size
+		db	NO_LOOP		; loop flag
+		db	NO_PRIORITY	; priority
+		dw	0		; loop byte
+		dw	0		; end byte
+		db	0		; dummy
+HATO_DL_DT7::	db	HATO_DL		; delay
+
+;=======================================;
+;	      INCLUDE FILES		;
+;=======================================;
+HATOTOP::
+	INCLUDE 	HATO.HHH
+VDTEND::
+
+

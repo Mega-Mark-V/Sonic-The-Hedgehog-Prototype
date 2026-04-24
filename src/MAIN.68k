@@ -651,7 +651,7 @@ VSync:
 ; Idk what linker to use lol.
 
 	include	"Logo/LOGO.68k"
-;	include	"Title/TITLE.68k"
+	include	"Title/TITLE.68k"
 ;       include	"Level/LEVEL.68k"
 ;       include	"Special/SPECIAL.68k"
 
@@ -669,5 +669,16 @@ VSync:
 	include	"Objects/Objects.asm"
 
 ; TEMPORARY DATA STORAGE
+MapChnks_GHZ:	incbin "Level/Data/Chunks/chunks GHZ.kos"
+MapBlks_GreenHill:	incbin "Level/Data/Blocks/blks GHZ.bin"
+ArtNem_GreenHill1:	incbin "Level/Data/Art/artlvl GHZ1.nem"
+MapScr_TitleScreen:	incbin "Title/TITLE_SCR_MAP.bin"
+ArtNem_TitleSonic:	incbin "Title/TITLE_ART_SONIC.nem"
+ArtNem_TitleEmblem:	incbin "Title/TITLE_ART_BANNER.nem"
 ArtNem_LOGO:	incbin "Logo/LOGO_ART.nem"
 MapEni_LOGO:	incbin "Logo/LOGO_SCR.eni"
+
+	include	"Sound/SOUND.S"
+
+sound:	;	temporary stub until sound source code is translated
+	rts

@@ -1,0 +1,352 @@
+;=======================================================;
+;		    $$$DR.SRC  (Sound PCM Drum Control)				;
+;  						ORG. MDDR11.SRC						;
+;				'Sound-Source'								;
+;				 for Mega Drive (68K)						;
+;						Ver  1.1 / 1990.9.1				;
+;								      By  H.Kubota		;
+;=======================================================;
+
+;=======================================;
+;				 ASSIGN						;
+;=======================================;
+;----------------< I/O >----------------;
+OPNADDRESS		EQU		4000H				; FM OPN1 address
+OPNDATA				EQU		4001H				; FM data set address
+BANKCHG				equ		6000H
+
+;----------------< RAM >----------------;
+DR_REQ::		EQU		1FFFH				; REQUEST FLAG
+REPEAT_FLG::		EQU		1FFEH				; REPEAT FLAG 1 := REPEAT / 
+										; 80H = REPEAT END / 0 = NO REPEAT
+Z80_FLG				EQU		1FFDH
+LOOP_DATA_STR		EQU		1FFCH				; LOOP START PCM DATA STORE (byte)
+BANK_STORE::		equ		1FFAH				; 2 bytes  (high  ,low)
+										;		1ffah  |  1ffbh
+										;   a23-a16    | a15 0 0 0 0 0 0 0
+VOICE_TB_ADR::		equ		1FF8H				; 2 bytes
+VOICE_FLG		equ		1FF7H
+USE_FLG				equ		1FF6H				; 68k use flag  80h = voice using
+STACP::				EQU		1FF4H				; STAC BOTTOM
+
+
+;------------< FM CHIP I/O >------------;
+DREG				EQU		2AH				; FM REG (PCM OUT)
+DSEL				EQU		2BH				; FM REG (MODE SET)
+
+;------------< DATA OFFSET >------------;
+TOP_ADR_OFS		equ		0				; data top adddress
+HD_BYTE_OFS		equ		2				; data size
+LOOP_FLG_OFS		equ		4				; loop flag
+PRIORITY_OFS		equ		5				; priority
+LOOP_BYTE_OFS		equ		6				; loop byte
+END_BYTE_OFS		equ		8				; end byte
+LPBASE_BYTE_OFS		equ		10				; dummy
+DLY_DT_OFS		equ		11				; delay
+
+LOW						equ		1EH				; MDT: redefined based on pre-compiled mddr11.hhh file
+
+;=======================================;
+;										;
+;				 START						;
+;										;
+;=======================================;
+
+;RYTHM_TB:						; drum data top address
+
+;-----------< USING REGISTOR >----------;
+;		 A : FM reg
+;		 C : FM data
+;		HL : FM i/o 
+;		IX : loop data store work point
+;		IY : data headder top point
+;		DE': data table pointer
+;		HL': dr_req
+;		BC': data bytes counter
+
+;=======================================;
+;				 START						;
+;=======================================;
+		ORG		0000H
+
+		DI								; interrupt disable
+		DI								; interrupt disable
+		DI								; interrupt disable
+
+;=======================================;
+;				INITIAL						;
+;=======================================;
+		LD		SP,STACP				; stack set
+		XOR		A
+		LD		(Z80_FLG),A				; Z80 use flag clear
+
+;=======================================;
+;				BANK SET				;
+;=======================================;
+BANKSET::
+		LD		A,(BANK_STORE+1)		; bank low data
+		RLCA								; bit 0 = low data
+		LD		(BANKCHG),A				; low set
+		LD		B,8						; other bit total
+		LD		A,(BANK_STORE)				; bank high data
+B_LOOP:
+		LD		(BANKCHG),A				; high set
+		RRCA
+		DJNZ		B_LOOP
+
+		JR		START
+;=======================================;
+;		     PCM CHANGE TABLE				;
+;=======================================;
+TO_PCM_TB::
+		DB		+000H,+001H,+002H,+004H,+008H,+010H,+020H,+040H
+		DB		+080H,-001H,-002H,-004H,-008H,-010H,-020H,-040H
+;=======================================;
+;				MAIN LOOP				;
+;=======================================;
+START:
+		LD		HL,DR_REQ
+;===========  REQUEST CHECK  ===========;
+DRST::
+		LD		A,(HL)						; A = request no.
+		OR		A						; if request = plus
+		JP		P,DRST						; then jump
+
+		PUSH		AF
+		PUSH		HL
+
+		LD		A,080H						;
+		LD		(Z80_FLG),A				; Z80 use flag set
+
+;----------< FM D/A MODE SET >----------;
+		LD		HL,OPNADDRESS
+		LD		(HL),DSEL
+		INC		HL
+		LD		(HL),A						; 80h = D/A mode set data
+
+		XOR		A
+		LD		(Z80_FLG),A				; flag set
+
+;------------< USE FLAG SET >-----------;
+		DEC		HL						; HL = OPNADDRESS
+		LD		IX,LOOP_DATA_STR
+		LD		D,0
+		EXX
+		POP		HL
+		LD		(USE_FLG),A
+
+		POP		AF
+
+;---------< REQUEST NO. CHECK >---------;
+		LD		(VOICE_FLG),A				; bit 7 = on then drum
+		SUB		81H
+		LD		(HL),A
+		LD		DE,0
+		LD		IY,RYTHM_TB
+		CP		6						; if 7> then voice data req
+		JR		C,DRST_0
+;---------------< VOICE >---------------;
+		LD		(VOICE_FLG),A				; bit 7 = off then voice
+		LD		(USE_FLG),A				; voice using
+		LD		IY,(VOICE_TB_ADR)		; 
+		LD		DE,(VOICE_TB_ADR)
+		SUB		7
+DRST_0:
+		ADD		A,A
+		ADD		A,A						; a = a*4
+		LD		C,A						; c = a*4
+		ADD		A,A						; a = a*8
+		ADD		A,C						; a = a*12
+		
+		LD		C,A
+		LD		B,0
+		ADD		IY,BC						; iy = data headder top
+
+;----------< GET TOP ADDRESS >----------;
+		LD		E,(IY+TOP_ADR_OFS)
+		LD		D,(IY+TOP_ADR_OFS+1)		; de = data top
+		LD		A,(VOICE_FLG)
+		OR		A
+		JP		M,GET_BYTE
+		LD		HL,(VOICE_TB_ADR)
+		ADD		HL,DE
+		EX		DE,HL						; de = data top (when voice)
+
+GET_BYTE:
+;-----------< GET DATA SIZE >-----------;
+		LD		C,(IY+HD_BYTE_OFS)
+		LD		B,(IY+HD_BYTE_OFS+1)		; bc = data bytes
+;-----------< GET LOOP FLAG >-----------;
+		LD		A,(IY+LOOP_FLG_OFS)		; a = loop flag
+		LD		(REPEAT_FLG),A				; (0 = no loop / 80h = loop)
+
+		EXX
+		LD		C,80H						; C = D/A start data
+		EXX
+		
+SPEECH::
+		LD		HL,DR_REQ
+;=======================================;
+;		       ÉfÅ[É^ì]ëó				;
+;=======================================;
+;----------< HIGH NIBLE DATA >----------;
+		LD		A,(DE)						; get original 4 bit ADPCM data
+		AND		$F0						; get 4 bit data ( H )
+		RRCA
+		RRCA
+		RRCA
+		RRCA								; HIGH NIBLE >> LOW NIBLE
+
+
+		ADD		A,LOW TO_PCM_TB
+;-----------< ADPCM --> PCM >----------;
+		EXX								; HL = FM reg addr
+										; DE = table pointer
+		LD		E,A						; de = TO_PCM_TB
+		LD		A,(DE)						; get 8bit pcm data NO SA
+		ADD		A,C						; A = pcm data
+;=======================================;
+;      WRITE HIGH NIBLE DATA STO D/A		;
+;=======================================;
+;		A = data
+		LD		C,A						; STORE DATA
+
+		LD		A,080H						;
+		LD		(Z80_FLG),A				; flag set
+		LD		B,(IY+DLY_DT_OFS)		; b = DELY ( wait )
+LOOP1:
+		BIT		7,(HL)						; opn busy check
+		JR		NZ,LOOP1
+		LD		(HL),DREG				; HL = FM reg addr
+		INC		HL
+		XOR		A						; a = clear data
+		LD		(HL),C
+		LD		(Z80_FLG),A				; flag clear
+		DEC		HL
+;---------------< DELAY >---------------;
+		DJNZ		$
+		EXX
+;-----------< LOW NIBLE DATA >----------;
+		LD		A,(DE)						; get original 4 bit ADPCM data
+		AND		$0F						; get 4 bit data ( H )
+
+		ADD		A,LOW TO_PCM_TB
+
+		EXX
+		LD		E,A						; de = TO_PCM_TB
+		LD		A,(DE)						; get 8bit pcm data NO SA
+		ADD		A,C
+
+;=======================================;
+;      WRITE LOW NIBLE DATA STO D/A		;
+;=======================================;
+		LD		C,A						; STORE DATA
+
+		LD		A,080H						;
+		LD		(Z80_FLG),A				; flag set
+		LD		B,(IY+DLY_DT_OFS)		; b = DELY (wait)
+LOOP2:
+		BIT		7,(HL)						; opn busy check
+		JR		NZ,LOOP2
+		LD		(HL),DREG				; HL = OPNADDRESS
+		INC		HL
+		XOR		A						; clear data
+		LD		(HL),C
+		LD		(Z80_FLG),A				; flag clear
+		DEC		HL
+;---------------< DELAY >---------------;
+		DJNZ		$
+
+;=======================================;
+;		      CHECK REQUEST				;
+;=======================================;
+REQ_CHECK::
+		EXX
+		BIT		7,(IY+PRIORITY_OFS)		; if bit 7= on then 
+		JR		NZ,NO_CHECK				;    req no no check
+		BIT		7,(HL)						;  hl = dr_req
+		JP		NZ,DRST						;   new voice set
+;=======================================;
+;				NEXT LOOP				;
+;=======================================;
+NO_CHECK::
+		INC		DE						; inc table pointer
+		DEC		BC
+		LD		A,C
+		OR		B						; if DE = Z then 
+		JP		NZ,SPEECH
+		LD		A,(REPEAT_FLG)
+		OR		A
+		JP		Z,PCM_END
+
+		EXX
+		JP		P,PCM_LOOP_GO
+;----------< REPEAT INITIAL >-----------;
+PCM_LOOP_SET::
+		AND		7FH
+		LD		(IX),C						; IX = LOOP_DATA_STR
+PCM_LOOP_GO::
+		DEC		A
+		LD		(REPEAT_FLG),A				; counter store
+		JR		Z,LOOP_END
+		LD		C,(IX)						; IX = LOOP_DATA_STR
+
+;------< LOOP BYTE COUNTER MAKE >-------;
+		EXX
+		LD		L,(IY+LOOP_BYTE_OFS)
+		LD		H,(IY+LOOP_BYTE_OFS+1)		; hl = loop bytes
+;----------< GET REPEAT BYTE >----------;
+		;   hl + de*b  ( <loop bytes> + <loop base bytes> * < ran dam >
+ADD_LOOP::
+		LD		B,H
+		LD		C,L						; bc = loop byte
+;-------< LOOP START ADDRES GET >-------;
+		LD		E,(IY+TOP_ADR_OFS)
+		LD		D,(IY+TOP_ADR_OFS+1)
+		LD		HL,(VOICE_TB_ADR)
+		ADD		HL,DE
+
+		LD		E,(IY+HD_BYTE_OFS)
+		LD		D,(IY+HD_BYTE_OFS+1)
+
+		ADD		HL,DE
+		EX		DE,HL						; DE = loop start addr
+
+		JP		SPEECH
+
+;=======================================;
+;										;
+;				LOOP END				;
+;										;
+;=======================================;
+LOOP_END::
+		LD		C,(IX)						; IX = LOOP_DATA_STR
+		EXX
+		LD		C,(IY+END_BYTE_OFS)
+		LD		B,(IY+END_BYTE_OFS+1)
+
+		LD		L,(IY+HD_BYTE_OFS)
+		LD		H,(IY+HD_BYTE_OFS+1)
+		LD		E,(IY+TOP_ADR_OFS)
+		LD		D,(IY+TOP_ADR_OFS+1)		; offset adr add
+		ADD		HL,DE
+		LD		DE,(VOICE_TB_ADR)
+		ADD		HL,DE						; offset start addr add
+		EX		DE,HL						; DE = start addr
+		JP		SPEECH
+
+;=======================================;
+;										;
+;				 PCM END				;
+;										;
+;=======================================;
+PCM_END::
+		LD		HL,USE_FLG
+		LD		A,(HL)
+		OR		A						; if voice sat then pls
+		JP		M,START
+		XOR		A
+		LD		(HL),A						; use flag clear
+		JP		START
+
+		INCLUDE				"mddt11.src"		;		MDT: added since we're not using a makefile

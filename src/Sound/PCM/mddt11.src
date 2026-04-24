@@ -1,0 +1,100 @@
+;=======================================================;
+;		    $$$DT.SRC  (Sound PCM Drum Data)				;
+;  						ORG. MDDT11.SRC						;
+;				'Sound-Source'								;
+;				 for Mega Drive (68K)						;
+;						Ver  1.1 / 1990.9.1				;
+;								      By  H.Kubota		;
+;=======================================================;
+
+;=======================================;
+;				 ASSIGN						;
+;=======================================;
+;---------------< FLAG >----------------;
+NO_LOOP				EQU		0
+LOOP				EQU		80H
+NO_PRIORITY		EQU		0
+PRIORITY		EQU		80H
+
+;---------------< DELAY >---------------;
+BD_DL				EQU		08H
+SNR_DL				EQU		16H
+HCL_DL				EQU		17H
+OHI_DL				EQU		01H
+TOM_DL				EQU		0AH
+
+;=======================================;
+;										;
+;				DRUM DATA				;
+;										;
+;=======================================;
+
+;		PUBLIC		RYTHM_TB
+
+RYTHM_TB::
+;=======================================;
+;				 HEADDER				;
+;=======================================;
+
+;==============< BASS DRUM >============;
+BD_TB::				DW		BDTOP				; data address top
+				DW		SNRTOP-BDTOP		; data size
+				DB		NO_LOOP				; loop flag
+				DB		NO_PRIORITY		; priority
+				DW		0				; loop byte
+				DW		0				; end byte
+				DB		0				; dummy
+BD_DL_DT::		DB		BD_DL				; delay
+;================< SNARE >==============;
+SNR_TB::		DW		SNRTOP				; data address top
+				DW		HCLTOP-SNRTOP		; data size
+				DB		NO_LOOP				; loop flag
+				DB		NO_PRIORITY		; priority
+				DW		0				; loop byte
+				DW		0				; end byte
+				DB		0				; dummy
+SNR_DL_DT::		DB		SNR_DL				; delay
+;==============< HANDCLAP >=============;
+HCL_TB::		DW		HCLTOP				; data address top
+				DW		OHITOP-HCLTOP		; data size
+				DB		NO_LOOP				; loop flag
+				DB		NO_PRIORITY		; priority
+				DW		0				; loop byte
+				DW		0				; end byte
+				DB		0				; dummy
+HCL_DL_DT::		DB		HCL_DL				; delay
+;=============< OPEN HIHAT >============;
+OHI_TB::		DW		OHITOP				; data address top
+				DW		TOMTOP-OHITOP		; data size
+				DB		NO_LOOP				; loop flag
+				DB		NO_PRIORITY		; priority
+				DW		0				; loop byte
+				DW		0				; end byte
+				DB		0				; dummy
+OHI_DL_DT::		DB		OHI_DL				; delay
+;===============< TOMTOM >==============;
+TOM_TB::		DW		TOMTOP				; data address top
+				DW		DREND-TOMTOP		; data size
+				DB		NO_LOOP				; loop flag
+				DB		NO_PRIORITY		; priority
+				DW		0				; loop byte
+				DW		0				; end byte
+				DB		0				; dummy
+TOM_DL_DT::		DB		TOM_DL				; delay
+
+;=======================================;
+;		      INCLUDE FILES				;
+;=======================================;
+BDTOP::
+		INCLUDE 		BASSDRUM.HHH		; 81
+SNRTOP::
+		INCLUDE 		SNARE.HHH		; 82
+HCLTOP::
+		INCLUDE				HANDCLAP.HHH		; 83
+OHITOP::
+		INCLUDE 		OPEN_HAT.HHH		; 84
+TOMTOP::
+		INCLUDE 		TOMTOM.HHH		; 85
+DREND::
+
+
