@@ -650,7 +650,7 @@ VSync:
 ; ---------------------------------------------------------------------------
 ; Idk what linker to use lol.
 
-;	include	"Logo/LOGO.68k"
+	include	"Logo/LOGO.68k"
 ;	include	"Title/TITLE.68k"
 ;       include	"Level/LEVEL.68k"
 ;       include	"Special/SPECIAL.68k"
@@ -667,3 +667,7 @@ VSync:
 ; ---------------------------------------------------------------------------
 
 	include	"Objects/Objects.asm"
+
+; TEMPORARY DATA STORAGE
+ArtNem_LOGO:	incbin "Logo/LOGO_ART.nem"
+MapEni_LOGO:	incbin "Logo/LOGO_SCR.eni"

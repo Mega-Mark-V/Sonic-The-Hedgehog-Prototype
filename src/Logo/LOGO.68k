@@ -16,7 +16,7 @@ GM_LOGO:
 	lea     VDPCTRL,a6
 	move.w  #$8004,(a6) 		                ; Set normal color mode
 	move.w  #$8200+($C000>>10),(a6)                 ; Set Plane A nametable addr.
-	move.w  #$8407+($E000>>13),(a6)                 ; Set Plane B nametable addr.
+	move.w  #$8400+($E000>>13),(a6)                 ; Set Plane B nametable addr.
 	move.w  #$8700,(a6) 		                ; Set background color num.
 	move.w  #$8B00,(a6)                             ; Set fullscreen V and H scroll
 	move.w  displayMode.w,d0	                ; Get mode reg. 1 info

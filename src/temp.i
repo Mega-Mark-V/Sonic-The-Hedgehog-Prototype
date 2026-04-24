@@ -5,7 +5,6 @@ ArtListIndex:		equ $1226A	;	an index for the various art lists
 UpdateHUD:		equ $1167A	;	routine that redraws the HUD's dynamic VRAM
 AnimatedLevelGFX:	equ $1128C	;	routine handles the animated graphics in levels
 sound:			equ $741D2	;	Sound Source, VBLANK routine
-GM_LOGO:		equ $2484	;	Sega game mode
 GM_TITLE:		equ $254C	;	Title game mode
 GM_LEVEL:		equ $2BCE	;	Level game mode
 GM_SPECIAL:		equ $34FC	;	Special stage game mode

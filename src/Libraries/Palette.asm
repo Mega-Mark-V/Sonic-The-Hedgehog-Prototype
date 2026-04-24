@@ -492,9 +492,8 @@ palentr	macro	dataddr, off, size, noname
 ; ---------------------------------------------------------------------------
 
 PaletteIndex:	      
-
+	rsreset
 	;        Data         Addr.    Size      No. Name
-	
 	palentr  Pal_LOGO,	0,	64,      PALNO_LOGO
 	palentr  Pal_TITLE,	0,	64,      PALNO_TITLE
 	palentr  Pal_SELECT,	0,	64,      PALNO_SELECT
